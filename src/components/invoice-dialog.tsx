@@ -183,9 +183,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 </div>
                 <div className="text-right">
                     <h3 className="font-semibold mb-2">From:</h3>
-                    <p>Roopkotha Fashion Private Limited</p>
-                    <p>123 Fictional Street</p>
-                    <p>City, State, 12345</p>
+                    <p>Roopkotha</p>
+                    <p>Professor Colony, C/O, Deshbandhu Pal</p>
+                    <p>Holding No :- 195/8, Ward no. 14</p>
+                    <p>Bolpur, Birbhum, West Bengal - 731204</p>
                 </div>
             </div>
           </DialogHeader>
