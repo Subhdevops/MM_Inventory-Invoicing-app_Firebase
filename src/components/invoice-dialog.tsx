@@ -112,7 +112,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
-                  <p className="text-muted-foreground">Inventory & Sales</p>
+                  <p className="text-muted-foreground">Sales & Management</p>
                 </div>
                 <div className="text-right">
                     <h2 className="text-2xl font-bold">INVOICE</h2>
