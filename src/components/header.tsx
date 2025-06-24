@@ -16,7 +16,7 @@ export default function Header({ addProduct }: HeaderProps) {
           <div className="flex items-center gap-3">
             <QrCode className="h-8 w-8 text-primary" />
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Barcode Stocktake
+              ROOPKOTHA
             </h1>
           </div>
           <AddProductDialog addProduct={addProduct} />

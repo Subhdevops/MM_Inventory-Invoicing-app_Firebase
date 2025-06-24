@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Barcode Stocktake',
+  title: 'ROOPKOTHA',
   description: 'An application to manage inventory using barcodes.',
 };
 
