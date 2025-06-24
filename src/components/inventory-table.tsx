@@ -34,6 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type InventoryTableProps = {
   products: Product[];
@@ -46,11 +47,12 @@ type InventoryTableProps = {
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
   onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => void;
+  isLoading: boolean;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
@@ -154,9 +156,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             <TableRow>
               <TableHead className="w-[50px]">
                 <Checkbox
-                  checked={selectedRows.length === filteredProducts.length && filteredProducts.length > 0}
+                  checked={!isLoading && selectedRows.length === filteredProducts.length && filteredProducts.length > 0}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
+                  disabled={isLoading || filteredProducts.length === 0}
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
@@ -167,7 +170,30 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProducts.length > 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index} className="hover:bg-transparent">
+                  <TableCell className="w-[50px]">
+                    <Skeleton className="h-4 w-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-3/4" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-5 w-16 ml-auto" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Skeleton className="h-5 w-8 mx-auto" />
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <Skeleton className="h-5 w-full" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-8 w-8 ml-auto" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
                 <TableRow key={product.id} data-state={selectedRows.includes(product.id) && "selected"}>
                   <TableCell>
@@ -212,7 +238,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No sarees found. Try adding one!
+                  No sarees found. Add one, or check your Firebase connection.
                 </TableCell>
               </TableRow>
             )}

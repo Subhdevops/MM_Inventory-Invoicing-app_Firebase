@@ -17,6 +17,7 @@ export default function Home() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useBarcodeScanner(setFilter);
@@ -29,13 +30,15 @@ export default function Home() {
         ...doc.data()
       } as Product));
       setProducts(productsData);
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching products:", error);
       toast({
-        title: "Error",
-        description: "Could not fetch products. Ensure your firebase.ts config is correct.",
+        title: "Database Connection Error",
+        description: "Could not fetch products. Please ensure your Firebase config is correct and your Firestore security rules allow reads.",
         variant: "destructive",
       });
+      setIsLoading(false);
     });
 
     const invoicesQuery = query(collection(db, "invoices"), orderBy("date", "desc"));
@@ -48,10 +51,11 @@ export default function Home() {
     }, (error) => {
       console.error("Error fetching invoices:", error);
       toast({
-        title: "Error",
-        description: "Could not fetch invoices from the database.",
+        title: "Database Connection Error",
+        description: "Could not fetch invoices. Please check your Firestore security rules.",
         variant: "destructive",
       });
+      setIsLoading(false);
     });
 
     return () => {
@@ -230,7 +234,13 @@ export default function Home() {
     <div className="flex flex-col h-full bg-background">
       <Header addProduct={addProduct} />
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
-        <Dashboard stats={dashboardStats} chartData={chartData} onExport={exportInvoicesToCsv} totalInvoices={invoices.length} />
+        <Dashboard 
+          stats={dashboardStats} 
+          chartData={chartData} 
+          onExport={exportInvoicesToCsv} 
+          totalInvoices={invoices.length} 
+          isLoading={isLoading}
+        />
         <InventoryTable
           products={products}
           removeProduct={removeProduct}
@@ -245,6 +255,7 @@ export default function Home() {
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
           onCreateInvoice={handleCreateInvoice}
+          isLoading={isLoading}
         />
       </main>
     </div>
