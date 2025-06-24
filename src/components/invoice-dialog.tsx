@@ -157,23 +157,23 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-center">1</TableCell>
-                    <TableCell className="text-right">${p.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">${p.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{p.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{p.price.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
               <TableFooter>
                 <TableRow>
                     <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
-                    <TableCell className="text-right font-medium">${invoiceDetails.subtotal.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
                     <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
-                    <TableCell className="text-right font-medium">${invoiceDetails.gstAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow className="text-lg font-bold bg-muted/50">
                     <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
-                    <TableCell className="text-right">${invoiceDetails.grandTotal.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

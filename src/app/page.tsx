@@ -10,13 +10,13 @@ import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 
 const initialProducts: Product[] = [
-  { id: '1', name: 'Organic Bananas', quantity: 50, barcode: '789123456001', price: 2.99 },
-  { id: '2', name: 'Whole Milk, 1 Gallon', quantity: 20, barcode: '789123456002', price: 4.50 },
-  { id: '3', name: 'Artisan Sourdough Bread', quantity: 30, barcode: '789123456003', price: 5.25 },
-  { id: '4', name: 'Free-Range Eggs, Dozen', quantity: 45, barcode: '789123456004', price: 6.00 },
-  { id: '5', name: 'Greek Yogurt, Plain', quantity: 70, barcode: '789123456005', price: 3.75 },
-  { id: '6', name: 'Avocado Hass', quantity: 60, barcode: '789123456006', price: 1.50 },
-  { id: '7', name: 'Cold Brew Coffee', quantity: 25, barcode: '789123456007', price: 4.99 },
+  { id: '1', name: 'Organic Bananas', quantity: 50, barcode: '789123456001', price: 50.00 },
+  { id: '2', name: 'Whole Milk, 1 Gallon', quantity: 20, barcode: '789123456002', price: 60.00 },
+  { id: '3', name: 'Artisan Sourdough Bread', quantity: 30, barcode: '789123456003', price: 45.00 },
+  { id: '4', name: 'Free-Range Eggs, Dozen', quantity: 45, barcode: '789123456004', price: 70.00 },
+  { id: '5', name: 'Greek Yogurt, Plain', quantity: 70, barcode: '789123456005', price: 85.00 },
+  { id: '6', name: 'Avocado Hass', quantity: 60, barcode: '789123456006', price: 120.00 },
+  { id: '7', name: 'Cold Brew Coffee', quantity: 25, barcode: '789123456007', price: 150.00 },
 ];
 
 export default function Home() {

@@ -155,7 +155,7 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
                     />
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
                   <TableCell className="font-mono">{product.barcode}</TableCell>
                   <TableCell className="text-right">
