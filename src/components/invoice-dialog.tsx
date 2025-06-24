@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -6,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -104,6 +107,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       <DialogContent className="sm:max-w-2xl">
         <div id="invoice-content" className="print:bg-white print:text-black p-2">
           <DialogHeader className="mb-6">
+            <DialogTitle className="sr-only">Invoice</DialogTitle>
+            <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
