@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Product, Invoice } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
@@ -8,19 +8,12 @@ import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
 
-const initialProducts: Product[] = [
-  { id: '1', name: 'Kanjeevaram Silk Saree', quantity: 15, barcode: '890123456001', price: 12500.00 },
-  { id: '2', name: 'Banarasi Silk Saree', quantity: 25, barcode: '890123456002', price: 8500.00 },
-  { id: '3', name: 'Paithani Saree', quantity: 10, barcode: '890123456003', price: 15000.00 },
-  { id: '4', name: 'Bandhani Saree', quantity: 30, barcode: '890123456004', price: 4500.00 },
-  { id: '5', name: 'Chanderi Cotton Saree', quantity: 40, barcode: '890123456005', price: 3500.00 },
-  { id: '6', name: 'Tussar Silk Saree', quantity: 20, barcode: '890123456006', price: 6000.00 },
-  { id: '7', name: 'Organza Saree', quantity: 18, barcode: '890123456007', price: 7200.00 },
-];
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -28,40 +21,104 @@ export default function Home() {
 
   useBarcodeScanner(setFilter);
 
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    const newProduct = { ...product, id: Date.now().toString() };
-    setProducts(prev => [newProduct, ...prev]);
-    toast({
-      title: "Product Added",
-      description: `${product.name} has been added to the inventory.`,
-      variant: "default",
+  useEffect(() => {
+    const productsQuery = query(collection(db, "products"), orderBy("name"));
+    const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
+      const productsData: Product[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Product));
+      setProducts(productsData);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch products. Ensure your firebase.ts config is correct.",
+        variant: "destructive",
+      });
     });
+
+    const invoicesQuery = query(collection(db, "invoices"), orderBy("date", "desc"));
+    const unsubscribeInvoices = onSnapshot(invoicesQuery, (querySnapshot) => {
+      const invoicesData: Invoice[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Invoice));
+      setInvoices(invoicesData);
+    }, (error) => {
+      console.error("Error fetching invoices:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch invoices from the database.",
+        variant: "destructive",
+      });
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeInvoices();
+    };
+  }, [toast]);
+
+  const addProduct = async (product: Omit<Product, 'id'>) => {
+    try {
+      await addDoc(collection(db, "products"), product);
+      toast({
+        title: "Product Added",
+        description: `${product.name} has been added to the inventory.`,
+      });
+    } catch (error) {
+      console.error("Error adding product: ", error);
+      toast({ title: "Error", description: "Failed to add product.", variant: "destructive" });
+    }
   };
 
-  const removeProduct = (productId: string) => {
-    const productName = products.find(p => p.id === productId)?.name;
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    toast({
-      title: "Product Removed",
-      description: `${productName || 'Product'} has been removed from the inventory.`,
-      variant: "destructive",
-    });
+  const removeProduct = async (productId: string) => {
+    const productName = products.find(p => p.id === productId)?.name || 'Product';
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      toast({
+        title: "Product Removed",
+        description: `${productName} has been removed from the inventory.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error removing product: ", error);
+      toast({ title: "Error", description: "Failed to remove product.", variant: "destructive" });
+    }
   };
 
-  const bulkRemoveProducts = (productIds: string[]) => {
-    setProducts(prev => prev.filter(p => !productIds.includes(p.id)));
-    setSelectedRows([]);
-    toast({
-      title: "Products Removed",
-      description: `${productIds.length} items have been removed from the inventory.`,
-      variant: "destructive",
-    });
+  const bulkRemoveProducts = async (productIds: string[]) => {
+    try {
+      const batch = writeBatch(db);
+      productIds.forEach(id => {
+        const docRef = doc(db, "products", id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+
+      setSelectedRows([]);
+      toast({
+        title: "Products Removed",
+        description: `${productIds.length} items have been removed.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error bulk removing products: ", error);
+      toast({ title: "Error", description: "Failed to remove selected products.", variant: "destructive" });
+    }
   };
 
-  const updateProductQuantity = (productId: string, newQuantity: number) => {
-    setProducts(prev =>
-      prev.map(p => (p.id === productId ? { ...p, quantity: Math.max(0, newQuantity) } : p))
-    );
+  const updateProductQuantity = async (productId: string, newQuantity: number) => {
+    const productRef = doc(db, "products", productId);
+    try {
+        await updateDoc(productRef, {
+            quantity: Math.max(0, newQuantity)
+        });
+    } catch (error) {
+        console.error("Error updating quantity: ", error);
+        toast({ title: "Error", description: "Failed to update product quantity.", variant: "destructive" });
+    }
   };
   
   const handleToastForQuantityUpdate = (productName: string) => {
@@ -71,14 +128,13 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => {
-    const subtotal = invoiceData.items.reduce((acc, item) => acc + (item.price || 0), 0);
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => {
+    const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price, 0);
     const GST_RATE = 0.18;
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
 
-    const newInvoice: Invoice = {
-      id: `INV-${Date.now()}`,
+    const newInvoice: Omit<Invoice, 'id'> = {
       date: new Date().toISOString(),
       customerName: invoiceData.customerName,
       customerPhone: invoiceData.customerPhone,
@@ -87,16 +143,25 @@ export default function Home() {
       gstAmount,
       grandTotal,
     };
-
-    setInvoices(prev => [newInvoice, ...prev]);
-
-    invoiceData.items.forEach(p => {
-      updateProductQuantity(p.id, p.quantity - 1);
-    });
     
-    setSelectedRows([]);
-    
-    toast({ title: "Invoice Created", description: `Invoice ${newInvoice.id} created successfully.` });
+    try {
+      const batch = writeBatch(db);
+      const invoiceRef = doc(collection(db, "invoices"));
+      batch.set(invoiceRef, newInvoice);
+
+      invoiceData.items.forEach(p => {
+        const productRef = doc(db, "products", p.id);
+        batch.update(productRef, { quantity: p.quantity - 1 });
+      });
+      
+      await batch.commit();
+      setSelectedRows([]);
+      toast({ title: "Invoice Created", description: `Invoice ${invoiceRef.id} created successfully.` });
+
+    } catch (error) {
+      console.error("Error creating invoice: ", error);
+      toast({ title: "Error", description: "Failed to create invoice.", variant: "destructive" });
+    }
   };
 
   const exportInvoicesToCsv = () => {
