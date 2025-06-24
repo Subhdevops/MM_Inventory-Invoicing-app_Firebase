@@ -43,22 +43,22 @@ export default function Dashboard({ stats, chartData, onExport, totalInvoices }:
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Designs</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Unique items in inventory</p>
+            <p className="text-xs text-muted-foreground">Unique saree designs in inventory</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Stock</CardTitle>
             <Boxes className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalItems.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total quantity of all items</p>
+            <p className="text-xs text-muted-foreground">Total quantity of all sarees</p>
           </CardContent>
         </Card>
         <Card>
@@ -68,7 +68,7 @@ export default function Dashboard({ stats, chartData, onExport, totalInvoices }:
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.productsOutOfStock}</div>
-            <p className="text-xs text-muted-foreground">Items that need restocking</p>
+            <p className="text-xs text-muted-foreground">Sarees that need restocking</p>
           </CardContent>
         </Card>
         <Card>
@@ -84,7 +84,7 @@ export default function Dashboard({ stats, chartData, onExport, totalInvoices }:
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Top 5 Stocked Items</CardTitle>
+          <CardTitle>Top 5 Stocked Sarees</CardTitle>
         </CardHeader>
         <CardContent className="pl-2">
           <ChartContainer config={chartConfig} className="min-h-[300px] w-full">

@@ -205,7 +205,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No products found. Try adding one!
+                  No sarees found. Try adding one!
                 </TableCell>
               </TableRow>
             )}

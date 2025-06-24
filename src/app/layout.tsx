@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: 'ROOPKOTHA',
-  description: 'An application to manage inventory using barcodes.',
+  description: 'Manage your boutique inventory of exquisite Indian sarees.',
 };
 
 export default function RootLayout({

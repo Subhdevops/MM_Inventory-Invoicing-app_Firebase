@@ -10,13 +10,13 @@ import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 
 const initialProducts: Product[] = [
-  { id: '1', name: 'Organic Bananas', quantity: 50, barcode: '789123456001', price: 50.00 },
-  { id: '2', name: 'Whole Milk, 1 Gallon', quantity: 20, barcode: '789123456002', price: 60.00 },
-  { id: '3', name: 'Artisan Sourdough Bread', quantity: 30, barcode: '789123456003', price: 45.00 },
-  { id: '4', name: 'Free-Range Eggs, Dozen', quantity: 45, barcode: '789123456004', price: 70.00 },
-  { id: '5', name: 'Greek Yogurt, Plain', quantity: 70, barcode: '789123456005', price: 85.00 },
-  { id: '6', name: 'Avocado Hass', quantity: 60, barcode: '789123456006', price: 120.00 },
-  { id: '7', name: 'Cold Brew Coffee', quantity: 25, barcode: '789123456007', price: 150.00 },
+  { id: '1', name: 'Kanjeevaram Silk Saree', quantity: 15, barcode: '890123456001', price: 12500.00 },
+  { id: '2', name: 'Banarasi Silk Saree', quantity: 25, barcode: '890123456002', price: 8500.00 },
+  { id: '3', name: 'Paithani Saree', quantity: 10, barcode: '890123456003', price: 15000.00 },
+  { id: '4', name: 'Bandhani Saree', quantity: 30, barcode: '890123456004', price: 4500.00 },
+  { id: '5', name: 'Chanderi Cotton Saree', quantity: 40, barcode: '890123456005', price: 3500.00 },
+  { id: '6', name: 'Tussar Silk Saree', quantity: 20, barcode: '890123456006', price: 6000.00 },
+  { id: '7', name: 'Organza Saree', quantity: 18, barcode: '890123456007', price: 7200.00 },
 ];
 
 export default function Home() {

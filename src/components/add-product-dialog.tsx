@@ -87,7 +87,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 <FormItem>
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Organic Bananas" {...field} />
+                    <Input placeholder="e.g. Kanjeevaram Silk Saree" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -101,7 +101,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   <FormItem>
                     <FormLabel>Quantity</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g. 50" {...field} />
+                      <Input type="number" placeholder="e.g. 15" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -114,7 +114,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   <FormItem>
                     <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g. 249.00" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
