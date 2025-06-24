@@ -109,6 +109,20 @@ export default function Home() {
     }
   };
 
+  const updateProduct = async (productId: string, data: Partial<Omit<Product, 'id'>>) => {
+    const productRef = doc(db, "products", productId);
+    try {
+      await updateDoc(productRef, data);
+      toast({
+        title: "Product Updated",
+        description: `Your product has been updated successfully.`,
+      });
+    } catch (error) {
+      console.error("Error updating product: ", error);
+      toast({ title: "Error", description: "Failed to update product.", variant: "destructive" });
+    }
+  };
+
   const updateProductQuantity = async (productId: string, newQuantity: number) => {
     const productRef = doc(db, "products", productId);
     try {
@@ -221,6 +235,7 @@ export default function Home() {
           products={products}
           removeProduct={removeProduct}
           bulkRemoveProducts={bulkRemoveProducts}
+          updateProduct={updateProduct}
           updateProductQuantity={(id, qty) => {
             updateProductQuantity(id, qty);
             handleToastForQuantityUpdate(products.find(p => p.id === id)?.name || 'Product');

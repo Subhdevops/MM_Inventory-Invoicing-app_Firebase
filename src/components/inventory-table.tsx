@@ -31,13 +31,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
+import EditProductDialog from './edit-product-dialog';
 
 type InventoryTableProps = {
   products: Product[];
   removeProduct: (productId: string) => void;
   bulkRemoveProducts: (productIds: string[]) => void;
+  updateProduct: (productId: string, data: Partial<Omit<Product, 'id'>>) => void;
   updateProductQuantity: (productId: string, newQuantity: number) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
@@ -48,10 +50,11 @@ type InventoryTableProps = {
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   const filteredProducts = useMemo(() => {
     let sortableProducts = [...products];
@@ -188,6 +191,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => setProductToEdit(product)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => updateProductQuantity(product.id, product.quantity - 1)}>
                           <ShoppingCart className="mr-2 h-4 w-4" />
                           Sell One
@@ -212,6 +219,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </TableBody>
         </Table>
       </div>
+
+      {productToEdit && (
+        <EditProductDialog
+          isOpen={!!productToEdit}
+          onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}
+          product={productToEdit}
+          updateProduct={updateProduct}
+        />
+      )}
 
       <AlertDialog open={!!productToRemove} onOpenChange={(open) => !open && setProductToRemove(null)}>
         <AlertDialogContent>
