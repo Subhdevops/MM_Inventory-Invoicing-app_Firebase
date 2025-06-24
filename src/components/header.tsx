@@ -1,6 +1,5 @@
 "use client";
 
-import Image from 'next/image';
 import AddProductDialog from './add-product-dialog';
 import type { Product } from '@/lib/types';
 
@@ -14,7 +13,7 @@ export default function Header({ addProduct }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Image src="/logo.png" alt="ROOPKOTHA Logo" width={100} height={61} />
+            <h1 className="text-2xl font-bold text-primary">ROOPKOTHA</h1>
           </div>
           <AddProductDialog addProduct={addProduct} />
         </div>
