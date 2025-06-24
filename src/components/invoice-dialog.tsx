@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Product } from '@/lib/types';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -111,7 +112,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           <DialogHeader className="mb-6">
              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
+                  <Image src="/logo.png" alt="ROOPKOTHA Logo" width={200} height={121} />
                   <p className="text-muted-foreground">Inventory & Sales</p>
                 </div>
                 <div className="text-right">
