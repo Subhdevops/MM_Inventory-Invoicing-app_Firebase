@@ -34,10 +34,10 @@ export default function Dashboard({ stats, chartData, onExport, totalInvoices }:
   return (
     <section className="space-y-6">
        <div className="flex justify-between items-center">
-         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-         <Button onClick={onExport} variant="outline">
-           <Download className="mr-2 h-4 w-4" />
-           Export Invoices (CSV)
+         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
+         <Button onClick={onExport} variant="outline" size="icon" className="sm:w-auto sm:px-4">
+           <Download className="h-4 w-4 sm:mr-2" />
+           <span className="hidden sm:inline">Export Invoices (CSV)</span>
          </Button>
        </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -109,9 +109,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
 
   return (
     <section className="space-y-6">
-        <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
-      <div className="flex justify-between items-center gap-4">
-        <div className="relative w-full max-w-sm">
+      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name or scan barcode..."
@@ -159,7 +159,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
               <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
               <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
-              <TableHead><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
+              <TableHead className="hidden md:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
               <TableHead className="text-right w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -177,7 +177,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
-                  <TableCell className="font-mono">{product.barcode}</TableCell>
+                  <TableCell className="hidden font-mono md:table-cell">{product.barcode}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

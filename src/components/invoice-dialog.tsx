@@ -121,7 +121,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 </div>
             </div>
             <Separator className="my-4" />
-             <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <h3 className="font-semibold mb-2">Bill To:</h3>
                     <p>{customerName || 'Customer Name'}</p>
@@ -136,7 +136,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             </div>
           </DialogHeader>
           <div className="space-y-2 no-print my-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="customerName">Customer Name</Label>
                 <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
