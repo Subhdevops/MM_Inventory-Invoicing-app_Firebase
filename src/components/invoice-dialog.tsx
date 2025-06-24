@@ -25,8 +25,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Printer } from 'lucide-react';
+import { FileText, FileDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const GST_RATE = 0.18; // 18%
 
@@ -48,37 +50,34 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     return { subtotal, gstAmount, grandTotal };
   }, [products]);
 
-  const handlePrint = () => {
-    setTimeout(() => {
-        const printContent = document.getElementById('invoice-content');
-        if (printContent) {
-          const printWindow = window.open('', '', 'height=800,width=600');
-          if (!printWindow) {
-            toast({ title: "Popup blocked", description: "Please allow popups for this site to print the invoice.", variant: "destructive"});
-            return;
-          }
-          printWindow.document.write('<html><head><title>Invoice</title>');
-          
-          const styles = Array.from(document.styleSheets)
-            .map(s => s.href ? `<link rel="stylesheet" href="${s.href}">` : '')
-            .join('');
-          printWindow.document.write(styles);
+  const invoiceId = useMemo(() => `INV-${Date.now()}`, [open]);
 
-          printWindow.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; padding: 20px; } .no-print { display: none !important; } }</style></head><body>');
-          printWindow.document.write(printContent.innerHTML);
-          printWindow.document.write('</body></html>');
-          printWindow.document.close();
-          printWindow.focus();
-          
-          setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-          }, 500);
-        }
-    }, 100);
+  const handleDownloadPdf = async () => {
+    const input = document.getElementById('invoice-content');
+    if (!input) {
+      toast({ title: "Error", description: "Could not find invoice content to generate PDF.", variant: "destructive"});
+      return;
+    };
+    
+    const noPrintElements = input.querySelectorAll('.no-print');
+    noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
+
+    try {
+        const canvas = await html2canvas(input, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`invoice-${invoiceId}.pdf`);
+    } catch(e) {
+        toast({ title: "PDF Generation Failed", variant: "destructive" });
+    } finally {
+        noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+    }
   };
 
-  const handleCreateAndPrint = () => {
+  const handleCreateAndDownloadPdf = async () => {
     if (!customerName || !customerPhone) {
         toast({ title: "Missing Information", description: "Please enter customer name and phone number.", variant: "destructive" });
         return;
@@ -88,13 +87,14 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         customerPhone,
         items: products,
     });
-    handlePrint();
+    
+    await handleDownloadPdf();
+
     setOpen(false);
     setCustomerName('');
     setCustomerPhone('');
   }
 
-  const invoiceId = useMemo(() => `INV-${Date.now()}`, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -105,10 +105,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
+        <DialogTitle className="sr-only">Invoice</DialogTitle>
+        <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
         <div id="invoice-content" className="print:bg-white print:text-black p-2">
           <DialogHeader className="mb-6">
-            <DialogTitle className="sr-only">Invoice</DialogTitle>
-            <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
@@ -189,9 +189,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         </div>
         <DialogFooter className="sm:justify-end no-print">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateAndPrint} className="bg-accent hover:bg-accent/90">
-            <Printer className="mr-2 h-4 w-4" />
-            Process Sale & Print
+          <Button onClick={handleCreateAndDownloadPdf} className="bg-accent hover:bg-accent/90">
+            <FileDown className="mr-2 h-4 w-4" />
+            Process Sale & Download PDF
           </Button>
         </DialogFooter>
       </DialogContent>
