@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
-import type { Product } from '@/lib/types';
+import { useState, useMemo, useEffect } from 'react';
+import type { Product, SoldProduct } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,7 +34,15 @@ const GST_RATE = 0.18; // 18%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => void;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => void;
+};
+
+type InvoiceItem = {
+    id: string;
+    name: string;
+    price: number;
+    stock: number;
+    quantity: number;
 };
 
 export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDialogProps) {
@@ -42,13 +50,36 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const { toast } = useToast();
+  const [items, setItems] = useState<InvoiceItem[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setItems(products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        stock: p.quantity,
+        quantity: p.quantity > 0 ? 1 : 0,
+      })));
+    }
+  }, [products, open]);
+
+  const handleQuantityChange = (id: string, newQuantity: number) => {
+    setItems(currentItems => currentItems.map(item => {
+      if (item.id === id) {
+        const validatedQuantity = Math.max(1, Math.min(newQuantity || 1, item.stock));
+        return { ...item, quantity: validatedQuantity };
+      }
+      return item;
+    }));
+  };
 
   const invoiceDetails = useMemo(() => {
-    const subtotal = products.reduce((acc, p) => acc + (p.price || 0), 0);
+    const subtotal = items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
     return { subtotal, gstAmount, grandTotal };
-  }, [products]);
+  }, [items]);
 
   const invoiceId = useMemo(() => `INV-${Date.now()}`, [open]);
 
@@ -65,9 +96,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     const originalStyle = input.getAttribute('style');
 
     try {
-        // Temporarily apply a fixed width to ensure the layout is consistent for the PDF,
-        // regardless of the screen size. This forces a desktop-like layout for the capture.
-        input.style.width = '794px'; // Standard A4 width in pixels.
+        input.style.width = '794px'; 
 
         const canvas = await html2canvas(input, { 
           scale: 2,
@@ -84,7 +113,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         toast({ title: "PDF Generation Failed", variant: "destructive" });
     } finally {
         noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
-        // Restore original styles
         if (originalStyle) {
           input.setAttribute('style', originalStyle);
         } else {
@@ -98,10 +126,20 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         toast({ title: "Missing Information", description: "Please enter customer name and phone number.", variant: "destructive" });
         return;
     }
+
+    const itemsToInvoice = items
+        .filter(item => item.quantity > 0)
+        .map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+
+    if (itemsToInvoice.length === 0) {
+        toast({ title: "No Items", description: "Please add at least one item with a quantity greater than 0.", variant: "destructive" });
+        return;
+    }
+
     onCreateInvoice({
         customerName,
         customerPhone,
-        items: products,
+        items: itemsToInvoice,
     });
     
     await handleDownloadPdf();
@@ -168,18 +206,33 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
-                  <TableHead className="w-[100px] text-center">Quantity</TableHead>
-                  <TableHead className="w-[100px] text-right">Price</TableHead>
-                  <TableHead className="w-[100px] text-right">Total</TableHead>
+                  <TableHead className="w-[120px] text-center">Quantity</TableHead>
+                  <TableHead className="w-[120px] text-right">Price</TableHead>
+                  <TableHead className="w-[120px] text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map(p => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell className="text-center">1</TableCell>
-                    <TableCell className="text-right">₹{p.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{p.price.toFixed(2)}</TableCell>
+                {items.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell className="text-center">
+                        <Input
+                            type="number"
+                            className="w-20 mx-auto text-center"
+                            value={item.quantity}
+                            onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                            onBlur={(e) => {
+                              if (!e.target.value) {
+                                handleQuantityChange(item.id, 1);
+                              }
+                            }}
+                            min="1"
+                            max={item.stock}
+                            disabled={item.stock === 0}
+                        />
+                    </TableCell>
+                    <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

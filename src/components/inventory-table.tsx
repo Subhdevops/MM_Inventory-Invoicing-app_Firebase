@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Product } from '@/lib/types';
+import type { Product, SoldProduct } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -46,7 +46,7 @@ type InventoryTableProps = {
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => void;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => void;
   isLoading: boolean;
 };
 
@@ -221,7 +221,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateProductQuantity(product.id, product.quantity - 1)}>
+                        <DropdownMenuItem 
+                          onClick={() => updateProductQuantity(product.id, product.quantity - 1)}
+                          disabled={product.quantity === 0}
+                        >
                           <ShoppingCart className="mr-2 h-4 w-4" />
                           Sell One
                         </DropdownMenuItem>

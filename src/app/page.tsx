@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Product, Invoice } from '@/lib/types';
+import type { Product, Invoice, SoldProduct } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -146,8 +146,8 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => {
-    const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price, 0);
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => {
+    const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const GST_RATE = 0.18;
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
@@ -156,7 +156,7 @@ export default function Home() {
       date: new Date().toISOString(),
       customerName: invoiceData.customerName,
       customerPhone: invoiceData.customerPhone,
-      items: invoiceData.items.map(p => ({ id: p.id, name: p.name, price: p.price, quantity: 1 })),
+      items: invoiceData.items,
       subtotal,
       gstAmount,
       grandTotal,
@@ -168,8 +168,12 @@ export default function Home() {
       batch.set(invoiceRef, newInvoice);
 
       invoiceData.items.forEach(p => {
-        const productRef = doc(db, "products", p.id);
-        batch.update(productRef, { quantity: p.quantity - 1 });
+        const currentProduct = products.find(prod => prod.id === p.id);
+        if (currentProduct) {
+          const productRef = doc(db, "products", p.id);
+          const newStock = Math.max(0, currentProduct.quantity - p.quantity);
+          batch.update(productRef, { quantity: newStock });
+        }
       });
       
       await batch.commit();
