@@ -11,6 +11,7 @@ import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import FirebaseConfigWarning from '@/components/firebase-config-warning';
 
 
 export default function Home() {
@@ -24,6 +25,11 @@ export default function Home() {
   useBarcodeScanner(setFilter);
 
   useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      setIsLoading(false);
+      return;
+    }
+
     const productsQuery = query(collection(db, "products"), orderBy("name"));
     const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
       const productsData: Product[] = querySnapshot.docs.map(doc => ({
@@ -265,6 +271,7 @@ export default function Home() {
     <div className="flex flex-col h-full bg-background">
       <Header addProduct={addProduct} />
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        <FirebaseConfigWarning />
         <Dashboard 
           stats={dashboardStats} 
           chartData={chartData} 
