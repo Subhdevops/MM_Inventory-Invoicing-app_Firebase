@@ -37,6 +37,7 @@ import InvoiceDialog from './invoice-dialog';
 type InventoryTableProps = {
   products: Product[];
   removeProduct: (productId: string) => void;
+  bulkRemoveProducts: (productIds: string[]) => void;
   updateProductQuantity: (productId: string, newQuantity: number) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
@@ -47,9 +48,10 @@ type InventoryTableProps = {
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
     let sortableProducts = [...products];
@@ -119,10 +121,28 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
           />
         </div>
         {selectedRows.length > 0 && (
-          <InvoiceDialog 
-            products={selectedProductsForInvoice} 
-            onCreateInvoice={onCreateInvoice}
-          />
+          <div className="flex items-center gap-2">
+            <InvoiceDialog 
+              products={selectedProductsForInvoice} 
+              onCreateInvoice={onCreateInvoice}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  Bulk Actions ({selectedRows.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground"
+                  onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
       <div className="rounded-md border bg-card shadow-sm">
@@ -208,6 +228,26 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
                 removeProduct(productToRemove);
                 setProductToRemove(null);
               }
+            }}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBulkDeleteConfirmOpen} onOpenChange={setIsBulkDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently remove {selectedRows.length} selected product(s) from your inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => {
+              bulkRemoveProducts(selectedRows);
+              setIsBulkDeleteConfirmOpen(false);
             }}>
               Continue
             </AlertDialogAction>

@@ -48,6 +48,16 @@ export default function Home() {
     });
   };
 
+  const bulkRemoveProducts = (productIds: string[]) => {
+    setProducts(prev => prev.filter(p => !productIds.includes(p.id)));
+    setSelectedRows([]);
+    toast({
+      title: "Products Removed",
+      description: `${productIds.length} items have been removed from the inventory.`,
+      variant: "destructive",
+    });
+  };
+
   const updateProductQuantity = (productId: string, newQuantity: number) => {
     setProducts(prev =>
       prev.map(p => (p.id === productId ? { ...p, quantity: Math.max(0, newQuantity) } : p))
@@ -145,6 +155,7 @@ export default function Home() {
         <InventoryTable
           products={products}
           removeProduct={removeProduct}
+          bulkRemoveProducts={bulkRemoveProducts}
           updateProductQuantity={(id, qty) => {
             updateProductQuantity(id, qty);
             handleToastForQuantityUpdate(products.find(p => p.id === id)?.name || 'Product');
