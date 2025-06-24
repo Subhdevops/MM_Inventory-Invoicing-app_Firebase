@@ -38,12 +38,13 @@ type InventoryTableProps = {
   products: Product[];
   removeProduct: (productId: string) => void;
   updateProductQuantity: (productId: string, newQuantity: number) => void;
+  filter: string;
+  onFilterChange: (filter: string) => void;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, updateProductQuantity }: InventoryTableProps) {
-  const [filter, setFilter] = useState('');
+export default function InventoryTable({ products, removeProduct, updateProductQuantity, filter, onFilterChange }: InventoryTableProps) {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
@@ -117,9 +118,9 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or barcode..."
+            placeholder="Search by name or scan barcode..."
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => onFilterChange(e.target.value)}
             className="pl-10"
           />
         </div>

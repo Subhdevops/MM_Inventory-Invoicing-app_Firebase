@@ -6,6 +6,7 @@ import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
+import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 
 const initialProducts: Product[] = [
   { id: '1', name: 'Organic Bananas', quantity: 50, barcode: '789123456001' },
@@ -19,7 +20,11 @@ const initialProducts: Product[] = [
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [filter, setFilter] = useState('');
   const { toast } = useToast();
+
+  // Any scan on the main page will update the filter
+  useBarcodeScanner(setFilter);
 
   const addProduct = (product: Omit<Product, 'id'>) => {
     const newProduct = { ...product, id: Date.now().toString() };
@@ -75,6 +80,8 @@ export default function Home() {
           products={products}
           removeProduct={removeProduct}
           updateProductQuantity={updateProductQuantity}
+          filter={filter}
+          onFilterChange={setFilter}
         />
       </main>
     </div>

@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PlusCircle, QrCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
+import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
@@ -48,6 +49,13 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
     },
   });
 
+  useBarcodeScanner(
+    (barcode) => {
+      form.setValue('barcode', barcode, { shouldValidate: true });
+    },
+    { enabled: open }
+  );
+
   const onSubmit = (values: z.infer<typeof productSchema>) => {
     addProduct(values);
     form.reset();
@@ -65,7 +73,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
           <DialogDescription>
-            Enter product details below. You can manually enter a barcode or scan one.
+            Enter product details or scan a barcode to auto-fill the field.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
