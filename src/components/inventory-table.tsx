@@ -40,12 +40,14 @@ type InventoryTableProps = {
   updateProductQuantity: (productId: string, newQuantity: number) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
+  selectedRows: string[];
+  setSelectedRows: (ids: string[]) => void;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Product[] }) => void;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, updateProductQuantity, filter, onFilterChange }: InventoryTableProps) {
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+export default function InventoryTable({ products, removeProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
 
@@ -78,9 +80,10 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
   };
   
   const handleSelectRow = (id: string) => {
-    setSelectedRows(prev =>
-      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
-    );
+    const newSelection = selectedRows.includes(id)
+      ? selectedRows.filter(rowId => rowId !== id)
+      : [...selectedRows, id];
+    setSelectedRows(newSelection);
   };
 
   const handleSelectAll = () => {
@@ -95,15 +98,6 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
     return products.filter(p => selectedRows.includes(p.id));
   }, [products, selectedRows]);
   
-  const onInvoiceCreate = () => {
-    selectedProductsForInvoice.forEach(p => {
-      if (p.quantity > 0) {
-        updateProductQuantity(p.id, p.quantity - 1);
-      }
-    });
-    setSelectedRows([]);
-  }
-
   const SortableHeader = ({ tKey, title }: { tKey: keyof Product, title: string }) => (
     <Button variant="ghost" onClick={() => requestSort(tKey)}>
       {title}
@@ -127,7 +121,7 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
         {selectedRows.length > 0 && (
           <InvoiceDialog 
             products={selectedProductsForInvoice} 
-            onInvoiceCreate={onInvoiceCreate}
+            onCreateInvoice={onCreateInvoice}
           />
         )}
       </div>
@@ -143,7 +137,8 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
-              <TableHead className="text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
+              <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
+              <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
               <TableHead><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
               <TableHead className="text-right w-[100px]">Actions</TableHead>
             </TableRow>
@@ -160,6 +155,7 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
                     />
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
                   <TableCell className="font-mono">{product.barcode}</TableCell>
                   <TableCell className="text-right">
@@ -188,7 +184,7 @@ export default function InventoryTable({ products, removeProduct, updateProductQ
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No products found. Try adding one!
                 </TableCell>
               </TableRow>

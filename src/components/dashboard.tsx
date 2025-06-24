@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Bar,
   BarChart,
@@ -8,7 +9,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { Package, Boxes, AlertTriangle } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 type DashboardProps = {
@@ -18,6 +19,8 @@ type DashboardProps = {
     productsOutOfStock: number;
   };
   chartData: { name: string; quantity: number; }[];
+  onExport: () => void;
+  totalInvoices: number;
 };
 
 const chartConfig = {
@@ -27,11 +30,17 @@ const chartConfig = {
   },
 }
 
-export default function Dashboard({ stats, chartData }: DashboardProps) {
+export default function Dashboard({ stats, chartData, onExport, totalInvoices }: DashboardProps) {
   return (
     <section className="space-y-6">
-       <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+       <div className="flex justify-between items-center">
+         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+         <Button onClick={onExport} variant="outline">
+           <Download className="mr-2 h-4 w-4" />
+           Export Invoices (CSV)
+         </Button>
+       </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Products</CardTitle>
@@ -60,6 +69,16 @@ export default function Dashboard({ stats, chartData }: DashboardProps) {
           <CardContent>
             <div className="text-2xl font-bold">{stats.productsOutOfStock}</div>
             <p className="text-xs text-muted-foreground">Items that need restocking</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalInvoices}</div>
+            <p className="text-xs text-muted-foreground">Total sales generated</p>
           </CardContent>
         </Card>
       </div>

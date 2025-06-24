@@ -32,6 +32,7 @@ const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
+  price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
 });
 
 type AddProductDialogProps = {
@@ -46,6 +47,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
       name: "",
       quantity: 0,
       barcode: "",
+      price: 0,
     },
   });
 
@@ -91,19 +93,34 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantity</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g. 50" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g. 50" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price ($)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 2.99" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="barcode"
