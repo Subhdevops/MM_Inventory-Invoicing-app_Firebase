@@ -104,7 +104,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           Create Invoice ({products.length})
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogTitle className="sr-only">Invoice</DialogTitle>
         <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
         <div id="invoice-content" className="print:bg-white print:text-black p-2">
