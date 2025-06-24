@@ -29,9 +29,10 @@ import { FileText, FileDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import RoopkothaLogo from './icons/roopkotha-logo';
 
-// Base64 encoded watermark image
-const watermarkImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAQACAIAAADwf7zUAAAAA3NCSVQICAjb4U/gAAAL+klEQVR4nOzdB5glxZkn4P+8K4u8k6zssqysrKyUrOzLSkpW2SUrW1kICQSgEAIRYgjZZGf/M9lJdjbZzSQ22UxyUhghhBBCCCGEEEIIIYQQQgghhBBCCH+X8N/P973f7/f+fr+33/f1c+v25S8uBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQf-DHEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBAAAAAElFTkSuQmCC';
+// A smaller, more reliable SVG-based watermark.
+const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiPgogICAgPHRleHQgeD0iNSIgeT0iMzUiIGZvbnRGYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250U2l6ZT0iMzAiIGZvbnRXZWlnaHQ9ImJvbGQiIGZpbGw9IiMzYjgyZjYiIGxldHRlclNwYWNpbmc9IjEiPlJPT1BLT1RIQTwvdGV4dD4KICAgIDxwYXRoIGQ9Ik0yMjAsMTUgUTIzMCwyNSAyMjAsMzUiIHN0cm9rZT0iIzM0YTg1MyIgc3Ryb2tlV2lkdGg9IjIuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlTGluZWNhcD0icm91bmQiLz4KPC9zdmc+';
 
 const GST_RATE = 0.05; // 5%
 
@@ -105,11 +106,11 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     watermark.style.position = 'absolute';
     watermark.style.top = '50%';
     watermark.style.left = '50%';
-    watermark.style.transform = 'translate(-50%, -50%)';
+    watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
     watermark.style.zIndex = '1'; // Place watermark ON TOP of other content
     watermark.style.opacity = '0.08'; // Make it faint
     watermark.style.pointerEvents = 'none'; // Make it unclickable
-    watermark.style.width = '80%';
+    watermark.style.width = '120%';
     
     // Add watermark to the content div. It will sit on top of everything else.
     input.appendChild(watermark);
@@ -126,12 +127,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       input.style.width = '794px'; 
   
       const canvas = await html2canvas(input, { 
-        scale: 1.5,
+        scale: 1, // Reduced scale for smaller file size
         windowWidth: input.scrollWidth,
         windowHeight: input.scrollHeight,
         backgroundColor: '#ffffff'
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const imgData = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG with compression
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -194,8 +195,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         <div id="invoice-content" className="print:bg-white print:text-black p-6 space-y-8 bg-white">
           <header className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
-              <p className="text-sm text-muted-foreground">where fashion meets fairytale</p>
+              <RoopkothaLogo />
+              <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
             </div>
             <div className="text-right">
                 <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>

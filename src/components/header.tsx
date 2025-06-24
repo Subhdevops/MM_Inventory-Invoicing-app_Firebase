@@ -8,6 +8,7 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import RoopkothaLogo from './icons/roopkotha-logo';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
@@ -39,7 +40,7 @@ export default function Header({ addProduct }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-primary">ROOPKOTHA</h1>
+            <RoopkothaLogo />
           </div>
           <div className="flex items-center gap-4">
             {user && (

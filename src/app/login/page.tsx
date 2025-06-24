@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import GoogleIcon from '@/components/icons/google-icon';
+import RoopkothaLogo from '@/components/icons/roopkotha-logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -67,7 +68,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <h1 className="text-4xl font-bold text-primary text-center mb-6">ROOPKOTHA</h1>
+        <RoopkothaLogo className="mx-auto mb-6" width="250" height="50"/>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
