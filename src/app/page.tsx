@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Product, Invoice, SoldProduct } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
@@ -9,12 +10,16 @@ import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
+import { Loader2 } from 'lucide-react';
 
 
 export default function Home() {
+  const [user, authLoading] = useAuthState(auth);
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filter, setFilter] = useState('');
@@ -25,6 +30,14 @@ export default function Home() {
   useBarcodeScanner(setFilter);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return; // Don't fetch data if user is not authenticated
+
     if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
       setIsLoading(false);
       return;
@@ -69,7 +82,7 @@ export default function Home() {
       unsubscribeProducts();
       unsubscribeInvoices();
     };
-  }, [toast]);
+  }, [toast, user]);
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
     try {
@@ -266,6 +279,14 @@ export default function Home() {
       .slice(0, 5)
       .map(p => ({ name: p.name, quantity: p.quantity }));
   }, [products]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background">

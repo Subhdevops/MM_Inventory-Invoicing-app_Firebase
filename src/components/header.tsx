@@ -2,12 +2,38 @@
 
 import AddProductDialog from './add-product-dialog';
 import type { Product } from '@/lib/types';
+import { Button } from './ui/button';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import { LogOut } from 'lucide-react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
 };
 
 export default function Header({ addProduct }: HeaderProps) {
+  const [user] = useAuthState(auth);
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Logout Failed",
+        description: "An error occurred while logging out.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   return (
     <header className="flex-shrink-0 bg-card border-b shadow-sm sticky top-0 z-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -15,7 +41,17 @@ export default function Header({ addProduct }: HeaderProps) {
           <div className="flex items-center">
             <h1 className="text-2xl font-bold text-primary">ROOPKOTHA</h1>
           </div>
-          <AddProductDialog addProduct={addProduct} />
+          <div className="flex items-center gap-4">
+            {user && (
+              <>
+                <AddProductDialog addProduct={addProduct} />
+                <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+                  <LogOut className="h-5 w-5" />
+                  <span className="sr-only">Logout</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
