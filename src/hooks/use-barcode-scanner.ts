@@ -44,7 +44,7 @@ export function useBarcodeScanner(
       lastKeyTime.current = currentTime;
 
       // Ignore control keys, function keys, etc.
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         buffer.current.push(e.key);
       }
     },
