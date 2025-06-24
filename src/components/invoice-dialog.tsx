@@ -82,6 +82,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   }, [items]);
 
   const invoiceId = useMemo(() => `INV-${Date.now()}`, [open]);
+  
+  const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
   const handleDownloadPdf = async () => {
     const input = document.getElementById('invoice-content');
@@ -102,15 +104,15 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         input.style.width = '794px'; 
 
         const canvas = await html2canvas(input, { 
-          scale: 2,
+          scale: 1.5, // Reduced from 2 to lower file size
           windowWidth: input.scrollWidth,
           windowHeight: input.scrollHeight,
         });
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG for smaller file size
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${invoiceId}.pdf`);
     } catch(e) {
         toast({ title: "PDF Generation Failed", variant: "destructive" });
@@ -157,7 +159,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={products.length === 0}>
+        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
           <FileText className="mr-2 h-4 w-4" />
           Create Invoice ({products.length})
         </Button>
@@ -169,7 +171,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           <header className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
-              <p className="text-muted-foreground">Sales & Management</p>
+              <p className="text-sm text-muted-foreground">where fashion meets fairytale</p>
             </div>
             <div className="text-right">
                 <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>
@@ -268,7 +270,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         </div>
         <DialogFooter className="sm:justify-end no-print p-6 pt-0">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateAndDownloadPdf} className="bg-accent hover:bg-accent/90">
+          <Button onClick={handleCreateAndDownloadPdf} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice}>
             <FileDown className="mr-2 h-4 w-4" />
             Process Sale & Download PDF
           </Button>
