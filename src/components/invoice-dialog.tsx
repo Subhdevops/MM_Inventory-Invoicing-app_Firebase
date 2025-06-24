@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const GST_RATE = 0.18; // 18%
+const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
@@ -93,6 +93,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     const noPrintElements = input.querySelectorAll('.no-print');
     noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
     
+    const printElements = input.querySelectorAll('.print-only');
+    printElements.forEach(el => (el as HTMLElement).style.display = 'block');
+    
     const originalStyle = input.getAttribute('style');
 
     try {
@@ -113,6 +116,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         toast({ title: "PDF Generation Failed", variant: "destructive" });
     } finally {
         noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+        printElements.forEach(el => (el as HTMLElement).style.display = 'none');
         if (originalStyle) {
           input.setAttribute('style', originalStyle);
         } else {
@@ -158,55 +162,58 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           Create Invoice ({products.length})
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogTitle className="sr-only">Invoice</DialogTitle>
         <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
-        <div id="invoice-content" className="print:bg-white print:text-black p-2">
-          <DialogHeader className="mb-6">
-             <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
-                  <p className="text-muted-foreground">Sales & Management</p>
-                </div>
-                <div className="text-right">
-                    <h2 className="text-2xl font-bold">INVOICE</h2>
-                    <p className="text-sm text-muted-foreground">{invoiceId}</p>
-                    <p className="text-sm text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
+        <div id="invoice-content" className="print:bg-white print:text-black p-6 space-y-8">
+          <header className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-primary">ROOPKOTHA</h1>
+              <p className="text-muted-foreground">Sales & Management</p>
+            </div>
+            <div className="text-right">
+                <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>
+                <p className="text-sm text-muted-foreground">{invoiceId}</p>
+                <p className="text-sm text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
+            </div>
+          </header>
+          
+          <Separator />
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="space-y-2">
+                <h3 className="font-semibold mb-2">Bill To:</h3>
+                 <div className="space-y-4 no-print">
+                    <div>
+                      <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
+                      <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                    </div>
+                    <div>
+                      <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
+                      <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="123-456-7890" />
+                    </div>
+                  </div>
+                 <div className="print-only hidden text-sm pt-2">
+                    <p>{customerName || '____________________'}</p>
+                    <p>{customerPhone || '____________________'}</p>
                 </div>
             </div>
-            <Separator className="my-4" />
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <h3 className="font-semibold mb-2">Bill To:</h3>
-                    <p>{customerName || 'Customer Name'}</p>
-                    <p>{customerPhone || 'Customer Phone'}</p>
-                </div>
-                <div className="text-right">
-                    <h3 className="font-semibold mb-2">From:</h3>
-                    <p>Roopkotha</p>
-                    <p>Professor Colony, C/O, Deshbandhu Pal</p>
-                    <p>Holding No :- 195/8, Ward no. 14</p>
-                    <p>Bolpur, Birbhum, West Bengal - 731204</p>
-                </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-2 no-print my-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="customerName">Customer Name</Label>
-                <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
-              </div>
-              <div>
-                <Label htmlFor="customerPhone">Customer Phone</Label>
-                <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="123-456-7890" />
-              </div>
+            <div className="text-right space-y-1 text-sm">
+                <h3 className="font-semibold mb-2">From:</h3>
+                <p className="font-bold">Roopkotha</p>
+                <p>Professor Colony, C/O, Deshbandhu Pal</p>
+                <p>Holding No :- 195/8, Ward no. 14</p>
+                <p>Bolpur, Birbhum, West Bengal - 731204</p>
+                <p><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
+                <p><span className="font-semibold">Phone:</span> 9476468690</p>
             </div>
           </div>
-          <div className="my-4 border rounded-lg">
+          
+          <div className="border rounded-lg overflow-hidden">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead>Product</TableHead>
+                  <TableHead className="w-[50%]">Product</TableHead>
                   <TableHead className="w-[120px] text-center">Quantity</TableHead>
                   <TableHead className="w-[120px] text-right">Price</TableHead>
                   <TableHead className="w-[120px] text-right">Total</TableHead>
@@ -216,10 +223,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 {items.map(item => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center no-print">
                         <Input
                             type="number"
-                            className="w-20 mx-auto text-center"
+                            className="w-20 mx-auto text-center h-8"
                             value={item.quantity}
                             onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
                             onBlur={(e) => {
@@ -232,6 +239,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                             disabled={item.stock === 0}
                         />
                     </TableCell>
+                     <TableCell className="text-center print-only hidden">{item.quantity}</TableCell>
                     <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                     <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                   </TableRow>
@@ -246,18 +254,19 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                     <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
                     <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
                 </TableRow>
-                <TableRow className="text-lg font-bold bg-muted/50">
+                <TableRow className="text-lg font-bold bg-primary text-primary-foreground hover:bg-primary">
                     <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
                     <TableCell className="text-right">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
           </div>
-           <div className="text-center text-xs text-muted-foreground mt-6">
-                <p>Thank you for your business!</p>
+
+          <div className="text-center text-sm text-muted-foreground pt-6">
+                <p className="font-semibold">Thank you for shopping with us!</p>
             </div>
         </div>
-        <DialogFooter className="sm:justify-end no-print">
+        <DialogFooter className="sm:justify-end no-print p-6 pt-0">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleCreateAndDownloadPdf} className="bg-accent hover:bg-accent/90">
             <FileDown className="mr-2 h-4 w-4" />
