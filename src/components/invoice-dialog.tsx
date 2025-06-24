@@ -61,9 +61,19 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     
     const noPrintElements = input.querySelectorAll('.no-print');
     noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
+    
+    const originalStyle = input.getAttribute('style');
 
     try {
-        const canvas = await html2canvas(input, { scale: 2 });
+        // Temporarily apply a fixed width to ensure the layout is consistent for the PDF,
+        // regardless of the screen size. This forces a desktop-like layout for the capture.
+        input.style.width = '794px'; // Standard A4 width in pixels.
+
+        const canvas = await html2canvas(input, { 
+          scale: 2,
+          windowWidth: input.scrollWidth,
+          windowHeight: input.scrollHeight,
+        });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -74,6 +84,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         toast({ title: "PDF Generation Failed", variant: "destructive" });
     } finally {
         noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+        // Restore original styles
+        if (originalStyle) {
+          input.setAttribute('style', originalStyle);
+        } else {
+          input.removeAttribute('style');
+        }
     }
   };
 
