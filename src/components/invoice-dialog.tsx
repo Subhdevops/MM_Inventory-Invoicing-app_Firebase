@@ -129,7 +129,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 </div>
                 <div className="text-right">
                     <h3 className="font-semibold mb-2">From:</h3>
-                    <p>ROOPKOTHA Inc.</p>
+                    <p>Roopkotha Fashion Private Limited</p>
                     <p>123 Fictional Street</p>
                     <p>City, State, 12345</p>
                 </div>
