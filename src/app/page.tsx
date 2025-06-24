@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -220,6 +221,32 @@ export default function Home() {
     document.body.removeChild(link);
   }
 
+  const exportInventoryToCsv = () => {
+    if (products.length === 0) {
+      toast({ title: "No inventory to export", variant: "destructive", description: "Add a product first." });
+      return;
+    }
+
+    const dataToExport = products.map(p => ({
+      productId: p.id,
+      productName: p.name,
+      quantity: p.quantity,
+      price: p.price.toFixed(2),
+      barcode: p.barcode,
+    }));
+
+    const csv = Papa.unparse(dataToExport);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'inventory.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -241,7 +268,8 @@ export default function Home() {
         <Dashboard 
           stats={dashboardStats} 
           chartData={chartData} 
-          onExport={exportInvoicesToCsv} 
+          onExportInvoices={exportInvoicesToCsv} 
+          onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
           isLoading={isLoading}
         />
