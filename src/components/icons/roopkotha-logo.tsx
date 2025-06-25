@@ -1,7 +1,11 @@
 import * as React from "react"
 
 // A simpler, elegant SVG-based logo with a tagline.
-const RoopkothaLogo = (props: React.SVGProps<SVGSVGElement>) => (
+type RoopkothaLogoProps = React.SVGProps<SVGSVGElement> & {
+  showTagline?: boolean;
+};
+
+const RoopkothaLogo = ({ showTagline = true, ...props }: RoopkothaLogoProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 250 60"
@@ -21,17 +25,19 @@ const RoopkothaLogo = (props: React.SVGProps<SVGSVGElement>) => (
     >
       ROOPKOTHA
     </text>
-    <text
-      x="50%"
-      y="50"
-      fontFamily="Georgia, serif"
-      fontSize="12"
-      fontStyle="italic"
-      fill="hsl(var(--muted-foreground))"
-      textAnchor="middle"
-    >
-      Where fashion meets fairytale
-    </text>
+    {showTagline && (
+      <text
+        x="50%"
+        y="50"
+        fontFamily="Georgia, serif"
+        fontSize="12"
+        fontStyle="italic"
+        fill="hsl(var(--muted-foreground))"
+        textAnchor="middle"
+      >
+        Where fashion meets fairytale
+      </text>
+    )}
   </svg>
 )
 
