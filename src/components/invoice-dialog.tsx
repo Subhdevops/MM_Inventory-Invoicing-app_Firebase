@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Product, SoldProduct, Invoice } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
@@ -24,24 +24,25 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, Percent } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import RoopkothaLogo from './icons/roopkotha-logo';
 import { db } from '@/lib/firebase';
-import { runTransaction, doc, collection, serverTimestamp } from 'firebase/firestore';
+import { runTransaction, doc } from 'firebase/firestore';
 
 const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'name' | 'id'>[] }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[], discountPercentage: number }) => Promise<string>;
 };
 
 type InvoiceItem = {
     id: string;
     name: string;
+    description: string;
     price: number;
     cost: number;
     stock: number;
@@ -52,20 +53,34 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState(0);
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [finalInvoiceData, setFinalInvoiceData] = useState<Invoice | null>(null);
+  const pdfContentRef = useRef<HTMLDivElement | null>(null);
+
+  const setPdfContentRef = useCallback((node: HTMLDivElement) => {
+    if (node) {
+      pdfContentRef.current = node;
+      // When the ref is attached, if we are in a state to generate a PDF, do it.
+      if (finalInvoiceData) {
+        generatePdf();
+      }
+    }
+  }, [finalInvoiceData]);
 
   useEffect(() => {
     if (open) {
       setCustomerName('');
       setCustomerPhone('');
+      setDiscountPercentage(0);
       setIsProcessing(false);
       setFinalInvoiceData(null);
       setItems(products.map(p => ({
         id: p.id,
         name: p.name,
+        description: p.description || '',
         price: p.price,
         cost: p.cost,
         stock: p.quantity,
@@ -74,38 +89,34 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }
   }, [products, open]);
 
-  useEffect(() => {
-    const generatePdf = async () => {
-      if (!finalInvoiceData) return;
-
-      const invoiceElement = document.getElementById('invoice-pdf-content');
-      if (!invoiceElement) {
+  const generatePdf = async () => {
+    const invoiceElement = pdfContentRef.current;
+    if (!invoiceElement) {
         toast({ title: "PDF Error", description: "Could not find invoice content to generate PDF.", variant: "destructive" });
         setIsProcessing(false);
         return;
-      }
+    }
 
-      try {
-        const canvas = await html2canvas(invoiceElement, { scale: 2, backgroundColor: '#ffffff' });
+    try {
+        const canvas = await html2canvas(invoiceElement, { scale: 1.5, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${finalInvoiceData.id}.pdf`);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${finalInvoiceData!.id}.pdf`);
         
         setOpen(false);
-      } catch (error) {
+    } catch (error) {
         console.error("PDF generation failed:", error);
         toast({ title: "PDF Generation Failed", description: "An error occurred while generating the PDF.", variant: "destructive" });
-      } finally {
+    } finally {
         setIsProcessing(false);
         setFinalInvoiceData(null); // Reset for next invoice
-      }
-    };
+    }
+  };
 
-    generatePdf();
-  }, [finalInvoiceData, toast]);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     setItems(currentItems => currentItems.map(item => {
@@ -117,12 +128,23 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }));
   };
 
+  const handleDiscountChange = (value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0) {
+      setDiscountPercentage(0);
+    } else {
+      setDiscountPercentage(Math.min(numValue, 100));
+    }
+  };
+
   const invoiceDetails = useMemo(() => {
     const subtotal = items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
-    const gstAmount = subtotal * GST_RATE;
-    const grandTotal = subtotal + gstAmount;
-    return { subtotal, gstAmount, grandTotal };
-  }, [items]);
+    const discountAmount = subtotal * (discountPercentage / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const gstAmount = subtotalAfterDiscount * GST_RATE;
+    const grandTotal = subtotalAfterDiscount + gstAmount;
+    return { subtotal, discountAmount, gstAmount, grandTotal };
+  }, [items, discountPercentage]);
 
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
@@ -141,8 +163,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       return;
     }
     
-    const itemsToInvoice = items
-        .filter(item => item.quantity > 0);
+    const itemsToInvoice = items.filter(item => item.quantity > 0);
 
     if (itemsToInvoice.length === 0) {
         toast({ title: "No Items", description: "Add at least one item with a quantity greater than 0.", variant: "destructive" });
@@ -167,32 +188,37 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       const itemsWithFullDetails = itemsToInvoice.map(item => ({
           ...item,
           name: products.find(p => p.id === item.id)?.name || 'Unknown Product',
+          description: products.find(p => p.id === item.id)?.description || '',
           cost: products.find(p => p.id === item.id)?.cost || 0,
       }));
 
-      const subtotal = itemsWithFullDetails.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const gstAmount = subtotal * GST_RATE;
-      const grandTotal = subtotal + gstAmount;
+      const { subtotal, discountAmount, gstAmount, grandTotal } = invoiceDetails;
 
       const invoiceDataForPdf: Invoice = {
         id: newInvoiceNumber.toString(),
-        customerName: customerName,
-        customerPhone: customerPhone,
+        customerName,
+        customerPhone,
         items: itemsWithFullDetails,
         subtotal,
+        discountPercentage,
+        discountAmount,
         gstAmount,
         grandTotal,
         date: new Date().toISOString(),
       };
       
-      // Pass control to useEffect for PDF generation
       setFinalInvoiceData(invoiceDataForPdf);
 
-      // Now create the invoice in Firestore in the background
       await onCreateInvoice({
-        ...invoiceDataForPdf,
-        items: itemsWithFullDetails.map(({ id, price, quantity, cost, name }) => ({ id, price, quantity, cost, name })),
-      } as any);
+        customerName,
+        customerPhone,
+        discountPercentage,
+        items: itemsToInvoice.map(item => ({
+          id: item.id,
+          price: item.price,
+          quantity: item.quantity
+        })),
+      });
 
     } catch (error) {
         console.error("Processing failed:", error);
@@ -201,16 +227,15 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }
   };
   
-  // This component will be rendered off-screen to generate the PDF
-  const PdfContent = ({ invoice }: { invoice: Invoice | null }) => {
+  const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwardedRef: React.Ref<HTMLDivElement> }) => {
     if (!invoice) return null;
 
     return (
-      <div id="invoice-pdf-content" className="p-8 border rounded-lg bg-white text-black" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
+      <div ref={forwardedRef} className="p-8 border rounded-lg bg-white text-black" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
         <header className="flex items-center justify-between pb-6 border-b">
-            <RoopkothaLogo showTagline={true} />
+            <RoopkothaLogo showTagline={true} primaryColor="#d946ef" secondaryColor="#707070" />
             <div className="text-right">
-                <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
+                <h1 className="text-3xl font-bold text-fuchsia-500 tracking-tight">INVOICE</h1>
                 <p className="text-sm text-gray-500">{invoice.id}</p>
                 <p className="text-xs text-gray-500 mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
             </div>
@@ -224,7 +249,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
               </div>
               <div className="text-right space-y-1">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">From</h2>
-                  <p className="font-bold text-primary">Roopkotha</p>
+                  <p className="font-bold text-fuchsia-500">Roopkotha</p>
                   <p className="text-xs text-gray-500">Professor Colony, C/O, Deshbandhu Pal</p>
                   <p className="text-xs text-gray-500">Holding No :- 195/8, Ward no. 14</p>
                   <p className="text-xs text-gray-500">Bolpur, Birbhum, West Bengal - 731204</p>
@@ -246,7 +271,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             <TableBody>
               {invoice.items.map(item => (
                 <TableRow key={item.id} className="border-b border-gray-100">
-                  <TableCell className="font-medium px-4 py-3">{item.name}</TableCell>
+                  <TableCell className="font-medium px-4 py-3">
+                    {item.name}
+                    {item.description && <p className="text-xs text-gray-500 font-normal">{item.description}</p>}
+                  </TableCell>
                   <TableCell className="px-4 py-3 text-center">{item.quantity}</TableCell>
                   <TableCell className="text-right px-4 py-3">₹{item.price.toFixed(2)}</TableCell>
                   <TableCell className="text-right font-medium px-4 py-3">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
@@ -258,13 +286,19 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Subtotal</TableCell>
                   <TableCell className="text-right font-medium px-4 py-2">₹{invoice.subtotal.toFixed(2)}</TableCell>
               </TableRow>
+               {invoice.discountAmount > 0 && (
+                <TableRow>
+                    <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Discount ({invoice.discountPercentage}%)</TableCell>
+                    <TableCell className="text-right font-medium px-4 py-2 text-red-600">-₹{invoice.discountAmount.toFixed(2)}</TableCell>
+                </TableRow>
+              )}
               <TableRow>
                   <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({GST_RATE * 100}%)</TableCell>
                   <TableCell className="text-right font-medium px-4 py-2">₹{invoice.gstAmount.toFixed(2)}</TableCell>
               </TableRow>
-              <TableRow className="bg-primary/10 font-bold">
-                  <TableCell colSpan={3} className="text-right text-primary text-base px-4 py-3">Grand Total</TableCell>
-                  <TableCell className="text-right text-primary text-base px-4 py-3">₹{invoice.grandTotal.toFixed(2)}</TableCell>
+              <TableRow className="bg-fuchsia-500/10 font-bold">
+                  <TableCell colSpan={3} className="text-right text-fuchsia-600 text-base px-4 py-3">Grand Total</TableCell>
+                  <TableCell className="text-right text-fuchsia-600 text-base px-4 py-3">₹{invoice.grandTotal.toFixed(2)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
@@ -332,7 +366,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 <TableBody>
                   {items.map(item => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.name}
+                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                      </TableCell>
                       <TableCell>
                           <Input
                               type="number"
@@ -360,6 +397,29 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                       <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                   </TableRow>
                   <TableRow>
+                     <TableCell colSpan={2}></TableCell>
+                     <TableCell className="text-right font-medium">Discount</TableCell>
+                     <TableCell className="text-right font-medium">
+                        <div className="relative">
+                           <Input
+                                type="number"
+                                className="w-24 ml-auto text-right h-8 pr-7"
+                                value={discountPercentage}
+                                onChange={(e) => handleDiscountChange(e.target.value)}
+                                min="0"
+                                max="100"
+                            />
+                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        </div>
+                     </TableCell>
+                  </TableRow>
+                  {invoiceDetails.discountAmount > 0 && (
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-right font-medium">Discount Amount</TableCell>
+                        <TableCell className="text-right font-medium text-destructive">-₹{invoiceDetails.discountAmount.toFixed(2)}</TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow>
                       <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
                       <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
                   </TableRow>
@@ -383,7 +443,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    <PdfContent invoice={finalInvoiceData} />
+    <PdfContent invoice={finalInvoiceData} forwardedRef={setPdfContentRef} />
     </>
   );
 }

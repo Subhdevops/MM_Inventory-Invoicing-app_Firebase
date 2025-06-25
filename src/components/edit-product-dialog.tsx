@@ -24,10 +24,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { Product } from '@/lib/types';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
+  description: z.string().optional(),
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
@@ -46,6 +48,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product.name,
+      description: product.description,
       quantity: product.quantity,
       barcode: product.barcode,
       price: product.price,
@@ -57,6 +60,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
     if (product) {
       form.reset({
         name: product.name,
+        description: product.description,
         quantity: product.quantity,
         barcode: product.barcode,
         price: product.price,
@@ -66,7 +70,10 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
   }, [product, form]);
 
   const onSubmit = (values: z.infer<typeof productSchema>) => {
-    updateProduct(product.id, values);
+    updateProduct(product.id, {
+        ...values,
+        description: values.description || ''
+    });
     onOpenChange(false);
   };
 
@@ -89,6 +96,19 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Kanjeevaram Silk Saree" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="e.g. Handwoven with pure silk thread." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

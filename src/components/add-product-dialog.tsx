@@ -25,12 +25,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, QrCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
+  description: z.string().optional(),
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
@@ -47,6 +49,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
+      description: "",
       quantity: 0,
       barcode: "",
       price: 0,
@@ -62,7 +65,10 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
   );
 
   const onSubmit = (values: z.infer<typeof productSchema>) => {
-    addProduct(values);
+    addProduct({
+      ...values,
+      description: values.description || '',
+    });
     form.reset();
     setOpen(false);
   };
@@ -91,6 +97,22 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Kanjeevaram Silk Saree" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="e.g. Handwoven with pure silk thread."
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

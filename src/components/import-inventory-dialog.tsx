@@ -26,6 +26,7 @@ const productSchema = z.object({
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
+  description: z.string().default(''),
 });
 
 type ImportInventoryDialogProps = {
@@ -124,7 +125,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from CSV</DialogTitle>
           <DialogDescription>
-            Select a CSV file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity' (headers are case-insensitive).
+            Select a CSV file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. An optional 'description' column can be included.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

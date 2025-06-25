@@ -47,7 +47,7 @@ type InventoryTableProps = {
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'name'>[] }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<string>;
   isLoading: boolean;
 };
 
@@ -164,9 +164,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
+              <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
               <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
               <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
-              <TableHead className="hidden md:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
+              <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
               <TableHead className="text-right w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -180,13 +181,16 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   <TableCell>
                     <Skeleton className="h-5 w-3/4" />
                   </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <Skeleton className="h-5 w-full" />
+                  </TableCell>
                   <TableCell className="text-right">
                     <Skeleton className="h-5 w-16 ml-auto" />
                   </TableCell>
                   <TableCell className="text-center">
                     <Skeleton className="h-5 w-8 mx-auto" />
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden lg:table-cell">
                     <Skeleton className="h-5 w-full" />
                   </TableCell>
                   <TableCell className="text-right">
@@ -205,9 +209,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                     />
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
                   <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
-                  <TableCell className="hidden font-mono md:table-cell">{product.barcode}</TableCell>
+                  <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -241,7 +246,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No sarees found. Add one, or check your Firebase connection.
                 </TableCell>
               </TableRow>

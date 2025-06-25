@@ -2,6 +2,7 @@
 export type Product = {
   id: string;
   name: string;
+  description: string;
   quantity: number;
   barcode: string;
   price: number;
@@ -9,8 +10,9 @@ export type Product = {
 };
 
 export type SoldProduct = {
-  id: string;
+  id:string;
   name: string;
+  description: string;
   price: number;
   quantity: number;
   cost: number;
@@ -18,11 +20,13 @@ export type SoldProduct = {
 
 export type Invoice = {
   id: string;
+  date: string;
   customerName: string;
   customerPhone: string;
   items: SoldProduct[];
   subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
   gstAmount: number;
   grandTotal: number;
-  date: string;
 };

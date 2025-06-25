@@ -235,20 +235,25 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; }): Promise<string> => {
-    const itemsWithFullDetails = invoiceData.items.map(item => {
-        const product = products.find(p => p.id === (item as any).id);
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }): Promise<string> => {
+    const itemsWithFullDetails: SoldProduct[] = invoiceData.items.map(item => {
+        const product = products.find(p => p.id === item.id);
         return {
-            ...item,
+            id: item.id,
+            quantity: item.quantity,
+            price: item.price,
             name: product?.name || 'Unknown Product',
             cost: product?.cost || 0,
+            description: product?.description || '',
         };
     });
 
     const subtotal = itemsWithFullDetails.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const discountAmount = subtotal * (invoiceData.discountPercentage / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
     const GST_RATE = 0.05;
-    const gstAmount = subtotal * GST_RATE;
-    const grandTotal = subtotal + gstAmount;
+    const gstAmount = subtotalAfterDiscount * GST_RATE;
+    const grandTotal = subtotalAfterDiscount + gstAmount;
     
     const invoiceRef = doc(collection(db, "invoices"));
 
@@ -258,6 +263,8 @@ export default function Home() {
       customerPhone: invoiceData.customerPhone,
       items: itemsWithFullDetails,
       subtotal,
+      discountPercentage: invoiceData.discountPercentage,
+      discountAmount,
       gstAmount,
       grandTotal,
     };
@@ -267,9 +274,9 @@ export default function Home() {
       batch.set(invoiceRef, newInvoice);
 
       invoiceData.items.forEach(p => {
-        const currentProduct = products.find(prod => prod.id === (p as any).id);
+        const currentProduct = products.find(prod => prod.id === p.id);
         if (currentProduct) {
-          const productRef = doc(db, "products", (p as any).id);
+          const productRef = doc(db, "products", p.id);
           const newStock = Math.max(0, currentProduct.quantity - p.quantity);
           batch.update(productRef, { quantity: newStock });
         }
@@ -296,10 +303,13 @@ export default function Home() {
             customerPhone: inv.customerPhone,
             productId: item.id,
             productName: item.name,
+            productDescription: item.description,
             quantity: item.quantity,
             price: item.price.toFixed(2),
             cost: (item.cost || 0).toFixed(2),
             subtotal: inv.subtotal.toFixed(2),
+            discountPercentage: inv.discountPercentage,
+            discountAmount: inv.discountAmount.toFixed(2),
             gst: inv.gstAmount.toFixed(2),
             total: inv.grandTotal.toFixed(2),
         }))
@@ -331,6 +341,7 @@ export default function Home() {
     const dataToExport = products.map(p => ({
       productId: p.id,
       productName: p.name,
+      description: p.description,
       quantity: p.quantity,
       price: p.price.toFixed(2),
       cost: p.cost.toFixed(2),
@@ -363,7 +374,7 @@ export default function Home() {
   const totalProfit = useMemo(() => {
     return invoices.reduce((totalProfit, inv) => {
         const invoiceCost = inv.items.reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
-        const invoiceProfit = inv.subtotal - invoiceCost;
+        const invoiceProfit = (inv.subtotal - inv.discountAmount) - invoiceCost;
         return totalProfit + invoiceProfit;
     }, 0);
   }, [invoices]);
