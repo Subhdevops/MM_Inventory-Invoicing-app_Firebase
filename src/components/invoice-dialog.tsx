@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -112,11 +113,24 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                 const nameText = clonedDoc.getElementById('customerName-pdf') as HTMLElement | null;
                 const phoneText = clonedDoc.getElementById('customerPhone-pdf') as HTMLElement | null;
 
-                if(nameInput) nameInput.style.display = 'none';
-                if(phoneInput) phoneInput.style.display = 'none';
-                
-                if(nameText) nameText.style.display = 'block';
-                if(phoneText) phoneText.style.display = 'block';
+                if(nameInput && nameText) {
+                    nameText.style.display = 'block';
+                    nameInput.style.display = 'none';
+                }
+                if(phoneInput && phoneText) {
+                    phoneText.style.display = 'block';
+                    phoneInput.style.display = 'none';
+                }
+
+                items.forEach(item => {
+                  const quantityInput = clonedDoc.getElementById(`quantity-input-${item.id}`) as HTMLInputElement | null;
+                  const quantityText = clonedDoc.getElementById(`quantity-pdf-${item.id}`) as HTMLElement | null;
+
+                  if (quantityInput && quantityText) {
+                      quantityText.style.display = 'block';
+                      quantityInput.style.display = 'none';
+                  }
+                });
             }
         });
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -232,6 +246,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-center">
                           <Input
+                              id={`quantity-input-${item.id}`}
                               type="number"
                               className="w-20 mx-auto text-center h-8"
                               value={item.quantity}
@@ -245,6 +260,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                               max={item.stock}
                               disabled={item.stock === 0}
                           />
+                          <p id={`quantity-pdf-${item.id}`} style={{ display: 'none' }} className="text-sm">{item.quantity}</p>
                       </TableCell>
                       <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
@@ -297,3 +313,5 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     </Dialog>
   );
 }
+
+    
