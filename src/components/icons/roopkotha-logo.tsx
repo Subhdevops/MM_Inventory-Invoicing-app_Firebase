@@ -1,32 +1,37 @@
 import * as React from "react"
 
-// A more elegant, SVG-based logo for the brand.
+// A simpler, elegant SVG-based logo with a tagline.
 const RoopkothaLogo = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 250 50"
+    viewBox="0 0 250 60"
     width="200"
-    height="40"
+    height="48"
     {...props}
   >
     <text
-      x="5"
-      y="35"
+      x="50%"
+      y="30"
       fontFamily="Georgia, serif"
       fontSize="30"
       fontWeight="bold"
       fill="hsl(var(--primary))"
       letterSpacing="1"
+      textAnchor="middle"
     >
       ROOPKOTHA
     </text>
-    <path
-      d="M220,15 Q230,25 220,35"
-      stroke="hsl(var(--accent))"
-      strokeWidth="2.5"
-      fill="none"
-      strokeLinecap="round"
-    />
+    <text
+      x="50%"
+      y="50"
+      fontFamily="Georgia, serif"
+      fontSize="12"
+      fontStyle="italic"
+      fill="hsl(var(--muted-foreground))"
+      textAnchor="middle"
+    >
+      Where fashion meets fairytale
+    </text>
   </svg>
 )
 
