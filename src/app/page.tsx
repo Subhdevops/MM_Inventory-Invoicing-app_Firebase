@@ -302,6 +302,7 @@ export default function Home() {
             name: product?.name || 'Unknown Product',
             cost: product?.cost || 0,
             description: product?.description || '',
+            barcode: product?.barcode || '',
         };
     });
 
@@ -353,13 +354,14 @@ export default function Home() {
   };
 
   const exportInvoicesToCsv = () => {
+    const productsMap = new Map(products.map(p => [p.id, p.barcode]));
     const dataToExport = invoices.flatMap(inv => 
         inv.items.map(item => ({
             invoiceId: inv.invoiceNumber || inv.id,
             invoiceDate: new Date(inv.date).toLocaleDateString(),
             customerName: inv.customerName,
             customerPhone: inv.customerPhone,
-            productId: item.id,
+            productId: item.barcode || productsMap.get(item.id) || item.id,
             productName: item.name,
             productDescription: item.description,
             quantity: item.quantity,

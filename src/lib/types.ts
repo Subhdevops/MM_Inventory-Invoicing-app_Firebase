@@ -16,6 +16,7 @@ export type SoldProduct = {
   price: number;
   quantity: number;
   cost: number;
+  barcode: string;
 }
 
 export type Invoice = {
