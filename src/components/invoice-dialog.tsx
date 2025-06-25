@@ -233,9 +233,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     return (
       <div ref={forwardedRef} className="p-8 border rounded-lg bg-white text-black" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
         <header className="flex items-center justify-between pb-6 border-b">
-            <RoopkothaLogo showTagline={true} primaryColor="#d946ef" secondaryColor="#707070" />
+            <RoopkothaLogo showTagline={true} />
             <div className="text-right">
-                <h1 className="text-3xl font-bold text-fuchsia-500 tracking-tight">INVOICE</h1>
+                <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
                 <p className="text-sm text-gray-500">{invoice.id}</p>
                 <p className="text-xs text-gray-500 mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
             </div>
@@ -249,7 +249,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
               </div>
               <div className="text-right space-y-1">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">From</h2>
-                  <p className="font-bold text-fuchsia-500">Roopkotha</p>
+                  <p className="font-bold text-primary">Roopkotha</p>
                   <p className="text-xs text-gray-500">Professor Colony, C/O, Deshbandhu Pal</p>
                   <p className="text-xs text-gray-500">Holding No :- 195/8, Ward no. 14</p>
                   <p className="text-xs text-gray-500">Bolpur, Birbhum, West Bengal - 731204</p>
@@ -296,9 +296,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({GST_RATE * 100}%)</TableCell>
                   <TableCell className="text-right font-medium px-4 py-2">₹{invoice.gstAmount.toFixed(2)}</TableCell>
               </TableRow>
-              <TableRow className="bg-fuchsia-500/10 font-bold">
-                  <TableCell colSpan={3} className="text-right text-fuchsia-600 text-base px-4 py-3">Grand Total</TableCell>
-                  <TableCell className="text-right text-fuchsia-600 text-base px-4 py-3">₹{invoice.grandTotal.toFixed(2)}</TableCell>
+              <TableRow className="bg-primary/10 font-bold">
+                  <TableCell colSpan={3} className="text-right text-primary text-base px-4 py-3">Grand Total</TableCell>
+                  <TableCell className="text-right text-primary text-base px-4 py-3">₹{invoice.grandTotal.toFixed(2)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
