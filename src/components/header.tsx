@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LogOut } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import RoopkothaLogo from './icons/roopkotha-logo';
+import { ThemeToggle } from './theme-toggle';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
@@ -47,6 +48,7 @@ export default function Header({ addProduct, onImportInventory, userRole }: Head
             <RoopkothaLogo />
           </div>
           <div className="flex items-center gap-4">
+             <ThemeToggle />
             {user && (
               <>
                 {userRole === 'admin' && (
