@@ -292,7 +292,7 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }): Promise<string> => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; invoiceNumber: number; }): Promise<string> => {
     const itemsWithFullDetails: SoldProduct[] = invoiceData.items.map(item => {
         const product = products.find(p => p.id === item.id);
         return {
@@ -315,6 +315,7 @@ export default function Home() {
     const invoiceRef = doc(collection(db, "invoices"));
 
     const newInvoice: Omit<Invoice, 'id'> = {
+      invoiceNumber: invoiceData.invoiceNumber,
       date: new Date().toISOString(),
       customerName: invoiceData.customerName,
       customerPhone: invoiceData.customerPhone,
@@ -341,7 +342,7 @@ export default function Home() {
       
       await batch.commit();
       setSelectedRows([]);
-      toast({ title: "Invoice Created", description: `Invoice ${invoiceRef.id} created successfully.` });
+      toast({ title: "Invoice Created", description: `Invoice ${invoiceData.invoiceNumber} created successfully.` });
       return invoiceRef.id;
 
     } catch (error) {
@@ -354,7 +355,7 @@ export default function Home() {
   const exportInvoicesToCsv = () => {
     const dataToExport = invoices.flatMap(inv => 
         inv.items.map(item => ({
-            invoiceId: inv.id,
+            invoiceId: inv.invoiceNumber || inv.id,
             invoiceDate: new Date(inv.date).toLocaleDateString(),
             customerName: inv.customerName,
             customerPhone: inv.customerPhone,

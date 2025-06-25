@@ -36,7 +36,7 @@ const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[], discountPercentage: number }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; invoiceNumber: number; }) => Promise<string>;
 };
 
 type InvoiceItem = {
@@ -105,7 +105,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${finalInvoiceData!.id}.pdf`);
+        pdf.save(`${finalInvoiceData!.invoiceNumber}.pdf`);
         
         setOpen(false);
     } catch (error) {
@@ -185,17 +185,20 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         return newNumber;
       });
 
-      const itemsWithFullDetails = itemsToInvoice.map(item => ({
-          ...item,
+      const itemsWithFullDetails: SoldProduct[] = itemsToInvoice.map(item => ({
+          id: item.id,
+          quantity: item.quantity,
+          price: item.price,
           name: products.find(p => p.id === item.id)?.name || 'Unknown Product',
-          description: products.find(p => p.id === item.id)?.description || '',
           cost: products.find(p => p.id === item.id)?.cost || 0,
+          description: products.find(p => p.id === item.id)?.description || '',
       }));
 
       const { subtotal, discountAmount, gstAmount, grandTotal } = invoiceDetails;
 
       const invoiceDataForPdf: Invoice = {
-        id: newInvoiceNumber.toString(),
+        id: newInvoiceNumber.toString(), // Temp ID for local use
+        invoiceNumber: newInvoiceNumber,
         customerName,
         customerPhone,
         items: itemsWithFullDetails,
@@ -218,6 +221,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           price: item.price,
           quantity: item.quantity
         })),
+        invoiceNumber: newInvoiceNumber,
       });
 
     } catch (error) {
@@ -236,7 +240,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             <RoopkothaLogo showTagline={true} />
             <div className="text-right">
                 <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
-                <p className="text-sm text-gray-500">{invoice.id}</p>
+                <p className="text-sm text-gray-500">{invoice.invoiceNumber}</p>
                 <p className="text-xs text-gray-500 mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
             </div>
         </header>

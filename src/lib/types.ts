@@ -20,6 +20,7 @@ export type SoldProduct = {
 
 export type Invoice = {
   id: string;
+  invoiceNumber: number;
   date: string;
   customerName: string;
   customerPhone: string;
