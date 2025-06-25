@@ -133,7 +133,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         const customerNameInput = clonedInvoice.querySelector<HTMLInputElement>('#customerName');
         if (customerNameInput) {
             const p = document.createElement('p');
-            p.textContent = customerNameInput.value;
+            p.textContent = customerName;
             p.className = 'text-sm';
             customerNameInput.parentElement?.replaceWith(p);
         }
@@ -141,17 +141,24 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         const customerPhoneInput = clonedInvoice.querySelector<HTMLInputElement>('#customerPhone');
         if (customerPhoneInput) {
             const p = document.createElement('p');
-            p.textContent = customerPhoneInput.value;
+            p.textContent = customerPhone;
             p.className = 'text-sm';
             customerPhoneInput.parentElement?.replaceWith(p);
         }
 
-        const quantityInputs = clonedInvoice.querySelectorAll<HTMLInputElement>('.quantity-input');
-        quantityInputs.forEach(input => {
-            const p = document.createElement('p');
-            p.textContent = input.value;
-            p.className = 'text-center text-sm';
-            input.parentElement?.replaceWith(p);
+        const itemRows = clonedInvoice.querySelectorAll<HTMLTableRowElement>('tbody tr');
+        itemRows.forEach((row, index) => {
+            const item = items[index];
+            const quantityInput = row.querySelector<HTMLInputElement>('.quantity-input');
+            const quantityCell = quantityInput?.parentElement;
+
+            if (quantityCell && item) {
+                const p = document.createElement('p');
+                p.textContent = String(item.quantity);
+                p.className = 'text-center text-sm';
+                quantityCell.innerHTML = '';
+                quantityCell.appendChild(p);
+            }
         });
 
         clonedInvoice.style.position = 'absolute';
@@ -300,5 +307,3 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     </Dialog>
   );
 }
-
-    

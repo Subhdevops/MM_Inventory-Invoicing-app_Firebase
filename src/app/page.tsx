@@ -360,6 +360,14 @@ export default function Home() {
     return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
   }, [invoices]);
 
+  const totalProfit = useMemo(() => {
+    return invoices.reduce((totalProfit, inv) => {
+        const invoiceCost = inv.items.reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
+        const invoiceProfit = inv.subtotal - invoiceCost;
+        return totalProfit + invoiceProfit;
+    }, 0);
+  }, [invoices]);
+
   const chartData = useMemo(() => {
     return [...products]
       .sort((a, b) => b.quantity - a.quantity)
@@ -387,6 +395,7 @@ export default function Home() {
           onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
+          totalProfit={totalProfit}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
         />
