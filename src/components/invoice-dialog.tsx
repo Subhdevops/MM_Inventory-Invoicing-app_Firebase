@@ -95,35 +95,11 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
   const generateAndDownloadPdf = async (generatedInvoiceId: string) => {
-    const input = document.getElementById('invoice-content-wrapper');
+    const input = document.getElementById('invoice-content');
     if (!input) throw new Error("Could not find invoice content.");
     
     try {
-        const canvas = await html2canvas(input, { 
-            scale: 2, 
-            backgroundColor: '#ffffff',
-            onclone: (clonedDoc) => {
-                const nameInput = clonedDoc.getElementById('customerName') as HTMLInputElement | null;
-                if (nameInput && nameInput.parentNode) {
-                    const nameText = clonedDoc.createTextNode(nameInput.value || '');
-                    nameInput.parentNode.replaceChild(nameText, nameInput);
-                }
-
-                const phoneInput = clonedDoc.getElementById('customerPhone') as HTMLInputElement | null;
-                if (phoneInput && phoneInput.parentNode) {
-                    const phoneText = clonedDoc.createTextNode(phoneInput.value || '');
-                    phoneInput.parentNode.replaceChild(phoneText, phoneInput);
-                }
-
-                items.forEach(item => {
-                  const quantityInput = clonedDoc.getElementById(`quantity-input-${item.id}`) as HTMLInputElement | null;
-                  if (quantityInput && quantityInput.parentNode) {
-                      const quantityText = clonedDoc.createTextNode(quantityInput.value || '0');
-                      quantityInput.parentNode.replaceChild(quantityText, quantityInput);
-                  }
-                });
-            }
-        });
+        const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -181,11 +157,23 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }
   };
 
-  const renderInvoiceForm = () => (
-    <>
-      <div id="invoice-content" className="print:bg-white print:text-black p-6 bg-white relative">
-        <div id="invoice-content-wrapper">
-          <header className="flex items-start justify-between">
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
+          <FileText className="mr-2 h-4 w-4" />
+          Create Invoice ({products.length})
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Invoice</DialogTitle>
+          <DialogDescription>
+            Fill in the customer details and confirm the items to generate an invoice PDF.
+          </DialogDescription>
+        </DialogHeader>
+        <div id="invoice-content" className="p-6 border rounded-lg bg-background">
+            <header className="flex items-start justify-between">
               <div>
                 <RoopkothaLogo />
                 <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
@@ -200,18 +188,16 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             <Separator className="my-6"/>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-2">
+              <div className="space-y-4">
                   <h3 className="font-semibold mb-2">Bill To:</h3>
-                   <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
-                        <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
-                      </div>
-                      <div>
-                        <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
-                        <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
-                      </div>
-                    </div>
+                  <div>
+                    <Label htmlFor="customerName">Customer Name</Label>
+                    <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                  </div>
+                  <div>
+                    <Label htmlFor="customerPhone">Customer Phone</Label>
+                    <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
+                  </div>
               </div>
               <div className="text-right space-y-1 text-sm">
                   <h3 className="font-semibold mb-2">From:</h3>
@@ -240,7 +226,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-center">
                           <Input
-                              id={`quantity-input-${item.id}`}
                               type="number"
                               className="w-20 mx-auto text-center h-8"
                               value={item.quantity}
@@ -281,27 +266,14 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   <p className="font-semibold">Thank you for shopping with us!</p>
               </div>
         </div>
-      </div>
-      <DialogFooter className="sm:justify-end p-6 pt-0">
-        <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
-        <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
-          {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-          {isProcessing ? 'Processing...' : 'Process Sale & Download PDF'}
-        </Button>
-      </DialogFooter>
-    </>
-  );
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
-          <FileText className="mr-2 h-4 w-4" />
-          Create Invoice ({products.length})
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-        {renderInvoiceForm()}
+        <DialogFooter className="sm:justify-end">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
+          <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
+            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            {isProcessing ? 'Processing...' : 'Process Sale & Download PDF'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
