@@ -248,8 +248,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         <section className="grid grid-cols-2 gap-8 my-6">
               <div className="space-y-2">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">Bill To</h2>
-                  <p className="text-sm font-medium">{invoice.customerName}</p>
-                  <p className="text-sm text-gray-600">{invoice.customerPhone}</p>
+                  <p className="text-sm font-medium">Name: {invoice.customerName}</p>
+                  <p className="text-sm text-gray-600">Phone No: {invoice.customerPhone}</p>
               </div>
               <div className="text-right space-y-1">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">From</h2>
