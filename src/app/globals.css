@@ -70,3 +70,26 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Print-specific styles for PDF generation */
+.print-only,
+.print-only-cell {
+  display: none;
+}
+
+.is-printing .print-only {
+  display: block;
+}
+
+.is-printing .no-print {
+  display: none;
+}
+
+/* For table cells, to maintain layout */
+.is-printing .print-only-cell {
+  display: table-cell;
+}
+
+.is-printing .no-print-cell {
+  display: none;
+}

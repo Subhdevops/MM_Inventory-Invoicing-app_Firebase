@@ -31,7 +31,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import RoopkothaLogo from './icons/roopkotha-logo';
 
-const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiPgogICAgPHRleHQgeD0iNSIgeT0iMzUiIGZvbnRGYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250U2l6ZT0iMzAiIGZvbnRXZWlnaHQ9ImJvbGQiIGZpbGw9ImhzbCh2YXIoLS1wcmltYXJ5KSkiIGxldHRlclNwYWNpbmc9IjEiPlJPT1BLT1RIQTwvdGV4dD4KICAgIDxwYXRoIGQ9Ik0yMjAsMTUgUTIzMCwyNSAyMjAsMzUiIHN0cm9rZT0iaHNsKHZhcigtLWFjY2VudCkpIiBzdHJva2VXaWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2VMaW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=';
+const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiIHdpZHRoPSIyMDAiIGhlaWdodD0iNDAiPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250RmFtaWx5PSJHZW9yZ2lhLCBzZXJpZiIgZm9udFNpemU9IjMwIiBmb250V2VpZ2h0PSJib2xkIiBmaWxsPSJoc2wodmFyKC0tcHJpbWFyeSkpIiBsZXR0ZXJTcGFjaW5nPSIxIj5ST09QS09USEE8L3RleHQ+PHBhdGggZD0iTTIyMCwxNSBRMjMwLDI1IDIyMCwzNSIgc3Ryb2tlPSJoc2wodmFyKC0tYWNjZW50KSkiIHN0cm9rZVdpZHRoPSIyLjUiIGZpbGw9Im5vbmUiIHN0cm9rZUxpbmVjYXA9InJvdW5kIi8+PC9zdmc+';
 const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
@@ -99,12 +99,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const generateAndDownloadPdf = async (generatedInvoiceId: string) => {
     const input = document.getElementById('invoice-content');
     if (!input) throw new Error("Could not find invoice content.");
-    
-    // Temporarily apply styles for PDF generation
-    const noPrintElements = input.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
-    const printElements = input.querySelectorAll('.print-only');
-    printElements.forEach(el => (el as HTMLElement).style.display = 'block');
+
+    // Add printing class to trigger CSS changes
+    input.classList.add('is-printing');
     
     // Add watermark
     const watermark = document.createElement('img');
@@ -139,9 +136,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${generatedInvoiceId}.pdf`);
     } finally {
-        // Revert styles
-        noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
-        printElements.forEach(el => (el as HTMLElement).style.display = 'none');
+        // Revert styles by removing the class
+        input.classList.remove('is-printing');
         input.style.width = originalWidth;
         if (input.contains(watermark)) {
           input.removeChild(watermark);
@@ -225,7 +221,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
                       </div>
                     </div>
-                   <div className="print-only text-sm pt-2" style={{display: 'none'}}>
+                   <div className="print-only text-sm pt-2">
                       <p>{customerName}</p>
                       <p>{customerPhone}</p>
                   </div>
@@ -255,7 +251,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   {items.map(item => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center no-print">
+                      <TableCell className="text-center no-print-cell">
                           <Input
                               type="number"
                               className="w-20 mx-auto text-center h-8"
@@ -271,7 +267,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                               disabled={item.stock === 0}
                           />
                       </TableCell>
-                       <TableCell className="text-center print-only" style={{display: 'none'}}>{item.quantity}</TableCell>
+                       <TableCell className="text-center print-only-cell">{item.quantity}</TableCell>
                       <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                     </TableRow>
