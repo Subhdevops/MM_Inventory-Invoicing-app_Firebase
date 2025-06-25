@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -238,6 +238,41 @@ export default function Home() {
     }
   };
 
+  const handleResetInvoiceCounter = async (newStartNumber?: number) => {
+    // The transaction logic adds 1 to the current number to get the new invoice number.
+    // So, to make the *next* invoice X, we must set the counter to X-1.
+    const DEFAULT_START_NUMBER = 20250600001;
+    const numberToSet = newStartNumber ?? DEFAULT_START_NUMBER;
+
+    if (isNaN(numberToSet) || numberToSet < 1) {
+      toast({
+        title: "Invalid Number",
+        description: "Invoice start number must be a positive number.",
+        variant: "destructive",
+      });
+      throw new Error("Invalid invoice start number");
+    }
+
+    const counterValue = numberToSet - 1;
+    const invoiceCounterRef = doc(db, 'counters', 'invoices');
+
+    try {
+      await setDoc(invoiceCounterRef, { currentNumber: counterValue });
+      toast({
+        title: "Invoice Counter Updated",
+        description: `Next invoice number will be ${numberToSet}.`,
+      });
+    } catch (error) {
+      console.error("Error resetting invoice counter: ", error);
+      toast({
+        title: "Error",
+        description: "Failed to update invoice counter.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
   const updateProductQuantity = async (productId: string, newQuantity: number) => {
     const productRef = doc(db, "products", productId);
     try {
@@ -433,6 +468,7 @@ export default function Home() {
           totalProfit={totalProfit}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
+          onResetInvoiceCounter={handleResetInvoiceCounter}
           userRole={userRole}
         />
         <InventoryTable

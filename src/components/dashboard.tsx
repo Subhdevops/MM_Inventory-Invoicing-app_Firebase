@@ -24,6 +24,7 @@ import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, India
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
+import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 
 type DashboardProps = {
   stats: {
@@ -39,6 +40,7 @@ type DashboardProps = {
   totalProfit: number;
   isLoading: boolean;
   onClearAllInvoices: () => Promise<void>;
+  onResetInvoiceCounter: (newStartNumber?: number) => Promise<void>;
   userRole: UserProfile['role'] | null;
 };
 
@@ -49,7 +51,7 @@ const chartConfig = {
   },
 }
 
-export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, userRole }: DashboardProps) {
+export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -171,13 +173,19 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
             <CardTitle className="text-destructive">Danger Zone</CardTitle>
             <CardDescription>These actions are permanent and cannot be undone.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Clear All Invoices
-            </Button>
-             <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records from the database.</p>
-             {!isAdmin && <p className="text-xs text-destructive mt-2">Admin access required for this action.</p>}
+          <CardContent className="space-y-4">
+            <div>
+              <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear All Invoices
+              </Button>
+               <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records from the database.</p>
+            </div>
+            <div>
+              <ResetInvoiceNumberDialog onReset={onResetInvoiceCounter} disabled={isLoading || !isAdmin} />
+              <p className="text-xs text-muted-foreground mt-2">Reset the starting number for future invoices. Use with caution.</p>
+            </div>
+             {!isAdmin && <p className="text-xs text-destructive mt-2">Admin access required for these actions.</p>}
           </CardContent>
         </Card>
       </div>
