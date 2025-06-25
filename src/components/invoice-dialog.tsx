@@ -30,7 +30,6 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import RoopkothaLogo from './icons/roopkotha-logo';
 
-const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiIHdpZHRoPSIyMDAiIGhlaWdodD0iNDAiPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250RmFtaWx5PSJHZW9yZ2lhLCBzZXJpZiIgZm9udFNpemU9IjMwIiBmb250V2VpZ2h0PSJib2xkIiBmaWxsPSJoc2wodmFyKC0tcHJpbWFyeSkpIiBsZXR0ZXJTcGFjaW5nPSIxIj5ST09QS09USEE8L3RleHQ+PHBhdGggZD0iTTIyMCwxNSBRMjMwLDI1IDIyMCwzNSIgc3Ryb2tlPSJoc2wodmFyKC0tYWNjZW50KSkiIHN0cm9rZVdpZHRoPSIyLjUiIGZpbGw9Im5vbmUiIHN0cm9rZUxpbmVjYXA9InJvdW5kIi8+PC9zdmc+';
 const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
@@ -108,46 +107,16 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             backgroundColor: '#ffffff', 
             logging: false,
             onclone: (clonedDoc) => {
-                // Manipulate the CLONED document before screenshot
                 const nameInput = clonedDoc.getElementById('customerName') as HTMLInputElement | null;
                 const phoneInput = clonedDoc.getElementById('customerPhone') as HTMLInputElement | null;
-                
-                // Replace inputs with text in the cloned document
-                if (nameInput?.parentElement) {
-                    const nameText = clonedDoc.createElement('p');
-                    nameText.className = "text-sm pt-2";
-                    nameText.innerText = nameInput.value || 'N/A';
-                    nameInput.parentElement.replaceWith(nameText);
-                }
+                const nameText = clonedDoc.getElementById('customerName-pdf') as HTMLElement | null;
+                const phoneText = clonedDoc.getElementById('customerPhone-pdf') as HTMLElement | null;
 
-                if (phoneInput?.parentElement) {
-                    const phoneText = clonedDoc.createElement('p');
-                    phoneText.className = "text-sm";
-                    phoneText.innerText = phoneInput.value || 'N/A';
-                    phoneInput.parentElement.replaceWith(phoneText);
-                }
-
-                // Add watermark to the cloned document
-                const clonedContent = clonedDoc.getElementById('invoice-content');
-                const watermark = clonedDoc.createElement('img');
-                watermark.src = watermarkImageData;
-                watermark.style.position = 'absolute';
-                watermark.style.top = '50%';
-                watermark.style.left = '50%';
-                watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
-                watermark.style.zIndex = '0';
-                watermark.style.opacity = '0.08';
-                watermark.style.pointerEvents = 'none';
-                watermark.style.width = '120%';
+                if(nameInput) nameInput.style.display = 'none';
+                if(phoneInput) phoneInput.style.display = 'none';
                 
-                const contentWrapper = clonedDoc.querySelector('#invoice-content-wrapper') as HTMLElement;
-                if (clonedContent && contentWrapper) {
-                  contentWrapper.style.position = 'relative';
-                  contentWrapper.style.zIndex = '1';
-                  clonedContent.insertBefore(watermark, contentWrapper);
-                } else if(clonedContent) {
-                   clonedContent.appendChild(watermark);
-                }
+                if(nameText) nameText.style.display = 'block';
+                if(phoneText) phoneText.style.display = 'block';
             }
         });
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -157,7 +126,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${generatedInvoiceId}.pdf`);
     } finally {
-        // Revert styles on the original document
         input.style.width = originalWidth;
     }
   };
@@ -228,10 +196,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                       <div>
                         <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
                         <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                        <p id="customerName-pdf" style={{ display: 'none' }} className="text-sm pt-2">{customerName}</p>
                       </div>
                       <div>
                         <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
+                        <p id="customerPhone-pdf" style={{ display: 'none' }} className="text-sm">{customerPhone}</p>
                       </div>
                     </div>
               </div>
@@ -327,5 +297,3 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     </Dialog>
   );
 }
-
-    
