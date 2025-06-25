@@ -30,3 +30,9 @@ export type Invoice = {
   gstAmount: number;
   grandTotal: number;
 };
+
+export type UserProfile = {
+  uid: string;
+  email: string | null;
+  role: 'admin' | 'user';
+};

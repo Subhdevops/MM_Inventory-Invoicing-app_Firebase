@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -24,7 +24,9 @@ export default function Home() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserProfile['role'] | null>(null);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
 
   useBarcodeScanner(setFilter);
@@ -32,6 +34,20 @@ export default function Home() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
+    } else if (user) {
+      const fetchUserRole = async () => {
+        setIsRoleLoading(true);
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUserRole(userDocSnap.data().role as UserProfile['role']);
+        } else {
+          console.error("User profile not found for UID:", user.uid);
+          setUserRole('user'); // Default to least privileged role
+        }
+        setIsRoleLoading(false);
+      };
+      fetchUserRole();
     }
   }, [user, authLoading, router]);
 
@@ -39,7 +55,7 @@ export default function Home() {
     if (!user) return; // Don't fetch data if user is not authenticated
 
     if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      setIsLoading(false);
+      setIsProductsLoading(false);
       return;
     }
 
@@ -50,7 +66,7 @@ export default function Home() {
         ...doc.data()
       } as Product));
       setProducts(productsData);
-      setIsLoading(false);
+      setIsProductsLoading(false);
     }, (error) => {
       console.error("Error fetching products:", error);
       toast({
@@ -58,7 +74,7 @@ export default function Home() {
         description: "Could not fetch products. Please ensure your Firebase config is correct and your Firestore security rules allow reads.",
         variant: "destructive",
       });
-      setIsLoading(false);
+      setIsProductsLoading(false);
     });
 
     const invoicesQuery = query(collection(db, "invoices"), orderBy("date", "desc"));
@@ -75,7 +91,7 @@ export default function Home() {
         description: "Could not fetch invoices. Please check your Firestore security rules.",
         variant: "destructive",
       });
-      setIsLoading(false);
+      setIsProductsLoading(false);
     });
 
     return () => {
@@ -386,7 +402,9 @@ export default function Home() {
       .map(p => ({ name: p.name, quantity: p.quantity }));
   }, [products]);
 
-  if (authLoading || !user) {
+  const isLoading = authLoading || isRoleLoading || isProductsLoading;
+
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -396,7 +414,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <Header addProduct={addProduct} onImportInventory={handleImportInventory} />
+      <Header addProduct={addProduct} onImportInventory={handleImportInventory} userRole={userRole} />
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
         <FirebaseConfigWarning />
         <Dashboard 
@@ -409,6 +427,7 @@ export default function Home() {
           totalProfit={totalProfit}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
+          userRole={userRole}
         />
         <InventoryTable
           products={products}
@@ -425,6 +444,7 @@ export default function Home() {
           setSelectedRows={setSelectedRows}
           onCreateInvoice={handleCreateInvoice}
           isLoading={isLoading}
+          userRole={userRole}
         />
       </main>
     </div>

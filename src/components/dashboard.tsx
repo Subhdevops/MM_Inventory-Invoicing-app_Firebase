@@ -23,6 +23,7 @@ import {
 import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
+import type { UserProfile } from "@/lib/types";
 
 type DashboardProps = {
   stats: {
@@ -38,6 +39,7 @@ type DashboardProps = {
   totalProfit: number;
   isLoading: boolean;
   onClearAllInvoices: () => Promise<void>;
+  userRole: UserProfile['role'] | null;
 };
 
 const chartConfig = {
@@ -47,7 +49,7 @@ const chartConfig = {
   },
 }
 
-export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices }: DashboardProps) {
+export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, userRole }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -55,6 +57,8 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
     setIsConfirmOpen(false);
   };
   
+  const isAdmin = userRole === 'admin';
+
   return (
     <section className="space-y-6">
        <div className="flex justify-between items-center">
@@ -168,11 +172,12 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
             <CardDescription>These actions are permanent and cannot be undone.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading}>
+            <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
               <Trash2 className="mr-2 h-4 w-4" />
               Clear All Invoices
             </Button>
              <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records from the database.</p>
+             {!isAdmin && <p className="text-xs text-destructive mt-2">Admin access required for this action.</p>}
           </CardContent>
         </Card>
       </div>

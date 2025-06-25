@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Product, SoldProduct } from '@/lib/types';
+import type { Product, UserProfile } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -49,15 +49,18 @@ type InventoryTableProps = {
   setSelectedRows: (ids: string[]) => void;
   onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<string>;
   isLoading: boolean;
+  userRole: UserProfile['role'] | null;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+
+  const isAdmin = userRole === 'admin';
 
   const filteredProducts = useMemo(() => {
     let sortableProducts = [...products];
@@ -88,6 +91,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   };
   
   const handleSelectRow = (id: string) => {
+    if (!isAdmin) return;
     const newSelection = selectedRows.includes(id)
       ? selectedRows.filter(rowId => rowId !== id)
       : [...selectedRows, id];
@@ -95,6 +99,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   };
 
   const handleSelectAll = () => {
+    if (!isAdmin) return;
     if (selectedRows.length === filteredProducts.length && filteredProducts.length > 0) {
       setSelectedRows([]);
     } else {
@@ -126,7 +131,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             className="pl-10"
           />
         </div>
-        {selectedRows.length > 0 && (
+        {isAdmin && selectedRows.length > 0 && (
           <div className="flex items-center gap-2">
             <InvoiceDialog 
               products={selectedProductsForInvoice} 
@@ -160,7 +165,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   checked={!isLoading && selectedRows.length === filteredProducts.length && filteredProducts.length > 0}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
-                  disabled={isLoading || filteredProducts.length === 0}
+                  disabled={isLoading || filteredProducts.length === 0 || !isAdmin}
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
@@ -168,7 +173,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
               <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
               <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
-              <TableHead className="text-right w-[100px]">Actions</TableHead>
+              {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -206,6 +211,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                       checked={selectedRows.includes(product.id)}
                       onCheckedChange={() => handleSelectRow(product.id)}
                       aria-label={`Select ${product.name}`}
+                      disabled={!isAdmin}
                     />
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
@@ -213,40 +219,42 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
                   <TableCell className="text-center">{product.quantity}</TableCell>
                   <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setProductToEdit(product)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateProductQuantity(product.id, product.quantity - 1)}
-                          disabled={product.quantity === 0}
-                        >
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          Sell One
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => setProductToEdit(product)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => updateProductQuantity(product.id, product.quantity - 1)}
+                            disabled={product.quantity === 0}
+                          >
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Sell One
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
                   No sarees found. Add one, or check your Firebase connection.
                 </TableCell>
               </TableRow>

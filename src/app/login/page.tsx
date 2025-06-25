@@ -1,14 +1,17 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  type User,
 } from 'firebase/auth';
+import { doc, setDoc, getDoc, collection, getDocs, query, limit } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,6 +28,31 @@ import { useToast } from '@/hooks/use-toast';
 import GoogleIcon from '@/components/icons/google-icon';
 import RoopkothaLogo from '@/components/icons/roopkotha-logo';
 
+const checkAndCreateUserProfile = async (user: User) => {
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    // New user, determine role
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, limit(1));
+    const existingUsersSnap = await getDocs(q);
+    
+    const role = existingUsersSnap.empty ? 'admin' : 'user';
+
+    try {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        role: role,
+      });
+    } catch (error) {
+       console.error("Error creating user profile:", error);
+       // Handle error appropriately
+    }
+  }
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +65,8 @@ export default function LoginPage() {
         await signInWithEmailAndPassword(auth, email, password);
         toast({ title: 'Login Successful', description: "Welcome back!" });
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await checkAndCreateUserProfile(userCredential.user);
         toast({ title: 'Signup Successful', description: 'Welcome to ROOPKOTHA!' });
       }
       router.push('/');
@@ -53,7 +82,8 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      await checkAndCreateUserProfile(result.user);
       toast({ title: 'Login Successful', description: 'Welcome!' });
       router.push('/');
     } catch (error: any) {

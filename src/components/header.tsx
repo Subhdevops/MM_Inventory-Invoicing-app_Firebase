@@ -3,7 +3,7 @@
 
 import AddProductDialog from './add-product-dialog';
 import ImportInventoryDialog from './import-inventory-dialog';
-import type { Product } from '@/lib/types';
+import type { Product, UserProfile } from '@/lib/types';
 import { Button } from './ui/button';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -15,9 +15,10 @@ import RoopkothaLogo from './icons/roopkotha-logo';
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
   onImportInventory: (products: Omit<Product, 'id'>[]) => Promise<void>;
+  userRole: UserProfile['role'] | null;
 };
 
-export default function Header({ addProduct, onImportInventory }: HeaderProps) {
+export default function Header({ addProduct, onImportInventory, userRole }: HeaderProps) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
 
@@ -48,8 +49,12 @@ export default function Header({ addProduct, onImportInventory }: HeaderProps) {
           <div className="flex items-center gap-4">
             {user && (
               <>
-                <ImportInventoryDialog onImport={onImportInventory} />
-                <AddProductDialog addProduct={addProduct} />
+                {userRole === 'admin' && (
+                  <>
+                    <ImportInventoryDialog onImport={onImportInventory} />
+                    <AddProductDialog addProduct={addProduct} />
+                  </>
+                )}
                 <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
                   <LogOut className="h-5 w-5" />
                   <span className="sr-only">Logout</span>
