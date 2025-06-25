@@ -68,25 +68,25 @@ const chartMeta: Record<ChartView, {
   icon: React.ElementType;
 }> = {
   'top-stocked': {
-    title: 'Top 5 Stocked Sarees',
+    title: 'Top 5 Stocked Items',
     config: { value: { label: 'Quantity', color: 'hsl(var(--chart-1))' } },
     label: 'Quantity',
     icon: Boxes,
   },
   'lowest-stocked': {
-    title: 'Top 5 Lowest Stock Sarees',
+    title: 'Top 5 Lowest Stock Items',
     config: { value: { label: 'Quantity', color: 'hsl(var(--chart-5))' } },
     label: 'Quantity',
     icon: TrendingDown,
   },
   'best-sellers': {
-    title: 'Top 5 Best-Selling Sarees',
+    title: 'Top 5 Best-Selling Items',
     config: { value: { label: 'Units Sold', color: 'hsl(var(--chart-2))' } },
     label: 'Units Sold',
     icon: TrendingUp,
   },
   'most-profitable': {
-    title: 'Top 5 Most Profitable Sarees',
+    title: 'Top 5 Most Profitable Items',
     config: { value: { label: 'Profit (₹)', color: 'hsl(var(--chart-4))' } },
     label: 'Profit',
     icon: IndianRupee,
@@ -153,7 +153,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.totalProducts}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Unique saree designs in inventory</p>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Unique product designs in inventory</p>}
           </CardContent>
         </Card>
         <Card>
@@ -163,7 +163,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.totalItems.toLocaleString()}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total quantity of all sarees</p>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total quantity of all items</p>}
           </CardContent>
         </Card>
         <Card>
@@ -173,7 +173,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.productsOutOfStock}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Sarees that need restocking</p>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Items that need restocking</p>}
           </CardContent>
         </Card>
         <Card>
@@ -200,7 +200,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
                   <SelectItem key={key} value={key}>
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4" />
-                      <span>{title.replace("Top 5 ", "")}</span>
+                      <span>{title.replace("Top 5 ", "").replace(" Items", "")}</span>
                     </div>
                   </SelectItem>
                 ))}

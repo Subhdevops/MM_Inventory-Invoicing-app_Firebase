@@ -255,7 +255,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             ) : (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
-                  No sarees found. Add one, or check your Firebase connection.
+                  No products found. Add one, or check your Firebase connection.
                 </TableCell>
               </TableRow>
             )}

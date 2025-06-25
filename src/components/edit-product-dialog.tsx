@@ -95,7 +95,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                 <FormItem>
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Kanjeevaram Silk Saree" {...field} />
+                    <Input placeholder="e.g. Blue Cotton T-Shirt" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,7 +108,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g. Handwoven with pure silk thread." {...field} />
+                    <Textarea placeholder="e.g. 100% premium cotton." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

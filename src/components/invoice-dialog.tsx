@@ -308,7 +308,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           </Table>
         </section>
         <footer className="text-center text-sm text-gray-500 pt-8 mt-8 border-t">
-              <p className="font-semibold">Thank you for your business!</p>
+              <p className="font-semibold">Thank you for shopping with us!
+                                          Do visit again.</p>
         </footer>
       </div>
     );

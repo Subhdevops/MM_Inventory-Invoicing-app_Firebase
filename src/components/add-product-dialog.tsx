@@ -96,7 +96,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 <FormItem>
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Kanjeevaram Silk Saree" {...field} />
+                    <Input placeholder="e.g. Blue Cotton T-Shirt" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -110,7 +110,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g. Handwoven with pure silk thread."
+                      placeholder="e.g. 100% premium cotton."
                       {...field}
                     />
                   </FormControl>
