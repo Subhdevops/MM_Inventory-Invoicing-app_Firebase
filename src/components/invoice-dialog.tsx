@@ -99,36 +99,58 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const generateAndDownloadPdf = async (generatedInvoiceId: string) => {
     const input = document.getElementById('invoice-content');
     if (!input) throw new Error("Could not find invoice content.");
-
-    // Add printing class to trigger CSS changes
-    input.classList.add('is-printing');
-    
-    // Add watermark
-    const watermark = document.createElement('img');
-    watermark.src = watermarkImageData;
-    watermark.style.position = 'absolute';
-    watermark.style.top = '50%';
-    watermark.style.left = '50%';
-    watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
-    watermark.style.zIndex = '0'; // Behind content
-    watermark.style.opacity = '0.08';
-    watermark.style.pointerEvents = 'none';
-    watermark.style.width = '120%';
-    
-    const contentWrapper = input.querySelector('#invoice-content-wrapper') as HTMLElement;
-    if (contentWrapper) {
-      contentWrapper.style.position = 'relative';
-      contentWrapper.style.zIndex = '1';
-      input.insertBefore(watermark, contentWrapper);
-    } else {
-       input.appendChild(watermark);
-    }
     
     const originalWidth = input.style.width;
     
     try {
         input.style.width = '794px'; 
-        const canvas = await html2canvas(input, { scale: 1.5, backgroundColor: '#ffffff', logging: false });
+        const canvas = await html2canvas(input, { 
+            scale: 1.5, 
+            backgroundColor: '#ffffff', 
+            logging: false,
+            onclone: (clonedDoc) => {
+                // Manipulate the CLONED document before screenshot
+                const nameInput = clonedDoc.getElementById('customerName') as HTMLInputElement | null;
+                const phoneInput = clonedDoc.getElementById('customerPhone') as HTMLInputElement | null;
+                
+                // Replace inputs with text in the cloned document
+                if (nameInput?.parentElement) {
+                    const nameText = clonedDoc.createElement('p');
+                    nameText.className = "text-sm pt-2";
+                    nameText.innerText = nameInput.value || 'N/A';
+                    nameInput.parentElement.replaceWith(nameText);
+                }
+
+                if (phoneInput?.parentElement) {
+                    const phoneText = clonedDoc.createElement('p');
+                    phoneText.className = "text-sm";
+                    phoneText.innerText = phoneInput.value || 'N/A';
+                    phoneInput.parentElement.replaceWith(phoneText);
+                }
+
+                // Add watermark to the cloned document
+                const clonedContent = clonedDoc.getElementById('invoice-content');
+                const watermark = clonedDoc.createElement('img');
+                watermark.src = watermarkImageData;
+                watermark.style.position = 'absolute';
+                watermark.style.top = '50%';
+                watermark.style.left = '50%';
+                watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
+                watermark.style.zIndex = '0';
+                watermark.style.opacity = '0.08';
+                watermark.style.pointerEvents = 'none';
+                watermark.style.width = '120%';
+                
+                const contentWrapper = clonedDoc.querySelector('#invoice-content-wrapper') as HTMLElement;
+                if (clonedContent && contentWrapper) {
+                  contentWrapper.style.position = 'relative';
+                  contentWrapper.style.zIndex = '1';
+                  clonedContent.insertBefore(watermark, contentWrapper);
+                } else if(clonedContent) {
+                   clonedContent.appendChild(watermark);
+                }
+            }
+        });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -136,16 +158,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${generatedInvoiceId}.pdf`);
     } finally {
-        // Revert styles by removing the class
-        input.classList.remove('is-printing');
+        // Revert styles on the original document
         input.style.width = originalWidth;
-        if (input.contains(watermark)) {
-          input.removeChild(watermark);
-        }
-        if (contentWrapper) {
-          contentWrapper.style.position = '';
-          contentWrapper.style.zIndex = '';
-        }
     }
   };
 
@@ -211,7 +225,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div className="space-y-2">
                   <h3 className="font-semibold mb-2">Bill To:</h3>
-                   <div className="space-y-4 no-print">
+                   <div className="space-y-4">
                       <div>
                         <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
                         <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
@@ -221,10 +235,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
                       </div>
                     </div>
-                   <div className="print-only text-sm pt-2">
-                      <p>{customerName}</p>
-                      <p>{customerPhone}</p>
-                  </div>
               </div>
               <div className="text-right space-y-1 text-sm">
                   <h3 className="font-semibold mb-2">From:</h3>
@@ -251,7 +261,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                   {items.map(item => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center no-print-cell">
+                      <TableCell className="text-center">
                           <Input
                               type="number"
                               className="w-20 mx-auto text-center h-8"
@@ -267,7 +277,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                               disabled={item.stock === 0}
                           />
                       </TableCell>
-                       <TableCell className="text-center print-only-cell">{item.quantity}</TableCell>
                       <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                     </TableRow>
@@ -295,7 +304,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
               </div>
         </div>
       </div>
-      <DialogFooter className="sm:justify-end no-print p-6 pt-0">
+      <DialogFooter className="sm:justify-end p-6 pt-0">
         <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
         <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
           {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
