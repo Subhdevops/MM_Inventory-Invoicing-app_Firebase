@@ -22,5 +22,4 @@ export type Invoice = {
   gstAmount: number;
   grandTotal: number;
   date: string;
-  pdfUrl: string;
 };

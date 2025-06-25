@@ -235,7 +235,7 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; pdfUrl: string; }): Promise<string> => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; }): Promise<string> => {
     const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const GST_RATE = 0.05;
     const gstAmount = subtotal * GST_RATE;
@@ -249,7 +249,6 @@ export default function Home() {
       subtotal,
       gstAmount,
       grandTotal,
-      pdfUrl: invoiceData.pdfUrl,
     };
     
     const invoiceRef = doc(collection(db, "invoices"));

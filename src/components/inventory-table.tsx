@@ -46,7 +46,7 @@ type InventoryTableProps = {
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => void;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => Promise<string>;
   isLoading: boolean;
 };
 
