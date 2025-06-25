@@ -96,39 +96,31 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
   const generateAndDownloadPdf = async (generatedInvoiceId: string) => {
-    const input = document.getElementById('invoice-content');
+    const input = document.getElementById('invoice-content-wrapper');
     if (!input) throw new Error("Could not find invoice content.");
     
-    const originalWidth = input.style.width;
-    
     try {
-        input.style.width = '794px'; 
         const canvas = await html2canvas(input, { 
-            scale: 1.5, 
-            backgroundColor: '#ffffff', 
-            logging: false,
+            scale: 2, 
+            backgroundColor: '#ffffff',
             onclone: (clonedDoc) => {
                 const nameInput = clonedDoc.getElementById('customerName') as HTMLInputElement | null;
-                const phoneInput = clonedDoc.getElementById('customerPhone') as HTMLInputElement | null;
-                const nameText = clonedDoc.getElementById('customerName-pdf') as HTMLElement | null;
-                const phoneText = clonedDoc.getElementById('customerPhone-pdf') as HTMLElement | null;
-
-                if(nameInput && nameText) {
-                    nameText.style.display = 'block';
-                    nameInput.style.display = 'none';
+                if (nameInput && nameInput.parentNode) {
+                    const nameText = clonedDoc.createTextNode(nameInput.value || '');
+                    nameInput.parentNode.replaceChild(nameText, nameInput);
                 }
-                if(phoneInput && phoneText) {
-                    phoneText.style.display = 'block';
-                    phoneInput.style.display = 'none';
+
+                const phoneInput = clonedDoc.getElementById('customerPhone') as HTMLInputElement | null;
+                if (phoneInput && phoneInput.parentNode) {
+                    const phoneText = clonedDoc.createTextNode(phoneInput.value || '');
+                    phoneInput.parentNode.replaceChild(phoneText, phoneInput);
                 }
 
                 items.forEach(item => {
                   const quantityInput = clonedDoc.getElementById(`quantity-input-${item.id}`) as HTMLInputElement | null;
-                  const quantityText = clonedDoc.getElementById(`quantity-pdf-${item.id}`) as HTMLElement | null;
-
-                  if (quantityInput && quantityText) {
-                      quantityText.style.display = 'block';
-                      quantityInput.style.display = 'none';
+                  if (quantityInput && quantityInput.parentNode) {
+                      const quantityText = clonedDoc.createTextNode(quantityInput.value || '0');
+                      quantityInput.parentNode.replaceChild(quantityText, quantityInput);
                   }
                 });
             }
@@ -137,10 +129,15 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${generatedInvoiceId}.pdf`);
-    } finally {
-        input.style.width = originalWidth;
+    } catch (error) {
+       console.error("PDF Generation Error:", error);
+       toast({
+           title: "PDF Generation Failed",
+           description: "There was an error creating the PDF.",
+           variant: "destructive"
+       });
     }
   };
 
@@ -210,12 +207,10 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                       <div>
                         <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
                         <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
-                        <p id="customerName-pdf" style={{ display: 'none' }} className="text-sm pt-2">{customerName}</p>
                       </div>
                       <div>
                         <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
-                        <p id="customerPhone-pdf" style={{ display: 'none' }} className="text-sm">{customerPhone}</p>
                       </div>
                     </div>
               </div>
@@ -260,7 +255,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
                               max={item.stock}
                               disabled={item.stock === 0}
                           />
-                          <p id={`quantity-pdf-${item.id}`} style={{ display: 'none' }} className="text-sm">{item.quantity}</p>
                       </TableCell>
                       <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
@@ -313,5 +307,3 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     </Dialog>
   );
 }
-
-    
