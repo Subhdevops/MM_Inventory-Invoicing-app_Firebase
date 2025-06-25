@@ -86,12 +86,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       }
 
       try {
-        const canvas = await html2canvas(invoiceElement, { scale: 1.5, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(invoiceElement, { scale: 1, backgroundColor: '#ffffff' });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.7), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${finalInvoiceData.id}.pdf`);
         
         setOpen(false);
@@ -208,7 +208,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     return (
       <div id="invoice-pdf-content" className="p-8 border rounded-lg bg-white text-black" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
         <header className="flex items-center justify-between pb-6 border-b">
-            <RoopkothaLogo showTagline={false} />
+            <RoopkothaLogo showTagline={true} />
             <div className="text-right">
                 <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
                 <p className="text-sm text-gray-500">{invoice.id}</p>
