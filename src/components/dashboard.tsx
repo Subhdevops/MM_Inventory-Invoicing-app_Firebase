@@ -15,16 +15,26 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Bar,
   BarChart,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
+
+type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable';
 
 type DashboardProps = {
   stats: {
@@ -32,7 +42,14 @@ type DashboardProps = {
     totalItems: number;
     productsOutOfStock: number;
   };
-  chartData: { name: string; quantity: number; }[];
+  chartData: {
+    'top-stocked': { name: string; value: number }[];
+    'lowest-stocked': { name: string; value: number }[];
+    'best-sellers': { name: string; value: number }[];
+    'most-profitable': { name: string; value: number }[];
+  };
+  chartView: ChartView;
+  onChartViewChange: (view: ChartView) => void;
   onExportInvoices: () => void;
   onExportInventory: () => void;
   totalInvoices: number;
@@ -44,14 +61,39 @@ type DashboardProps = {
   userRole: UserProfile['role'] | null;
 };
 
-const chartConfig = {
-  quantity: {
-    label: "Quantity",
-    color: "hsl(var(--primary))",
+const chartMeta: Record<ChartView, {
+  title: string;
+  config: any;
+  label: string;
+  icon: React.ElementType;
+}> = {
+  'top-stocked': {
+    title: 'Top 5 Stocked Sarees',
+    config: { value: { label: 'Quantity', color: 'hsl(var(--chart-1))' } },
+    label: 'Quantity',
+    icon: Boxes,
   },
-}
+  'lowest-stocked': {
+    title: 'Top 5 Lowest Stock Sarees',
+    config: { value: { label: 'Quantity', color: 'hsl(var(--chart-5))' } },
+    label: 'Quantity',
+    icon: TrendingDown,
+  },
+  'best-sellers': {
+    title: 'Top 5 Best-Selling Sarees',
+    config: { value: { label: 'Units Sold', color: 'hsl(var(--chart-2))' } },
+    label: 'Units Sold',
+    icon: TrendingUp,
+  },
+  'most-profitable': {
+    title: 'Top 5 Most Profitable Sarees',
+    config: { value: { label: 'Profit (₹)', color: 'hsl(var(--chart-4))' } },
+    label: 'Profit',
+    icon: IndianRupee,
+  },
+};
 
-export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -60,6 +102,9 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
   };
   
   const isAdmin = userRole === 'admin';
+
+  const currentChartData = chartData[chartView];
+  const currentChartMeta = chartMeta[chartView];
 
   return (
     <section className="space-y-6">
@@ -144,27 +189,55 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Top 5 Stocked Sarees</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle>{currentChartMeta.title}</CardTitle>
+            <Select value={chartView} onValueChange={(value) => onChartViewChange(value as ChartView)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select a view" />
+              </SelectTrigger>
+              <SelectContent>
+                 {Object.entries(chartMeta).map(([key, { title, icon: Icon }]) => (
+                  <SelectItem key={key} value={key}>
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span>{title.replace("Top 5 ", "")}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="pl-2">
             {isLoading ? (
               <Skeleton className="min-h-[300px] w-full" />
-            ) : (
-              <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-                <BarChart accessibilityLayer data={chartData}>
+            ) : currentChartData.length > 0 ? (
+              <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
+                <BarChart accessibilityLayer data={currentChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <XAxis
                     dataKey="name"
                     tickLine={false}
                     tickMargin={10}
                     axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '...' : '')}
+                    tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '…' : '')}
                   />
                   <YAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                  <Bar dataKey="quantity" fill="var(--color-quantity)" radius={4} />
+                  <Tooltip
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="dot" />}
+                    formatter={(value) => {
+                      if (chartView === 'most-profitable') {
+                        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value as number);
+                      }
+                      return value.toLocaleString();
+                    }}
+                  />
+                  <Bar dataKey="value" fill="var(--color-value)" radius={4} />
                 </BarChart>
               </ChartContainer>
+            ) : (
+               <div className="flex items-center justify-center min-h-[300px] text-muted-foreground">
+                  <p>No data to display for this view.</p>
+                </div>
             )}
           </CardContent>
         </Card>

@@ -29,6 +29,7 @@ export default function Home() {
   const [userRole, setUserRole] = useState<UserProfile['role'] | null>(null);
   const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
+  const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
 
   useBarcodeScanner(setFilter);
 
@@ -439,12 +440,66 @@ export default function Home() {
     }, 0);
   }, [invoices]);
 
-  const chartData = useMemo(() => {
+  const topStockedData = useMemo(() => {
     return [...products]
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5)
-      .map(p => ({ name: p.name, quantity: p.quantity }));
+      .map(p => ({ name: p.name, value: p.quantity }));
   }, [products]);
+
+  const lowestStockData = useMemo(() => {
+    return [...products]
+      .filter(p => p.quantity > 0 && p.quantity <= 10)
+      .sort((a, b) => a.quantity - b.quantity)
+      .slice(0, 5)
+      .map(p => ({ name: p.name, value: p.quantity }));
+  }, [products]);
+
+  const bestSellersData = useMemo(() => {
+    const salesCount: { [productId: string]: { name: string, quantity: number } } = {};
+    invoices.forEach(invoice => {
+        invoice.items.forEach(item => {
+            if (salesCount[item.id]) {
+                salesCount[item.id].quantity += item.quantity;
+            } else {
+                const product = products.find(p => p.id === item.id);
+                salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
+            }
+        });
+    });
+
+    return Object.values(salesCount)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5)
+        .map(p => ({ name: p.name, value: p.quantity }));
+  }, [invoices, products]);
+
+  const mostProfitableData = useMemo(() => {
+    const profitData: { [productId: string]: { name: string, profit: number } } = {};
+    invoices.forEach(invoice => {
+        invoice.items.forEach(item => {
+            const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
+            if (profitData[item.id]) {
+                profitData[item.id].profit += itemProfit;
+            } else {
+                const product = products.find(p => p.id === item.id);
+                profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
+            }
+        });
+    });
+
+    return Object.values(profitData)
+        .sort((a, b) => b.profit - a.profit)
+        .slice(0, 5)
+        .map(p => ({ name: p.name, value: Math.round(p.profit) }));
+  }, [invoices, products]);
+
+  const chartData = {
+    'top-stocked': topStockedData,
+    'lowest-stocked': lowestStockData,
+    'best-sellers': bestSellersData,
+    'most-profitable': mostProfitableData,
+  };
 
   const isLoading = authLoading || isRoleLoading || isProductsLoading;
 
@@ -463,7 +518,9 @@ export default function Home() {
         <FirebaseConfigWarning />
         <Dashboard 
           stats={dashboardStats} 
-          chartData={chartData} 
+          chartData={chartData}
+          chartView={chartView}
+          onChartViewChange={setChartView} 
           onExportInvoices={exportInvoicesToCsv} 
           onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
