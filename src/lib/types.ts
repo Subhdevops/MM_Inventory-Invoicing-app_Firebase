@@ -1,3 +1,4 @@
+
 export type Product = {
   id: string;
   name: string;
@@ -24,4 +25,5 @@ export type Invoice = {
   gstAmount: number;
   grandTotal: number;
   date: string;
+  pdfUrl: string;
 };

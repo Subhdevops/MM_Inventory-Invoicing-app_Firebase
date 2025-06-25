@@ -10,8 +10,9 @@ import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
-import { db, auth } from '@/lib/firebase';
+import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -235,7 +236,7 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; }): Promise<string> => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; pdfDataUri: string; }): Promise<{invoiceId: string, pdfUrl: string}> => {
     const itemsWithFullDetails = invoiceData.items.map(item => {
         const product = products.find(p => p.id === (item as any).id);
         return {
@@ -249,6 +250,19 @@ export default function Home() {
     const GST_RATE = 0.05;
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
+    
+    const invoiceRef = doc(collection(db, "invoices"));
+    let downloadURL = '';
+
+    try {
+      const storageRef = ref(storage, `invoices/${invoiceRef.id}.pdf`);
+      const snapshot = await uploadString(storageRef, invoiceData.pdfDataUri, 'data_url');
+      downloadURL = await getDownloadURL(snapshot.ref);
+    } catch (error) {
+       console.error("Error uploading PDF: ", error);
+       toast({ title: "Error", description: "Failed to upload invoice PDF.", variant: "destructive" });
+       throw error;
+    }
 
     const newInvoice: Omit<Invoice, 'id'> = {
       date: new Date().toISOString(),
@@ -258,9 +272,8 @@ export default function Home() {
       subtotal,
       gstAmount,
       grandTotal,
+      pdfUrl: downloadURL,
     };
-    
-    const invoiceRef = doc(collection(db, "invoices"));
 
     try {
       const batch = writeBatch(db);
@@ -278,7 +291,7 @@ export default function Home() {
       await batch.commit();
       setSelectedRows([]);
       toast({ title: "Invoice Created", description: `Invoice ${invoiceRef.id} created successfully.` });
-      return invoiceRef.id;
+      return { invoiceId: invoiceRef.id, pdfUrl: downloadURL };
 
     } catch (error) {
       console.error("Error creating invoice: ", error);
@@ -302,6 +315,7 @@ export default function Home() {
             subtotal: inv.subtotal.toFixed(2),
             gst: inv.gstAmount.toFixed(2),
             total: inv.grandTotal.toFixed(2),
+            pdfUrl: inv.pdfUrl,
         }))
     );
 
@@ -360,16 +374,6 @@ export default function Home() {
     return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
   }, [invoices]);
 
-  const totalProfit = useMemo(() => {
-    return invoices.reduce((totalProfit, inv) => {
-      const invoiceProfit = inv.items.reduce((itemProfit, item) => {
-        const cost = item.cost || 0;
-        return itemProfit + ((item.price - cost) * item.quantity);
-      }, 0);
-      return totalProfit + invoiceProfit;
-    }, 0);
-  }, [invoices]);
-  
   const chartData = useMemo(() => {
     return [...products]
       .sort((a, b) => b.quantity - a.quantity)
@@ -397,7 +401,6 @@ export default function Home() {
           onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
-          totalProfit={totalProfit}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
         />
