@@ -10,9 +10,8 @@ import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
-import { db, auth, storage } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -236,7 +235,7 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; pdfDataUri: string; }): Promise<{invoiceId: string, pdfUrl: string}> => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; }): Promise<string> => {
     const itemsWithFullDetails = invoiceData.items.map(item => {
         const product = products.find(p => p.id === (item as any).id);
         return {
@@ -252,17 +251,6 @@ export default function Home() {
     const grandTotal = subtotal + gstAmount;
     
     const invoiceRef = doc(collection(db, "invoices"));
-    let downloadURL = '';
-
-    try {
-      const storageRef = ref(storage, `invoices/${invoiceRef.id}.pdf`);
-      const snapshot = await uploadString(storageRef, invoiceData.pdfDataUri, 'data_url');
-      downloadURL = await getDownloadURL(snapshot.ref);
-    } catch (error) {
-       console.error("Error uploading PDF: ", error);
-       toast({ title: "Error", description: "Failed to upload invoice PDF.", variant: "destructive" });
-       throw error;
-    }
 
     const newInvoice: Omit<Invoice, 'id'> = {
       date: new Date().toISOString(),
@@ -272,7 +260,6 @@ export default function Home() {
       subtotal,
       gstAmount,
       grandTotal,
-      pdfUrl: downloadURL,
     };
 
     try {
@@ -291,7 +278,7 @@ export default function Home() {
       await batch.commit();
       setSelectedRows([]);
       toast({ title: "Invoice Created", description: `Invoice ${invoiceRef.id} created successfully.` });
-      return { invoiceId: invoiceRef.id, pdfUrl: downloadURL };
+      return invoiceRef.id;
 
     } catch (error) {
       console.error("Error creating invoice: ", error);
@@ -315,7 +302,6 @@ export default function Home() {
             subtotal: inv.subtotal.toFixed(2),
             gst: inv.gstAmount.toFixed(2),
             total: inv.grandTotal.toFixed(2),
-            pdfUrl: inv.pdfUrl,
         }))
     );
 

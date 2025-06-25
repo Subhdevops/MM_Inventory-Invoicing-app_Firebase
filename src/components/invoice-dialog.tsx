@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Loader2, Copy } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -35,7 +35,7 @@ const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'name'>[]; pdfDataUri: string }) => Promise<{invoiceId: string, pdfUrl: string}>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'name'>[] }) => Promise<string>;
 };
 
 type InvoiceItem = {
@@ -54,18 +54,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
 
-  const resetDialog = () => {
-    setCustomerName('');
-    setCustomerPhone('');
-    setIsProcessing(false);
-    setGeneratedPdfUrl(null);
-  };
-  
   useEffect(() => {
     if (open) {
-      resetDialog();
+      setCustomerName('');
+      setCustomerPhone('');
+      setIsProcessing(false);
       setItems(products.map(p => ({
         id: p.id,
         name: p.name,
@@ -97,31 +91,19 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const invoiceId = useMemo(() => `INV-${Date.now()}`, []);
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
-  const generatePdfDataUri = async (): Promise<string> => {
-    const input = document.getElementById('invoice-content');
-    if (!input) throw new Error("Could not find invoice content.");
-    
-    const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-    pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, pdfWidth, pdfHeight);
-    return pdf.output('datauristring');
-  };
-
-  const handleCopyLink = () => {
-    if (generatedPdfUrl) {
-      navigator.clipboard.writeText(generatedPdfUrl);
-      toast({ title: "Link Copied!", description: "Invoice link copied to clipboard." });
-    }
-  };
-
-
   const handleProcessSale = async () => {
     if (!customerName || !customerPhone) {
         toast({ title: "Missing Information", description: "Please enter customer name and phone number.", variant: "destructive" });
         return;
+    }
+    
+    if (customerPhone.length !== 10) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Phone number must be exactly 10 digits.",
+        variant: "destructive",
+      });
+      return;
     }
     
     const itemsToInvoice = items
@@ -134,16 +116,29 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }
 
     setIsProcessing(true);
-    setGeneratedPdfUrl(null);
-
+    
     try {
-        const pdfDataUri = await generatePdfDataUri();
-        const invoiceData = { customerName, customerPhone, items: itemsToInvoice, pdfDataUri };
-        const { pdfUrl } = await onCreateInvoice(invoiceData as any);
-        setGeneratedPdfUrl(pdfUrl);
+        const invoiceData = { customerName, customerPhone, items: itemsToInvoice };
+        const newInvoiceId = await onCreateInvoice(invoiceData as any);
+        
+        const input = document.getElementById('invoice-content');
+        if (!input) {
+            throw new Error("Could not find invoice content.");
+        }
+        
+        const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${newInvoiceId}.pdf`);
+        
+        setOpen(false);
+
     } catch (error) {
         console.error("Processing failed:", error);
-        toast({ title: "Processing Failed", description: "Could not create invoice or generate PDF link.", variant: "destructive" });
+        toast({ title: "Processing Failed", description: "Could not create invoice or generate PDF.", variant: "destructive" });
     } finally {
         setIsProcessing(false);
     }
@@ -259,34 +254,14 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
               </div>
         </div>
         
-        {generatedPdfUrl && (
-          <div className="mt-4 space-y-2 px-6">
-            <Label htmlFor="pdf-link">Shareable Invoice Link</Label>
-            <div className="flex items-center space-x-2">
-              <Input id="pdf-link" value={generatedPdfUrl} readOnly className="flex-1" />
-              <Button onClick={handleCopyLink} size="icon" variant="outline">
-                <Copy className="h-4 w-4" />
-                <span className="sr-only">Copy Link</span>
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              You can send this link to your customer via WhatsApp, SMS, or email.
-            </p>
-          </div>
-        )}
-
         <DialogFooter className="sm:justify-end pt-4">
-           {generatedPdfUrl ? (
-             <Button onClick={() => setOpen(false)}>Done</Button>
-           ) : (
-             <>
-               <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
-               <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
-                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                 {isProcessing ? 'Processing...' : 'Process Sale & Get Link'}
-               </Button>
-             </>
-           )}
+            <>
+                <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
+                <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                    {isProcessing ? 'Processing...' : 'Process & Download PDF'}
+                </Button>
+            </>
         </DialogFooter>
       </DialogContent>
     </Dialog>
