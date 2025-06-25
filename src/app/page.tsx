@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -152,6 +152,67 @@ export default function Home() {
     } catch (error) {
       console.error("Error updating product: ", error);
       toast({ title: "Error", description: "Failed to update product.", variant: "destructive" });
+    }
+  };
+  
+  const handleImportInventory = async (newProducts: Omit<Product, 'id'>[]) => {
+    const existingProductsMap = new Map(products.map(p => [p.barcode, p]));
+    const batch = writeBatch(db);
+
+    let updatedCount = 0;
+    let addedCount = 0;
+
+    for (const p of newProducts) {
+      if (existingProductsMap.has(p.barcode)) {
+        const existingProduct = existingProductsMap.get(p.barcode)!;
+        const productRef = doc(db, "products", existingProduct.id);
+        batch.update(productRef, p as any);
+        updatedCount++;
+      } else {
+        const productRef = doc(collection(db, "products"));
+        batch.set(productRef, p);
+        addedCount++;
+        existingProductsMap.set(p.barcode, { ...p, id: productRef.id }); // Add to map to handle duplicates in CSV
+      }
+    }
+
+    try {
+      await batch.commit();
+      toast({
+        title: "Inventory Imported",
+        description: `${addedCount} products added and ${updatedCount} products updated.`
+      });
+    } catch (error) {
+      console.error("Error importing inventory:", error);
+      toast({
+        title: "Import Failed",
+        description: "An error occurred while importing the inventory.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const clearAllInvoices = async () => {
+    if (invoices.length === 0) {
+      toast({ title: "No invoices to clear", description: "Your invoice list is already empty." });
+      return;
+    }
+    try {
+      const invoicesRef = collection(db, "invoices");
+      const querySnapshot = await getDocs(invoicesRef);
+      const batch = writeBatch(db);
+      querySnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      toast({
+        title: "All Invoices Cleared",
+        description: `${invoices.length} invoices have been permanently removed.`,
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error("Error clearing invoices: ", error);
+      toast({ title: "Error", description: "Failed to clear invoices.", variant: "destructive" });
     }
   };
 
@@ -302,7 +363,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <Header addProduct={addProduct} />
+      <Header addProduct={addProduct} onImportInventory={handleImportInventory} />
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
         <FirebaseConfigWarning />
         <Dashboard 
@@ -313,6 +374,7 @@ export default function Home() {
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
           isLoading={isLoading}
+          onClearAllInvoices={clearAllInvoices}
         />
         <InventoryTable
           products={products}

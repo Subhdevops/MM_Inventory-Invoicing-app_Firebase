@@ -1,6 +1,8 @@
+
 "use client";
 
 import AddProductDialog from './add-product-dialog';
+import ImportInventoryDialog from './import-inventory-dialog';
 import type { Product } from '@/lib/types';
 import { Button } from './ui/button';
 import { auth } from '@/lib/firebase';
@@ -12,9 +14,10 @@ import RoopkothaLogo from './icons/roopkotha-logo';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
+  onImportInventory: (products: Omit<Product, 'id'>[]) => Promise<void>;
 };
 
-export default function Header({ addProduct }: HeaderProps) {
+export default function Header({ addProduct, onImportInventory }: HeaderProps) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
 
@@ -45,6 +48,7 @@ export default function Header({ addProduct }: HeaderProps) {
           <div className="flex items-center gap-4">
             {user && (
               <>
+                <ImportInventoryDialog onImport={onImportInventory} />
                 <AddProductDialog addProduct={addProduct} />
                 <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
                   <LogOut className="h-5 w-5" />

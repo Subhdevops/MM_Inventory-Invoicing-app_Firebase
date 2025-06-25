@@ -1,15 +1,26 @@
 
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Bar,
   BarChart,
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,6 +36,7 @@ type DashboardProps = {
   totalInvoices: number;
   totalRevenue: number;
   isLoading: boolean;
+  onClearAllInvoices: () => Promise<void>;
 };
 
 const chartConfig = {
@@ -34,7 +46,14 @@ const chartConfig = {
   },
 }
 
-export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, isLoading }: DashboardProps) {
+export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, isLoading, onClearAllInvoices }: DashboardProps) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  
+  const handleClearInvoices = async () => {
+    await onClearAllInvoices();
+    setIsConfirmOpen(false);
+  };
+  
   return (
     <section className="space-y-6">
        <div className="flex justify-between items-center">
@@ -104,31 +123,66 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Top 5 Stocked Sarees</CardTitle>
-        </CardHeader>
-        <CardContent className="pl-2">
-          {isLoading ? (
-            <Skeleton className="min-h-[300px] w-full" />
-          ) : (
-            <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-              <BarChart accessibilityLayer data={chartData}>
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '...' : '')}
-                />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                <Bar dataKey="quantity" fill="var(--color-quantity)" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Top 5 Stocked Sarees</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            {isLoading ? (
+              <Skeleton className="min-h-[300px] w-full" />
+            ) : (
+              <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+                <BarChart accessibilityLayer data={chartData}>
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                    tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '...' : '')}
+                  />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                  <Bar dataKey="quantity" fill="var(--color-quantity)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>These actions are permanent and cannot be undone.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear All Invoices
+            </Button>
+             <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records from the database.</p>
+          </CardContent>
+        </Card>
+      </div>
+
+       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all invoices from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleClearInvoices}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
