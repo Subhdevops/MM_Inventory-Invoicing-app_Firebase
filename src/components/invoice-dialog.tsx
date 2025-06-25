@@ -86,12 +86,12 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
       }
 
       try {
-        const canvas = await html2canvas(invoiceElement, { scale: 1, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(invoiceElement, { scale: 2, backgroundColor: '#ffffff' });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.7), 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${finalInvoiceData.id}.pdf`);
         
         setOpen(false);
