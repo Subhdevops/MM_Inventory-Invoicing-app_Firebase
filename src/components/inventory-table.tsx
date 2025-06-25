@@ -37,6 +37,7 @@ import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
 import BulkEditDialog from './bulk-edit-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type InventoryTableProps = {
   products: Product[];
@@ -63,11 +64,30 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
   const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
   const [productToSell, setProductToSell] = useState<Product | null>(null);
+  const [stockFilter, setStockFilter] = useState<'available' | 'sold-out'>('available');
+
 
   const isAdmin = userRole === 'admin';
 
   const filteredProducts = useMemo(() => {
-    let sortableProducts = [...products];
+    // Apply stock filter first
+    let filtered = products.filter(p => {
+      if (stockFilter === 'available') {
+        return p.quantity > 0;
+      }
+      return p.quantity === 0;
+    });
+
+    // Then apply search filter
+    if (filter) {
+        filtered = filtered.filter(p =>
+          p.name.toLowerCase().includes(filter.toLowerCase()) ||
+          p.barcode.toLowerCase().includes(filter.toLowerCase())
+        );
+    }
+    
+    // Then sort
+    const sortableProducts = [...filtered];
     if (sortConfig.key) {
       sortableProducts.sort((a, b) => {
         if (a[sortConfig.key!] < b[sortConfig.key!]) {
@@ -80,11 +100,8 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       });
     }
 
-    return sortableProducts.filter(p =>
-      p.name.toLowerCase().includes(filter.toLowerCase()) ||
-      p.barcode.toLowerCase().includes(filter.toLowerCase())
-    );
-  }, [products, filter, sortConfig]);
+    return sortableProducts;
+  }, [products, filter, sortConfig, stockFilter]);
 
   const requestSort = (key: keyof Product) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -138,14 +155,22 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     <section className="space-y-6">
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or scan barcode..."
-            value={filter}
-            onChange={(e) => onFilterChange(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or barcode..."
+              value={filter}
+              onChange={(e) => onFilterChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Tabs value={stockFilter} onValueChange={(value) => setStockFilter(value as 'available' | 'sold-out')}>
+            <TabsList>
+                <TabsTrigger value="available">Available</TabsTrigger>
+                <TabsTrigger value="sold-out">Sold Out</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         {isAdmin && selectedRows.length > 0 && (
           <div className="flex items-center gap-2">
@@ -279,7 +304,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             ) : (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
-                  No products found. Add one, or check your Firebase connection.
+                  No products found in this view.
                 </TableCell>
               </TableRow>
             )}
