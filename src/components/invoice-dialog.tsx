@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -37,6 +36,8 @@ const GST_RATE = 0.05; // 5%
 type InvoiceDialogProps = {
   products: Product[];
   onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 type InvoiceItem = {
@@ -49,8 +50,7 @@ type InvoiceItem = {
     quantity: number;
 };
 
-export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDialogProps) {
-  const [open, setOpen] = useState(false);
+export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpenChange }: InvoiceDialogProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -71,7 +71,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   }, [finalInvoiceData]);
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       setCustomerName('');
       setCustomerPhone('');
       setDiscountPercentage(0);
@@ -87,7 +87,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         quantity: p.quantity > 0 ? 1 : 0,
       })));
     }
-  }, [products, open]);
+  }, [products, isOpen]);
 
   const generatePdf = async () => {
     const invoiceElement = pdfContentRef.current;
@@ -107,7 +107,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${finalInvoiceData!.invoiceNumber}.pdf`);
         
-        setOpen(false);
+        onOpenChange(false);
     } catch (error) {
         console.error("PDF generation failed:", error);
         toast({ title: "PDF Generation Failed", description: "An error occurred while generating the PDF.", variant: "destructive" });
@@ -280,13 +280,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
 
   return (
     <>
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
-          <FileText className="mr-2 h-4 w-4" />
-          Create Invoice ({products.length})
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
@@ -401,7 +395,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         
         <DialogFooter className="sm:justify-end pt-4">
             <>
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
                 <Button onClick={handleProcessAndDownload} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                     {isProcessing ? 'Processing...' : 'Process & Download PDF'}

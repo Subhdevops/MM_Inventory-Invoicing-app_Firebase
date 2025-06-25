@@ -32,7 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
 import BulkEditDialog from './bulk-edit-dialog';
@@ -61,24 +61,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+  const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
+  const [productToSell, setProductToSell] = useState<Product | null>(null);
 
   const isAdmin = userRole === 'admin';
-
-  const handleSellOne = async (product: Product) => {
-    if (product.quantity <= 0) {
-      return;
-    }
-    try {
-      await onCreateInvoice({
-        customerName: 'Walk-in Customer',
-        customerPhone: 'N/A',
-        items: [{ id: product.id, quantity: 1, price: product.price }],
-        discountPercentage: 0,
-      });
-    } catch (error) {
-      console.error("Failed to sell one item:", error);
-    }
-  };
 
   const filteredProducts = useMemo(() => {
     let sortableProducts = [...products];
@@ -128,6 +114,18 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const selectedProductsForInvoice = useMemo(() => {
     return products.filter(p => selectedRows.includes(p.id));
   }, [products, selectedRows]);
+
+  const productsForInvoice = useMemo(() => {
+    if (productToSell) {
+      return [productToSell];
+    }
+    return selectedProductsForInvoice;
+  }, [productToSell, selectedProductsForInvoice]);
+
+  const handleInvoiceDialogClose = () => {
+    setIsBulkInvoiceDialogOpen(false);
+    setProductToSell(null);
+  };
   
   const SortableHeader = ({ tKey, title }: { tKey: keyof Product, title: string }) => (
     <Button variant="ghost" onClick={() => requestSort(tKey)}>
@@ -151,10 +149,13 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
         </div>
         {isAdmin && selectedRows.length > 0 && (
           <div className="flex items-center gap-2">
-            <InvoiceDialog 
-              products={selectedProductsForInvoice} 
-              onCreateInvoice={onCreateInvoice}
-            />
+            <Button 
+              onClick={() => setIsBulkInvoiceDialogOpen(true)} 
+              disabled={selectedProductsForInvoice.length === 0 || selectedProductsForInvoice.every(p => p.quantity === 0)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Create Invoice ({selectedRows.length})
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -258,7 +259,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => handleSellOne(product)}
+                            onClick={() => setProductToSell(product)}
                             disabled={product.quantity === 0}
                           >
                             <ShoppingCart className="mr-2 h-4 w-4" />
@@ -285,6 +286,13 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </TableBody>
         </Table>
       </div>
+
+      <InvoiceDialog
+        products={productsForInvoice}
+        onCreateInvoice={onCreateInvoice}
+        isOpen={isBulkInvoiceDialogOpen || !!productToSell}
+        onOpenChange={(open) => !open && handleInvoiceDialogClose()}
+      />
 
       {productToEdit && (
         <EditProductDialog
