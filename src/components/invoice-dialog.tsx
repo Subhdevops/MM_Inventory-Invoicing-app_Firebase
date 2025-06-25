@@ -74,7 +74,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const handleQuantityChange = (id: string, newQuantity: number) => {
     setItems(currentItems => currentItems.map(item => {
       if (item.id === id) {
-        const validatedQuantity = Math.max(1, Math.min(newQuantity || 1, item.stock));
+        const validatedQuantity = Math.max(0, Math.min(newQuantity || 0, item.stock));
         return { ...item, quantity: validatedQuantity };
       }
       return item;
@@ -97,7 +97,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         return;
     }
     
-    if (customerPhone.length !== 10) {
+    if (!/^\d{10}$/.test(customerPhone)) {
       toast({
         title: "Invalid Phone Number",
         description: "Phone number must be exactly 10 digits.",
@@ -121,12 +121,49 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         const invoiceData = { customerName, customerPhone, items: itemsToInvoice };
         const newInvoiceId = await onCreateInvoice(invoiceData as any);
         
-        const input = document.getElementById('invoice-content');
-        if (!input) {
+        const invoiceElement = document.getElementById('invoice-content');
+        if (!invoiceElement) {
             throw new Error("Could not find invoice content.");
         }
+
+        // --- Start of PDF Generation Logic ---
+        const clonedInvoice = invoiceElement.cloneNode(true) as HTMLElement;
+
+        // Replace inputs with static text for PDF
+        const customerNameInput = clonedInvoice.querySelector<HTMLInputElement>('#customerName');
+        if (customerNameInput) {
+            const p = document.createElement('p');
+            p.textContent = customerNameInput.value;
+            p.className = 'text-sm';
+            customerNameInput.parentElement?.replaceWith(p);
+        }
+
+        const customerPhoneInput = clonedInvoice.querySelector<HTMLInputElement>('#customerPhone');
+        if (customerPhoneInput) {
+            const p = document.createElement('p');
+            p.textContent = customerPhoneInput.value;
+            p.className = 'text-sm';
+            customerPhoneInput.parentElement?.replaceWith(p);
+        }
+
+        const quantityInputs = clonedInvoice.querySelectorAll<HTMLInputElement>('.quantity-input');
+        quantityInputs.forEach(input => {
+            const p = document.createElement('p');
+            p.textContent = input.value;
+            p.className = 'text-center text-sm';
+            input.parentElement?.replaceWith(p);
+        });
+
+        clonedInvoice.style.position = 'absolute';
+        clonedInvoice.style.left = '-9999px';
+        clonedInvoice.style.width = '800px'; 
+        document.body.appendChild(clonedInvoice);
         
-        const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(clonedInvoice, { scale: 2, backgroundColor: '#ffffff' });
+        
+        document.body.removeChild(clonedInvoice);
+        // --- End of PDF Generation Logic ---
+
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -152,106 +189,102 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           Create Invoice ({products.length})
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
           <DialogDescription>
             Fill in the customer details and confirm the items to generate an invoice PDF.
           </DialogDescription>
         </DialogHeader>
-        <div id="invoice-content" className="p-6 border rounded-lg bg-background">
-            <header className="flex items-start justify-between">
-              <div>
+        <div id="invoice-content" className="p-8 border rounded-lg bg-white text-black">
+            <header className="flex items-center justify-between pb-6 border-b">
+              <div className="flex items-center gap-4">
                 <RoopkothaLogo />
-                <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
               </div>
               <div className="text-right">
-                  <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>
-                  <p className="text-sm text-muted-foreground">{invoiceId}</p>
-                  <p className="text-sm text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
+                  <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
+                  <p className="text-sm text-gray-500">{invoiceId}</p>
               </div>
             </header>
             
-            <Separator className="my-6"/>
+            <section className="grid grid-cols-2 gap-8 my-6">
+                 <div className="space-y-4">
+                     <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">Bill To</h2>
+                     <div className="space-y-1">
+                         <Label htmlFor="customerName" className="text-xs">Customer Name</Label>
+                         <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" className="bg-gray-50" />
+                     </div>
+                     <div className="space-y-1">
+                         <Label htmlFor="customerPhone" className="text-xs">Customer Phone</Label>
+                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" className="bg-gray-50"/>
+                     </div>
+                 </div>
+                 <div className="text-right space-y-1">
+                     <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">From</h2>
+                     <p className="font-bold text-primary">Roopkotha</p>
+                     <p className="text-xs text-gray-500">Professor Colony, C/O, Deshbandhu Pal</p>
+                     <p className="text-xs text-gray-500">Holding No :- 195/8, Ward no. 14</p>
+                     <p className="text-xs text-gray-500">Bolpur, Birbhum, West Bengal - 731204</p>
+                     <p className="text-xs text-gray-500"><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
+                     <p className="text-xs text-gray-500"><span className="font-semibold">Phone:</span> 9476468690</p>
+                 </div>
+            </section>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                  <h3 className="font-semibold mb-2">Bill To:</h3>
-                  <div>
-                    <Label htmlFor="customerName">Customer Name</Label>
-                    <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerPhone">Customer Phone</Label>
-                    <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
-                  </div>
-              </div>
-              <div className="text-right space-y-1 text-sm">
-                  <h3 className="font-semibold mb-2">From:</h3>
-                  <p className="font-bold">Roopkotha</p>
-                  <p>Professor Colony, C/O, Deshbandhu Pal</p>
-                  <p>Holding No :- 195/8, Ward no. 14</p>
-                  <p>Bolpur, Birbhum, West Bengal - 731204</p>
-                  <p><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
-                  <p><span className="font-semibold">Phone:</span> 9476468690</p>
-              </div>
-            </div>
-            
-            <div className="border rounded-lg overflow-hidden mt-6">
+            <section className="border border-gray-200 rounded-lg overflow-hidden mt-6">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead className="w-[50%]">Product</TableHead>
-                    <TableHead className="w-[120px] text-center">Quantity</TableHead>
-                    <TableHead className="w-[120px] text-right">Price</TableHead>
-                    <TableHead className="w-[120px] text-right">Total</TableHead>
+                    <TableHead className="w-[50%] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Product</TableHead>
+                    <TableHead className="w-[120px] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Quantity</TableHead>
+                    <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Price</TableHead>
+                    <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center">
+                    <TableRow key={item.id} className="border-b border-gray-100">
+                      <TableCell className="font-medium px-4 py-3">{item.name}</TableCell>
+                      <TableCell className="px-4 py-3">
                           <Input
                               type="number"
-                              className="w-20 mx-auto text-center h-8"
+                              className="w-20 mx-auto text-center h-8 bg-gray-50 quantity-input"
                               value={item.quantity}
                               onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
                               onBlur={(e) => {
                                 if (!e.target.value) {
-                                  handleQuantityChange(item.id, 1);
+                                  handleQuantityChange(item.id, 0);
                                 }
                               }}
-                              min="1"
+                              min="0"
                               max={item.stock}
                               disabled={item.stock === 0}
                           />
                       </TableCell>
-                      <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right px-4 py-3">₹{item.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-medium px-4 py-3">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                 <TableFooter>
                   <TableRow>
-                      <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
-                      <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
+                      <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Subtotal</TableCell>
+                      <TableCell className="text-right font-medium px-4 py-2">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                   </TableRow>
                   <TableRow>
-                      <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
-                      <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
+                      <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({GST_RATE * 100}%)</TableCell>
+                      <TableCell className="text-right font-medium px-4 py-2">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
                   </TableRow>
-                  <TableRow className="text-lg font-bold bg-primary text-primary-foreground hover:bg-primary">
-                      <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
-                      <TableCell className="text-right">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
+                  <TableRow className="bg-primary/10 font-bold">
+                      <TableCell colSpan={3} className="text-right text-primary text-base px-4 py-3">Grand Total</TableCell>
+                      <TableCell className="text-right text-primary text-base px-4 py-3">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground pt-6">
-                  <p className="font-semibold">Thank you for shopping with us!</p>
-              </div>
+            </section>
+            <footer className="text-center text-sm text-gray-500 pt-8 mt-8 border-t">
+                  <p className="font-semibold">Thank you for your business!</p>
+                  <p>where fashion meets fairytale</p>
+            </footer>
         </div>
         
         <DialogFooter className="sm:justify-end pt-4">
@@ -267,3 +300,5 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     </Dialog>
   );
 }
+
+    
