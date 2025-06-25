@@ -2,6 +2,10 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
+  # The minimum number of container instances to keep running.
+  # Set to 0 to allow the service to scale down to zero when idle.
+  minInstances: 0
+  # The maximum number of container instances that can be running at any time.
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
