@@ -3,15 +3,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  type User,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, getDocs, query, limit } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,31 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import GoogleIcon from '@/components/icons/google-icon';
 import RoopkothaLogo from '@/components/icons/roopkotha-logo';
-
-const checkAndCreateUserProfile = async (user: User) => {
-  const userRef = doc(db, 'users', user.uid);
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) {
-    // New user, determine role
-    const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef, limit(1));
-    const existingUsersSnap = await getDocs(q);
-    
-    const role = existingUsersSnap.empty ? 'admin' : 'user';
-
-    try {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        role: role,
-      });
-    } catch (error) {
-       console.error("Error creating user profile:", error);
-       // Handle error appropriately
-    }
-  }
-};
+import { checkAndCreateUserProfile } from '@/lib/user';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -61,11 +35,13 @@ export default function LoginPage() {
 
   const handleAuthAction = async (action: 'login' | 'signup') => {
     try {
+      let userCredential;
       if (action === 'login') {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await checkAndCreateUserProfile(userCredential.user);
         toast({ title: 'Login Successful', description: "Welcome back!" });
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await checkAndCreateUserProfile(userCredential.user);
         toast({ title: 'Signup Successful', description: 'Welcome to ROOPKOTHA!' });
       }

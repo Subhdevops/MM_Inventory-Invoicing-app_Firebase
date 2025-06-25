@@ -11,10 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
+import { checkAndCreateUserProfile } from '@/lib/user';
 
 
 export default function Home() {
@@ -37,19 +38,24 @@ export default function Home() {
     } else if (user) {
       const fetchUserRole = async () => {
         setIsRoleLoading(true);
-        const userDocRef = doc(db, "users", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setUserRole(userDocSnap.data().role as UserProfile['role']);
-        } else {
-          console.error("User profile not found for UID:", user.uid);
-          setUserRole('user'); // Default to least privileged role
+        try {
+          const role = await checkAndCreateUserProfile(user);
+          setUserRole(role);
+        } catch (error) {
+          console.error("Failed to check or create user profile:", error);
+          setUserRole('user'); // Default to restricted access on error
+          toast({
+            title: "Error fetching user profile",
+            description: "There was a problem verifying your account permissions. Please try logging in again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsRoleLoading(false);
         }
-        setIsRoleLoading(false);
       };
       fetchUserRole();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, toast]);
 
   useEffect(() => {
     if (!user) return; // Don't fetch data if user is not authenticated
