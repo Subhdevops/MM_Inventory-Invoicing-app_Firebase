@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Product, UserProfile } from '@/lib/types';
+import type { Product, UserProfile, Invoice } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -35,6 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
+import BulkEditDialog from './bulk-edit-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type InventoryTableProps = {
@@ -42,25 +43,42 @@ type InventoryTableProps = {
   removeProduct: (productId: string) => void;
   bulkRemoveProducts: (productIds: string[]) => void;
   updateProduct: (productId: string, data: Partial<Omit<Product, 'id'>>) => void;
-  updateProductQuantity: (productId: string, newQuantity: number) => void;
+  bulkUpdateProducts: (productIds: string[], data: Partial<Omit<Product, 'id'>>) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; invoiceNumber: number; }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
   isLoading: boolean;
   userRole: UserProfile['role'] | null;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, updateProductQuantity, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, bulkUpdateProducts, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 
   const isAdmin = userRole === 'admin';
+
+  const handleSellOne = async (product: Product) => {
+    if (product.quantity <= 0) {
+      return;
+    }
+    try {
+      await onCreateInvoice({
+        customerName: 'Walk-in Customer',
+        customerPhone: 'N/A',
+        items: [{ id: product.id, quantity: 1, price: product.price }],
+        discountPercentage: 0,
+      });
+    } catch (error) {
+      console.error("Failed to sell one item:", error);
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     let sortableProducts = [...products];
@@ -144,6 +162,11 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsBulkEditDialogOpen(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Selected
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground"
                   onClick={() => setIsBulkDeleteConfirmOpen(true)}
@@ -235,7 +258,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => updateProductQuantity(product.id, product.quantity - 1)}
+                            onClick={() => handleSellOne(product)}
                             disabled={product.quantity === 0}
                           >
                             <ShoppingCart className="mr-2 h-4 w-4" />
@@ -269,6 +292,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}
           product={productToEdit}
           updateProduct={updateProduct}
+        />
+      )}
+
+      {isBulkEditDialogOpen && (
+        <BulkEditDialog
+          isOpen={isBulkEditDialogOpen}
+          onOpenChange={setIsBulkEditDialogOpen}
+          productIds={selectedRows}
+          onBulkUpdate={bulkUpdateProducts}
         />
       )}
 

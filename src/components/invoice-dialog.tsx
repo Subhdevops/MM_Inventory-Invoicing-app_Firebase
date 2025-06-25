@@ -36,7 +36,7 @@ const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; invoiceNumber: number; }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
 };
 
 type InvoiceItem = {
@@ -173,46 +173,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     setIsProcessing(true);
     
     try {
-      const invoiceCounterRef = doc(db, 'counters', 'invoices');
-      const newInvoiceNumber = await runTransaction(db, async (transaction) => {
-        const counterDoc = await transaction.get(invoiceCounterRef);
-        if (!counterDoc.exists()) {
-          transaction.set(invoiceCounterRef, { currentNumber: 20250600001 });
-          return 20250600001;
-        }
-        const newNumber = counterDoc.data().currentNumber + 1;
-        transaction.update(invoiceCounterRef, { currentNumber: newNumber });
-        return newNumber;
-      });
-
-      const itemsWithFullDetails: SoldProduct[] = itemsToInvoice.map(item => ({
-          id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          name: products.find(p => p.id === item.id)?.name || 'Unknown Product',
-          cost: products.find(p => p.id === item.id)?.cost || 0,
-          description: products.find(p => p.id === item.id)?.description || '',
-      }));
-
-      const { subtotal, discountAmount, gstAmount, grandTotal } = invoiceDetails;
-
-      const invoiceDataForPdf: Invoice = {
-        id: newInvoiceNumber.toString(), // Temp ID for local use
-        invoiceNumber: newInvoiceNumber,
-        customerName,
-        customerPhone,
-        items: itemsWithFullDetails,
-        subtotal,
-        discountPercentage,
-        discountAmount,
-        gstAmount,
-        grandTotal,
-        date: new Date().toISOString(),
-      };
-      
-      setFinalInvoiceData(invoiceDataForPdf);
-
-      await onCreateInvoice({
+      const finalInvoice = await onCreateInvoice({
         customerName,
         customerPhone,
         discountPercentage,
@@ -221,8 +182,9 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           price: item.price,
           quantity: item.quantity
         })),
-        invoiceNumber: newInvoiceNumber,
       });
+
+      setFinalInvoiceData(finalInvoice);
 
     } catch (error) {
         console.error("Processing failed:", error);

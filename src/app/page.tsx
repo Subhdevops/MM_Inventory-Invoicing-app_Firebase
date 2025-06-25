@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -172,9 +172,31 @@ export default function Home() {
         title: "Product Updated",
         description: `Your product has been updated successfully.`,
       });
+    } catch (error)      {
+        console.error("Error updating product: ", error);
+        toast({ title: "Error", description: "Failed to update product.", variant: "destructive" });
+    }
+  };
+  
+  const bulkUpdateProducts = async (productIds: string[], data: Partial<Omit<Product, 'id'>>) => {
+    if (productIds.length === 0) return;
+
+    const batch = writeBatch(db);
+    productIds.forEach(id => {
+        const docRef = doc(db, "products", id);
+        batch.update(docRef, data);
+    });
+
+    try {
+        await batch.commit();
+        toast({
+        title: "Products Updated",
+        description: `${productIds.length} products have been updated.`,
+        });
+        setSelectedRows([]); // Clear selection after bulk action
     } catch (error) {
-      console.error("Error updating product: ", error);
-      toast({ title: "Error", description: "Failed to update product.", variant: "destructive" });
+        console.error("Error bulk updating products: ", error);
+        toast({ title: "Error", description: "Failed to update selected products.", variant: "destructive" });
     }
   };
   
@@ -274,26 +296,20 @@ export default function Home() {
     }
   };
 
-  const updateProductQuantity = async (productId: string, newQuantity: number) => {
-    const productRef = doc(db, "products", productId);
-    try {
-        await updateDoc(productRef, {
-            quantity: Math.max(0, newQuantity)
-        });
-    } catch (error) {
-        console.error("Error updating quantity: ", error);
-        toast({ title: "Error", description: "Failed to update product quantity.", variant: "destructive" });
-    }
-  };
-  
-  const handleToastForQuantityUpdate = (productName: string) => {
-     toast({
-      title: "Stock Updated",
-      description: `Quantity for ${productName || 'Product'} has been updated.`,
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }): Promise<Invoice> => {
+    const invoiceCounterRef = doc(db, 'counters', 'invoices');
+    
+    const newInvoiceNumber = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(invoiceCounterRef);
+        if (!counterDoc.exists()) {
+            transaction.set(invoiceCounterRef, { currentNumber: 20250600001 });
+            return 20250600001;
+        }
+        const newNumber = counterDoc.data().currentNumber + 1;
+        transaction.update(invoiceCounterRef, { currentNumber: newNumber });
+        return newNumber;
     });
-  }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; invoiceNumber: number; }): Promise<string> => {
     const itemsWithFullDetails: SoldProduct[] = invoiceData.items.map(item => {
         const product = products.find(p => p.id === item.id);
         return {
@@ -316,8 +332,9 @@ export default function Home() {
     
     const invoiceRef = doc(collection(db, "invoices"));
 
-    const newInvoice: Omit<Invoice, 'id'> = {
-      invoiceNumber: invoiceData.invoiceNumber,
+    const newInvoice: Invoice = {
+      id: invoiceRef.id,
+      invoiceNumber: newInvoiceNumber,
       date: new Date().toISOString(),
       customerName: invoiceData.customerName,
       customerPhone: invoiceData.customerPhone,
@@ -344,8 +361,8 @@ export default function Home() {
       
       await batch.commit();
       setSelectedRows([]);
-      toast({ title: "Invoice Created", description: `Invoice ${invoiceData.invoiceNumber} created successfully.` });
-      return invoiceRef.id;
+      toast({ title: "Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
+      return newInvoice;
 
     } catch (error) {
       console.error("Error creating invoice: ", error);
@@ -536,10 +553,7 @@ export default function Home() {
           removeProduct={removeProduct}
           bulkRemoveProducts={bulkRemoveProducts}
           updateProduct={updateProduct}
-          updateProductQuantity={(id, qty) => {
-            updateProductQuantity(id, qty);
-            handleToastForQuantityUpdate(products.find(p => p.id === id)?.name || 'Product');
-          }}
+          bulkUpdateProducts={bulkUpdateProducts}
           filter={filter}
           onFilterChange={setFilter}
           selectedRows={selectedRows}
