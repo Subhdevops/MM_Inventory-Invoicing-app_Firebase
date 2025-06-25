@@ -8,9 +8,8 @@ import {
   BarChart,
   XAxis,
   YAxis,
-  Tooltip,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -24,6 +23,7 @@ type DashboardProps = {
   onExportInvoices: () => void;
   onExportInventory: () => void;
   totalInvoices: number;
+  totalRevenue: number;
   isLoading: boolean;
 };
 
@@ -34,7 +34,7 @@ const chartConfig = {
   },
 }
 
-export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, isLoading }: DashboardProps) {
+export default function Dashboard({ stats, chartData, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, isLoading }: DashboardProps) {
   return (
     <section className="space-y-6">
        <div className="flex justify-between items-center">
@@ -51,6 +51,18 @@ export default function Dashboard({ stats, chartData, onExportInvoices, onExport
          </div>
        </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{
+              new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalRevenue)
+            }</div>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total sales from all invoices</p>}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Designs</CardTitle>

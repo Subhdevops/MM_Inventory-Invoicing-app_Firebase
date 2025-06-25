@@ -85,6 +85,14 @@ export default function Home() {
   }, [toast, user]);
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
+    if (products.some(p => p.barcode === product.barcode)) {
+      toast({
+        title: "Duplicate Barcode",
+        description: `A product with the barcode "${product.barcode}" already exists.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await addDoc(collection(db, "products"), product);
       toast({
@@ -168,7 +176,7 @@ export default function Home() {
 
   const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => {
     const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const GST_RATE = 0.18;
+    const GST_RATE = 0.05;
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
 
@@ -272,6 +280,10 @@ export default function Home() {
     const productsOutOfStock = products.filter(p => p.quantity === 0).length;
     return { totalProducts, totalItems, productsOutOfStock };
   }, [products]);
+
+  const totalRevenue = useMemo(() => {
+    return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
+  }, [invoices]);
   
   const chartData = useMemo(() => {
     return [...products]
@@ -299,6 +311,7 @@ export default function Home() {
           onExportInvoices={exportInvoicesToCsv} 
           onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
+          totalRevenue={totalRevenue}
           isLoading={isLoading}
         />
         <InventoryTable
