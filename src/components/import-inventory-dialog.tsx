@@ -2,8 +2,6 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,10 +26,6 @@ const productSchema = z.object({
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
-});
-
-const fileSchema = z.object({
-  file: z.instanceof(File).refine(file => file.size > 0, 'File is required.'),
 });
 
 type ImportInventoryDialogProps = {
@@ -70,6 +64,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
     Papa.parse<Omit<Product, 'id'>>(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: header => header.trim().toLowerCase(),
       complete: async (results) => {
         const requiredHeaders = ["barcode", "name", "price", "cost", "quantity"];
         const actualHeaders = results.meta.fields || [];
@@ -77,8 +72,8 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
 
         if (missingHeaders.length > 0) {
           toast({
-            title: "Invalid CSV format",
-            description: `File is missing required headers: ${missingHeaders.join(', ')}`,
+            title: "Invalid CSV Format",
+            description: `Your file is missing required columns: ${missingHeaders.join(', ')}.`,
             variant: "destructive",
           });
           setIsImporting(false);
@@ -87,10 +82,14 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
 
         const validation = z.array(productSchema).safeParse(results.data);
         if (!validation.success) {
+          const firstError = validation.error.errors[0];
+          const field = firstError.path.slice(-1)[0] as string; // get the field name
+          const description = `Error in column '${field.charAt(0).toUpperCase() + field.slice(1)}': ${firstError.message}. Please check your CSV data.`;
+          
           console.error(validation.error.errors);
           toast({
-            title: "Invalid Data",
-            description: `Your CSV contains invalid data. Please check product names, quantities, prices, costs, and barcodes.`,
+            title: "Invalid Data in CSV",
+            description: description,
             variant: "destructive",
           });
           setIsImporting(false);
@@ -125,7 +124,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from CSV</DialogTitle>
           <DialogDescription>
-            Select a CSV file to add or update products. The file must contain 'barcode', 'name', 'price', 'cost', and 'quantity' columns.
+            Select a CSV file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity' (headers are case-insensitive).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

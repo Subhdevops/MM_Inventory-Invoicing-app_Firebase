@@ -290,7 +290,6 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
             </section>
             <footer className="text-center text-sm text-gray-500 pt-8 mt-8 border-t">
                   <p className="font-semibold">Thank you for your business!</p>
-                  <p>where fashion meets fairytale</p>
             </footer>
         </div>
         
