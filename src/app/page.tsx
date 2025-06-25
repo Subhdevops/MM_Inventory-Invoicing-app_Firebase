@@ -235,7 +235,7 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; pdfUrl: string; }): Promise<string> => {
     const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const GST_RATE = 0.05;
     const gstAmount = subtotal * GST_RATE;
@@ -249,11 +249,13 @@ export default function Home() {
       subtotal,
       gstAmount,
       grandTotal,
+      pdfUrl: invoiceData.pdfUrl,
     };
     
+    const invoiceRef = doc(collection(db, "invoices"));
+
     try {
       const batch = writeBatch(db);
-      const invoiceRef = doc(collection(db, "invoices"));
       batch.set(invoiceRef, newInvoice);
 
       invoiceData.items.forEach(p => {
@@ -268,10 +270,12 @@ export default function Home() {
       await batch.commit();
       setSelectedRows([]);
       toast({ title: "Invoice Created", description: `Invoice ${invoiceRef.id} created successfully.` });
+      return invoiceRef.id;
 
     } catch (error) {
       console.error("Error creating invoice: ", error);
       toast({ title: "Error", description: "Failed to create invoice.", variant: "destructive" });
+      throw error; // Re-throw to be caught in the dialog
     }
   };
 

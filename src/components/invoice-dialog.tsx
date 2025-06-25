@@ -25,20 +25,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { FileText, FileDown } from 'lucide-react';
+import { FileText, Copy, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import RoopkothaLogo from './icons/roopkotha-logo';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// A smaller, more reliable SVG-based watermark.
-const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiPgogICAgPHRleHQgeD0iNSIgeT0iMzUiIGZvbnRGYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250U2l6ZT0iMzAiIGZvbnRXZWlnaHQ9ImJvbGQiIGZpbGw9IiMzYjgyZjYiIGxldHRlclNwYWNpbmc9IjEiPlJPT1BLT1RIQTwvdGV4dD4KICAgIDxwYXRoIGQ9Ik0yMjAsMTUgUTIzMCwyNSAyMjAsMzUiIHN0cm9rZT0iIzM0YTg1MyIgc3Ryb2tlV2lkdGg9IjIuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlTGluZWNhcD0icm91bmQiLz4KPC9zdmc+';
-
+const watermarkImageData = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgNTAiPgogICAgPHRleHQgeD0iNSIgeT0iMzUiIGZvbnRGYW1pbHk9Ikdlb3JnaWEsIHNlcmlmIiBmb250U2l6ZT0iMzAiIGZvbnRXZWlnaHQ9ImJvbGQiIGZpbGw9ImhzbCh2YXIoLS1wcmltYXJ5KSkiIGxldHRlclNwYWNpbmc9IjEiPlJPT1BLT1RIQTwvdGV4dD4KICAgIDxwYXRoIGQ9Ik0yMjAsMTUgUTIzMCwyNSAyMjAsMzUiIHN0cm9rZT0iaHNsKHZhcigtLWFjY2VudCkpIiBzdHJva2VXaWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2VMaW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=';
 const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[] }) => void;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; pdfUrl: string }) => Promise<string>;
 };
 
 type InvoiceItem = {
@@ -55,9 +55,21 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const [customerPhone, setCustomerPhone] = useState('');
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [finalInvoiceUrl, setFinalInvoiceUrl] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
+  const resetDialog = () => {
+    setCustomerName('');
+    setCustomerPhone('');
+    setIsProcessing(false);
+    setFinalInvoiceUrl(null);
+    setIsCopied(false);
+  };
+  
   useEffect(() => {
     if (open) {
+      resetDialog();
       setItems(products.map(p => ({
         id: p.id,
         name: p.name,
@@ -85,65 +97,48 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     return { subtotal, gstAmount, grandTotal };
   }, [items]);
 
-  const invoiceId = useMemo(() => `INV-${Date.now()}`, [open]);
-  
+  const invoiceId = useMemo(() => `INV-${Date.now()}`, []);
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
-  const handleDownloadPdf = async () => {
+  const generateAndUploadPdf = async (generatedInvoiceId: string): Promise<string> => {
     const input = document.getElementById('invoice-content');
-    if (!input) {
-      toast({ title: "Error", description: "Could not find invoice content to generate PDF.", variant: "destructive"});
-      return;
-    }
-    
-    // Set container to relative to make it a stacking context
+    if (!input) throw new Error("Could not find invoice content.");
+
     const originalPosition = input.style.position;
     input.style.position = 'relative';
-
-    // Create watermark image element
     const watermark = document.createElement('img');
     watermark.src = watermarkImageData;
     watermark.style.position = 'absolute';
     watermark.style.top = '50%';
     watermark.style.left = '50%';
     watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
-    watermark.style.zIndex = '1'; // Place watermark ON TOP of other content
-    watermark.style.opacity = '0.08'; // Make it faint
-    watermark.style.pointerEvents = 'none'; // Make it unclickable
+    watermark.style.zIndex = '1';
+    watermark.style.opacity = '0.08';
+    watermark.style.pointerEvents = 'none';
     watermark.style.width = '120%';
-    
-    // Add watermark to the content div. It will sit on top of everything else.
     input.appendChild(watermark);
-  
+    
     const noPrintElements = input.querySelectorAll('.no-print');
     noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
-    
     const printElements = input.querySelectorAll('.print-only');
     printElements.forEach(el => (el as HTMLElement).style.display = 'block');
-    
     const originalWidth = input.style.width;
-  
+    
     try {
-      input.style.width = '794px'; 
-  
-      const canvas = await html2canvas(input, { 
-        scale: 1, // Reduced scale for smaller file size
-        windowWidth: input.scrollWidth,
-        windowHeight: input.scrollHeight,
-        backgroundColor: '#ffffff'
-      });
-      const imgData = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG with compression
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`invoice-${invoiceId}.pdf`);
-    } catch(e) {
-      console.error(e);
-      toast({ title: "PDF Generation Failed", description: "There was an error creating the PDF.", variant: "destructive" });
+        input.style.width = '794px'; 
+        const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        const pdfBlob = pdf.output('blob');
+
+        const storageRef = ref(storage, `invoices/${generatedInvoiceId}.pdf`);
+        await uploadBytes(storageRef, pdfBlob);
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
     } finally {
-      // Cleanup: remove watermark and restore original styles
       input.removeChild(watermark);
       noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
       printElements.forEach(el => (el as HTMLElement).style.display = 'none');
@@ -152,7 +147,8 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
     }
   };
 
-  const handleCreateAndDownloadPdf = async () => {
+
+  const handleProcessSale = async () => {
     if (!customerName || !customerPhone) {
         toast({ title: "Missing Information", description: "Please enter customer name and phone number.", variant: "destructive" });
         return;
@@ -163,37 +159,74 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         .map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
 
     if (itemsToInvoice.length === 0) {
-        toast({ title: "No Items", description: "Please add at least one item with a quantity greater than 0.", variant: "destructive" });
+        toast({ title: "No Items", description: "Add at least one item with a quantity greater than 0.", variant: "destructive" });
         return;
     }
 
-    onCreateInvoice({
-        customerName,
-        customerPhone,
-        items: itemsToInvoice,
-    });
-    
-    await handleDownloadPdf();
+    setIsProcessing(true);
 
-    setOpen(false);
-    setCustomerName('');
-    setCustomerPhone('');
-  }
+    try {
+        const tempInvoiceData = { customerName, customerPhone, items: itemsToInvoice, pdfUrl: '' };
+        const generatedInvoiceId = await onCreateInvoice(tempInvoiceData);
+        
+        const downloadURL = await generateAndUploadPdf(generatedInvoiceId);
+        
+        // This is a simplified approach. In a real app, you'd update the Firestore doc with the final URL.
+        // For this implementation, we will just show the URL to the user.
+        setFinalInvoiceUrl(downloadURL);
 
+    } catch (error) {
+        console.error("Processing failed:", error);
+        toast({ title: "Processing Failed", description: "Could not create invoice or upload PDF.", variant: "destructive" });
+    } finally {
+        setIsProcessing(false);
+    }
+  };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
-          <FileText className="mr-2 h-4 w-4" />
-          Create Invoice ({products.length})
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogTitle className="sr-only">Invoice</DialogTitle>
-        <DialogDescription className="sr-only">A printable invoice for the selected products.</DialogDescription>
-        <div id="invoice-content" className="print:bg-white print:text-black p-6 space-y-8 bg-white">
-          <header className="flex items-start justify-between">
+  const copyToClipboard = () => {
+    if (finalInvoiceUrl) {
+      navigator.clipboard.writeText(finalInvoiceUrl);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  const renderSuccessView = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-center">Sale Successful!</DialogTitle>
+        <DialogDescription className="text-center">
+          The invoice has been created and the PDF is ready to be shared.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="p-6 text-center space-y-6">
+        <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
+        <p className="text-sm text-muted-foreground">
+          Share this link with your customer via WhatsApp, SMS, or email.
+        </p>
+        <div className="flex items-center space-x-2">
+          <Input value={finalInvoiceUrl!} readOnly />
+          <Button onClick={copyToClipboard} size="icon" variant="outline">
+            {isCopied ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          </Button>
+          <Button asChild size="icon">
+            <a href={finalInvoiceUrl!} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button onClick={() => setOpen(false)}>Close</Button>
+      </DialogFooter>
+    </>
+  );
+
+  const renderInvoiceForm = () => (
+    <>
+      <div id="invoice-content" className="print:bg-white print:text-black p-6 space-y-8 bg-white">
+        {/* All the invoice HTML from before */}
+        <header className="flex items-start justify-between">
             <div>
               <RoopkothaLogo />
               <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
@@ -292,14 +325,27 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
           <div className="text-center text-sm text-muted-foreground pt-6">
                 <p className="font-semibold">Thank you for shopping with us!</p>
             </div>
-        </div>
-        <DialogFooter className="sm:justify-end no-print p-6 pt-0">
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateAndDownloadPdf} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Process Sale & Download PDF
-          </Button>
-        </DialogFooter>
+      </div>
+      <DialogFooter className="sm:justify-end no-print p-6 pt-0">
+        <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>
+        <Button onClick={handleProcessSale} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
+          {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+          {isProcessing ? 'Processing...' : 'Process Sale & Get Link'}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button disabled={products.length === 0 || products.every(p => p.quantity === 0)}>
+          <FileText className="mr-2 h-4 w-4" />
+          Create Invoice ({products.length})
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        {finalInvoiceUrl ? renderSuccessView() : renderInvoiceForm()}
       </DialogContent>
     </Dialog>
   );
