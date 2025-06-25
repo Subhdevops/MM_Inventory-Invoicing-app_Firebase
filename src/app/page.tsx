@@ -235,8 +235,17 @@ export default function Home() {
     });
   }
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; }): Promise<string> => {
-    const subtotal = invoiceData.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'id' | 'name'>[]; }): Promise<string> => {
+    const itemsWithFullDetails = invoiceData.items.map(item => {
+        const product = products.find(p => p.id === (item as any).id);
+        return {
+            ...item,
+            name: product?.name || 'Unknown Product',
+            cost: product?.cost || 0,
+        };
+    });
+
+    const subtotal = itemsWithFullDetails.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const GST_RATE = 0.05;
     const gstAmount = subtotal * GST_RATE;
     const grandTotal = subtotal + gstAmount;
@@ -245,7 +254,7 @@ export default function Home() {
       date: new Date().toISOString(),
       customerName: invoiceData.customerName,
       customerPhone: invoiceData.customerPhone,
-      items: invoiceData.items,
+      items: itemsWithFullDetails,
       subtotal,
       gstAmount,
       grandTotal,
@@ -258,9 +267,9 @@ export default function Home() {
       batch.set(invoiceRef, newInvoice);
 
       invoiceData.items.forEach(p => {
-        const currentProduct = products.find(prod => prod.id === p.id);
+        const currentProduct = products.find(prod => prod.id === (p as any).id);
         if (currentProduct) {
-          const productRef = doc(db, "products", p.id);
+          const productRef = doc(db, "products", (p as any).id);
           const newStock = Math.max(0, currentProduct.quantity - p.quantity);
           batch.update(productRef, { quantity: newStock });
         }
@@ -289,6 +298,7 @@ export default function Home() {
             productName: item.name,
             quantity: item.quantity,
             price: item.price.toFixed(2),
+            cost: (item.cost || 0).toFixed(2),
             subtotal: inv.subtotal.toFixed(2),
             gst: inv.gstAmount.toFixed(2),
             total: inv.grandTotal.toFixed(2),
@@ -323,6 +333,7 @@ export default function Home() {
       productName: p.name,
       quantity: p.quantity,
       price: p.price.toFixed(2),
+      cost: p.cost.toFixed(2),
       barcode: p.barcode,
     }));
 
@@ -347,6 +358,16 @@ export default function Home() {
 
   const totalRevenue = useMemo(() => {
     return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
+  }, [invoices]);
+
+  const totalProfit = useMemo(() => {
+    return invoices.reduce((totalProfit, inv) => {
+      const invoiceProfit = inv.items.reduce((itemProfit, item) => {
+        const cost = item.cost || 0;
+        return itemProfit + ((item.price - cost) * item.quantity);
+      }, 0);
+      return totalProfit + invoiceProfit;
+    }, 0);
   }, [invoices]);
   
   const chartData = useMemo(() => {
@@ -376,6 +397,7 @@ export default function Home() {
           onExportInventory={exportInventoryToCsv}
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
+          totalProfit={totalProfit}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
         />

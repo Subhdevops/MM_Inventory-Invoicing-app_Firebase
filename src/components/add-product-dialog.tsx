@@ -33,6 +33,7 @@ const productSchema = z.object({
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
+  cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
 });
 
 type AddProductDialogProps = {
@@ -48,6 +49,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
       quantity: 0,
       barcode: "",
       price: 0,
+      cost: 0,
     },
   });
 
@@ -96,6 +98,34 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Selling Price (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="cost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost Price (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
@@ -107,36 +137,23 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   </FormItem>
                 )}
               />
-              <FormField
+               <FormField
                 control={form.control}
-                name="price"
+                name="barcode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (₹)</FormLabel>
+                    <FormLabel>Barcode</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
+                      <div className="relative">
+                         <Input placeholder="Scan or enter barcode" {...field} />
+                         <QrCode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="barcode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Barcode</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                       <Input placeholder="Scan or enter barcode" {...field} />
-                       <QrCode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <DialogFooter>
                <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>

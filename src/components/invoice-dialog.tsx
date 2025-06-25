@@ -36,13 +36,14 @@ const GST_RATE = 0.05; // 5%
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: SoldProduct[]; }) => Promise<string>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: Omit<SoldProduct, 'name'>[]; }) => Promise<string>;
 };
 
 type InvoiceItem = {
     id: string;
     name: string;
     price: number;
+    cost: number;
     stock: number;
     quantity: number;
 };
@@ -68,6 +69,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
         id: p.id,
         name: p.name,
         price: p.price,
+        cost: p.cost,
         stock: p.quantity,
         quantity: p.quantity > 0 ? 1 : 0,
       })));
@@ -97,42 +99,57 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
   const generateAndDownloadPdf = async (generatedInvoiceId: string) => {
     const input = document.getElementById('invoice-content');
     if (!input) throw new Error("Could not find invoice content.");
-
-    const originalPosition = input.style.position;
-    input.style.position = 'relative';
+    
+    // Temporarily apply styles for PDF generation
+    const noPrintElements = input.querySelectorAll('.no-print');
+    noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
+    const printElements = input.querySelectorAll('.print-only');
+    printElements.forEach(el => (el as HTMLElement).style.display = 'block');
+    
+    // Add watermark
     const watermark = document.createElement('img');
     watermark.src = watermarkImageData;
     watermark.style.position = 'absolute';
     watermark.style.top = '50%';
     watermark.style.left = '50%';
     watermark.style.transform = 'translate(-50%, -50%) rotate(-30deg)';
-    watermark.style.zIndex = '1';
+    watermark.style.zIndex = '0'; // Behind content
     watermark.style.opacity = '0.08';
     watermark.style.pointerEvents = 'none';
     watermark.style.width = '120%';
-    input.appendChild(watermark);
     
-    const noPrintElements = input.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
-    const printElements = input.querySelectorAll('.print-only');
-    printElements.forEach(el => (el as HTMLElement).style.display = 'block');
+    const contentWrapper = input.querySelector('#invoice-content-wrapper') as HTMLElement;
+    if (contentWrapper) {
+      contentWrapper.style.position = 'relative';
+      contentWrapper.style.zIndex = '1';
+      input.insertBefore(watermark, contentWrapper);
+    } else {
+       input.appendChild(watermark);
+    }
+    
     const originalWidth = input.style.width;
     
     try {
         input.style.width = '794px'; 
-        const canvas = await html2canvas(input, { scale: 2, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(input, { scale: 1.5, backgroundColor: '#ffffff', logging: false });
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`invoice-${generatedInvoiceId}.pdf`);
     } finally {
-      input.removeChild(watermark);
-      noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
-      printElements.forEach(el => (el as HTMLElement).style.display = 'none');
-      input.style.position = originalPosition;
-      input.style.width = originalWidth;
+        // Revert styles
+        noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+        printElements.forEach(el => (el as HTMLElement).style.display = 'none');
+        input.style.width = originalWidth;
+        if (input.contains(watermark)) {
+          input.removeChild(watermark);
+        }
+        if (contentWrapper) {
+          contentWrapper.style.position = '';
+          contentWrapper.style.zIndex = '';
+        }
     }
   };
 
@@ -155,7 +172,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
 
     const itemsToInvoice = items
         .filter(item => item.quantity > 0)
-        .map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+        .map(({ id, price, quantity, cost }) => ({ id, price, quantity, cost }));
 
     if (itemsToInvoice.length === 0) {
         toast({ title: "No Items", description: "Add at least one item with a quantity greater than 0.", variant: "destructive" });
@@ -166,7 +183,7 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
 
     try {
         const invoiceData = { customerName, customerPhone, items: itemsToInvoice };
-        const generatedInvoiceId = await onCreateInvoice(invoiceData);
+        const generatedInvoiceId = await onCreateInvoice(invoiceData as any);
         await generateAndDownloadPdf(generatedInvoiceId);
         setOpen(false); // Close dialog on success
     } catch (error) {
@@ -179,107 +196,108 @@ export default function InvoiceDialog({ products, onCreateInvoice }: InvoiceDial
 
   const renderInvoiceForm = () => (
     <>
-      <div id="invoice-content" className="print:bg-white print:text-black p-6 space-y-8 bg-white">
-        {/* All the invoice HTML from before */}
-        <header className="flex items-start justify-between">
-            <div>
-              <RoopkothaLogo />
-              <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
-            </div>
-            <div className="text-right">
-                <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>
-                <p className="text-sm text-muted-foreground">{invoiceId}</p>
-                <p className="text-sm text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
-            </div>
-          </header>
-          
-          <Separator />
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            <div className="space-y-2">
-                <h3 className="font-semibold mb-2">Bill To:</h3>
-                 <div className="space-y-4 no-print">
-                    <div>
-                      <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
-                      <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+      <div id="invoice-content" className="print:bg-white print:text-black p-6 bg-white relative">
+        <div id="invoice-content-wrapper">
+          <header className="flex items-start justify-between">
+              <div>
+                <RoopkothaLogo />
+                <p className="text-sm text-muted-foreground ml-2">where fashion meets fairytale</p>
+              </div>
+              <div className="text-right">
+                  <h2 className="text-2xl font-bold tracking-wider">INVOICE</h2>
+                  <p className="text-sm text-muted-foreground">{invoiceId}</p>
+                  <p className="text-sm text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
+              </div>
+            </header>
+            
+            <Separator className="my-6"/>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                  <h3 className="font-semibold mb-2">Bill To:</h3>
+                   <div className="space-y-4 no-print">
+                      <div>
+                        <Label htmlFor="customerName" className="text-xs text-muted-foreground">Customer Name</Label>
+                        <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                      </div>
+                      <div>
+                        <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
+                        <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="customerPhone" className="text-xs text-muted-foreground">Customer Phone</Label>
-                      <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="123-456-7890" />
-                    </div>
+                   <div className="print-only text-sm pt-2" style={{display: 'none'}}>
+                      <p>{customerName}</p>
+                      <p>{customerPhone}</p>
                   </div>
-                 <div className="print-only hidden text-sm pt-2">
-                    <p>{customerName || '____________________'}</p>
-                    <p>{customerPhone || '____________________'}</p>
-                </div>
+              </div>
+              <div className="text-right space-y-1 text-sm">
+                  <h3 className="font-semibold mb-2">From:</h3>
+                  <p className="font-bold">Roopkotha</p>
+                  <p>Professor Colony, C/O, Deshbandhu Pal</p>
+                  <p>Holding No :- 195/8, Ward no. 14</p>
+                  <p>Bolpur, Birbhum, West Bengal - 731204</p>
+                  <p><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
+                  <p><span className="font-semibold">Phone:</span> 9476468690</p>
+              </div>
             </div>
-            <div className="text-right space-y-1 text-sm">
-                <h3 className="font-semibold mb-2">From:</h3>
-                <p className="font-bold">Roopkotha</p>
-                <p>Professor Colony, C/O, Deshbandhu Pal</p>
-                <p>Holding No :- 195/8, Ward no. 14</p>
-                <p>Bolpur, Birbhum, West Bengal - 731204</p>
-                <p><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
-                <p><span className="font-semibold">Phone:</span> 9476468690</p>
-            </div>
-          </div>
-          
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="w-[50%]">Product</TableHead>
-                  <TableHead className="w-[120px] text-center">Quantity</TableHead>
-                  <TableHead className="w-[120px] text-right">Price</TableHead>
-                  <TableHead className="w-[120px] text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="text-center no-print">
-                        <Input
-                            type="number"
-                            className="w-20 mx-auto text-center h-8"
-                            value={item.quantity}
-                            onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
-                            onBlur={(e) => {
-                              if (!e.target.value) {
-                                handleQuantityChange(item.id, 1);
-                              }
-                            }}
-                            min="1"
-                            max={item.stock}
-                            disabled={item.stock === 0}
-                        />
-                    </TableCell>
-                     <TableCell className="text-center print-only hidden">{item.quantity}</TableCell>
-                    <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
+            
+            <div className="border rounded-lg overflow-hidden mt-6">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-[50%]">Product</TableHead>
+                    <TableHead className="w-[120px] text-center">Quantity</TableHead>
+                    <TableHead className="w-[120px] text-right">Price</TableHead>
+                    <TableHead className="w-[120px] text-right">Total</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                    <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
-                    <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                    <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
-                    <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow className="text-lg font-bold bg-primary text-primary-foreground hover:bg-primary">
-                    <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
-                    <TableCell className="text-right">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
-
-          <div className="text-center text-sm text-muted-foreground pt-6">
-                <p className="font-semibold">Thank you for shopping with us!</p>
+                </TableHeader>
+                <TableBody>
+                  {items.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-center no-print">
+                          <Input
+                              type="number"
+                              className="w-20 mx-auto text-center h-8"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                              onBlur={(e) => {
+                                if (!e.target.value) {
+                                  handleQuantityChange(item.id, 1);
+                                }
+                              }}
+                              min="1"
+                              max={item.stock}
+                              disabled={item.stock === 0}
+                          />
+                      </TableCell>
+                       <TableCell className="text-center print-only" style={{display: 'none'}}>{item.quantity}</TableCell>
+                      <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
+                      <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
+                      <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow className="text-lg font-bold bg-primary text-primary-foreground hover:bg-primary">
+                      <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
+                      <TableCell className="text-right">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
             </div>
+
+            <div className="text-center text-sm text-muted-foreground pt-6">
+                  <p className="font-semibold">Thank you for shopping with us!</p>
+              </div>
+        </div>
       </div>
       <DialogFooter className="sm:justify-end no-print p-6 pt-0">
         <Button variant="outline" onClick={() => setOpen(false)} disabled={isProcessing}>Cancel</Button>

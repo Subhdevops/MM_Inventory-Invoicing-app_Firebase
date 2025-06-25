@@ -30,6 +30,7 @@ const productSchema = z.object({
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
+  cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
 });
 
 type EditProductDialogProps = {
@@ -47,6 +48,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
       quantity: product.quantity,
       barcode: product.barcode,
       price: product.price,
+      cost: product.cost,
     },
   });
 
@@ -57,6 +59,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
         quantity: product.quantity,
         barcode: product.barcode,
         price: product.price,
+        cost: product.cost,
       });
     }
   }, [product, form]);
@@ -93,23 +96,10 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 15" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (₹)</FormLabel>
+                    <FormLabel>Selling Price (₹)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
                     </FormControl>
@@ -117,20 +107,48 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="cost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost Price (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <FormField
-              control={form.control}
-              name="barcode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Barcode</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Scan or enter barcode" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantity</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g. 15" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="barcode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Barcode</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Scan or enter barcode" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+            </div>
             <DialogFooter>
                <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>

@@ -27,6 +27,7 @@ const productSchema = z.object({
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
+  cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
 });
 
 const fileSchema = z.object({
@@ -70,7 +71,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const requiredHeaders = ["barcode", "name", "price", "quantity"];
+        const requiredHeaders = ["barcode", "name", "price", "cost", "quantity"];
         const actualHeaders = results.meta.fields || [];
         const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
 
@@ -89,7 +90,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
           console.error(validation.error.errors);
           toast({
             title: "Invalid Data",
-            description: `Your CSV contains invalid data. Please check product names, quantities, prices, and barcodes.`,
+            description: `Your CSV contains invalid data. Please check product names, quantities, prices, costs, and barcodes.`,
             variant: "destructive",
           });
           setIsImporting(false);
@@ -124,7 +125,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from CSV</DialogTitle>
           <DialogDescription>
-            Select a CSV file to add or update products in bulk. The file must contain 'barcode', 'name', 'price', and 'quantity' columns.
+            Select a CSV file to add or update products. The file must contain 'barcode', 'name', 'price', 'cost', and 'quantity' columns.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
