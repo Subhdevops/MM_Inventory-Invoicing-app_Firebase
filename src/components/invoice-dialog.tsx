@@ -209,7 +209,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             <RoopkothaLogo showTagline={true} />
             <div className="text-right">
                 <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
-                <p className="text-sm text-muted-foreground">{invoice.invoiceNumber}</p>
+                <p className="text-sm text-muted-foreground">Invoice number: {invoice.invoiceNumber}</p>
                 <p className="text-xs text-muted-foreground mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
             </div>
         </header>
