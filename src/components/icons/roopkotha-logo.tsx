@@ -1,47 +1,28 @@
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
-import * as React from "react"
-
-// A simpler, elegant SVG-based logo with a tagline.
-type RoopkothaLogoProps = React.SVGProps<SVGSVGElement> & {
+type RoopkothaLogoProps = {
+  className?: string;
   showTagline?: boolean;
-  primaryColor?: string;
-  secondaryColor?: string;
+  width?: number;
+  height?: number;
 };
 
-const RoopkothaLogo = ({ showTagline = true, primaryColor, secondaryColor, ...props }: RoopkothaLogoProps) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 250 60"
-    width="200"
-    height="48"
-    {...props}
-  >
-    <text
-      x="50%"
-      y="30"
-      fontFamily="Georgia, serif"
-      fontSize="30"
-      fontWeight="bold"
-      fill={primaryColor || "hsl(var(--primary))"}
-      letterSpacing="1"
-      textAnchor="middle"
-    >
-      ROOPKOTHA
-    </text>
+const RoopkothaLogo = ({ className, showTagline = true, width = 200, height = 48 }: RoopkothaLogoProps) => (
+  <div className={cn("flex flex-col items-center justify-center", className)}>
+    <Image
+      src="/logo.png"
+      alt="Roopkotha Logo"
+      width={width}
+      height={height}
+      priority // Eager load the logo as it's likely LCP
+    />
     {showTagline && (
-      <text
-        x="50%"
-        y="50"
-        fontFamily="Georgia, serif"
-        fontSize="12"
-        fontStyle="italic"
-        fill={secondaryColor || "hsl(var(--muted-foreground))"}
-        textAnchor="middle"
-      >
+      <p className="text-xs italic text-muted-foreground mt-1">
         Where fashion meets fairytale
-      </text>
+      </p>
     )}
-  </svg>
-)
+  </div>
+);
 
 export default RoopkothaLogo;

@@ -59,6 +59,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   const [isProcessing, setIsProcessing] = useState(false);
   const [finalInvoiceData, setFinalInvoiceData] = useState<Invoice | null>(null);
   const pdfContentRef = useRef<HTMLDivElement | null>(null);
+  const [pdfBackgroundColor, setPdfBackgroundColor] = useState('#ffffff');
 
   const setPdfContentRef = useCallback((node: HTMLDivElement) => {
     if (node) {
@@ -86,6 +87,12 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         stock: p.quantity,
         quantity: p.quantity > 0 ? 1 : 0,
       })));
+
+      // Capture the current background color for the PDF
+      const bodyStyles = window.getComputedStyle(document.body);
+      const bgColor = bodyStyles.getPropertyValue('--background');
+      const finalColor = `hsl(${bgColor.trim()})`;
+      setPdfBackgroundColor(finalColor);
     }
   }, [products, isOpen]);
 
@@ -98,7 +105,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     }
 
     try {
-        const canvas = await html2canvas(invoiceElement, { scale: 1.5, backgroundColor: '#ffffff' });
+        const canvas = await html2canvas(invoiceElement, { scale: 1.5, backgroundColor: pdfBackgroundColor });
         const imgData = canvas.toDataURL('image/jpeg', 0.9);
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -197,49 +204,49 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     if (!invoice) return null;
 
     return (
-      <div ref={forwardedRef} className="p-8 border rounded-lg bg-white text-black" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
+      <div ref={forwardedRef} className="p-8 rounded-lg bg-background text-foreground" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
         <header className="flex items-center justify-between pb-6 border-b">
             <RoopkothaLogo showTagline={true} />
             <div className="text-right">
                 <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
-                <p className="text-sm text-gray-500">{invoice.invoiceNumber}</p>
-                <p className="text-xs text-gray-500 mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground">{invoice.invoiceNumber}</p>
+                <p className="text-xs text-muted-foreground mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
             </div>
         </header>
         
         <section className="grid grid-cols-2 gap-8 my-6">
               <div className="space-y-2">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">Bill To</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bill To</h2>
                   <p className="text-sm font-medium">Name: {invoice.customerName}</p>
-                  <p className="text-sm text-gray-600">Phone No: {invoice.customerPhone}</p>
+                  <p className="text-sm text-muted-foreground">Phone No: {invoice.customerPhone}</p>
               </div>
               <div className="text-right space-y-1">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-600">From</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
                   <p className="font-bold text-primary">Roopkotha</p>
-                  <p className="text-xs text-gray-500">Professor Colony, C/O, Deshbandhu Pal</p>
-                  <p className="text-xs text-gray-500">Holding No :- 195/8, Ward no. 14</p>
-                  <p className="text-xs text-gray-500">Bolpur, Birbhum, West Bengal - 731204</p>
-                  <p className="text-xs text-gray-500"><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
-                  <p className="text-xs text-gray-500"><span className="font-semibold">Phone:</span> 9476468690</p>
+                  <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
+                  <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
+                  <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
+                  <p className="text-xs text-muted-foreground"><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
+                  <p className="text-xs text-muted-foreground"><span className="font-semibold">Phone:</span> 9476468690</p>
               </div>
         </section>
         
-        <section className="border border-gray-200 rounded-lg overflow-hidden mt-6">
+        <section className="border border-border rounded-lg overflow-hidden mt-6">
           <Table>
-            <TableHeader className="bg-gray-50">
+            <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-[50%] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Product</TableHead>
-                <TableHead className="w-[120px] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Quantity</TableHead>
-                <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Price</TableHead>
-                <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Total</TableHead>
+                <TableHead className="w-[50%] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product</TableHead>
+                <TableHead className="w-[120px] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantity</TableHead>
+                <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Price</TableHead>
+                <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invoice.items.map(item => (
-                <TableRow key={item.id} className="border-b border-gray-100">
+                <TableRow key={item.id} className="border-b border-border">
                   <TableCell className="font-medium px-4 py-3">
                     {item.name}
-                    {item.description && <p className="text-xs text-gray-500 font-normal">{item.description}</p>}
+                    {item.description && <p className="text-xs text-muted-foreground font-normal">{item.description}</p>}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">{item.quantity}</TableCell>
                   <TableCell className="text-right px-4 py-3">₹{item.price.toFixed(2)}</TableCell>
@@ -255,7 +262,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                {invoice.discountAmount > 0 && (
                 <TableRow>
                     <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Discount ({invoice.discountPercentage}%)</TableCell>
-                    <TableCell className="text-right font-medium px-4 py-2 text-red-600">-₹{invoice.discountAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium px-4 py-2 text-destructive">-₹{invoice.discountAmount.toFixed(2)}</TableCell>
                 </TableRow>
               )}
               <TableRow>
@@ -269,7 +276,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             </TableFooter>
           </Table>
         </section>
-        <footer className="text-center text-sm text-gray-500 pt-8 mt-8 border-t">
+        <footer className="text-center text-sm text-muted-foreground pt-8 mt-8 border-t">
               <p className="font-semibold">Thank you for shopping with us!
                                           Do visit again.</p>
         </footer>
@@ -281,40 +288,83 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
           <DialogDescription>
             Fill in the customer details and confirm the items to generate an invoice PDF.
           </DialogDescription>
         </DialogHeader>
-        <div id="invoice-form" className="p-2 space-y-6">
-            <header className="flex items-center justify-between pb-6 border-b">
-              <RoopkothaLogo />
-            </header>
-            
-            <section className="grid grid-cols-2 gap-8">
-                 <div className="space-y-4">
-                     <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bill To</h2>
-                     <div className="space-y-1">
-                         <Label htmlFor="customerName" className="text-xs">Customer Name</Label>
-                         <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+        <div id="invoice-form" className="grid md:grid-cols-2 gap-8 overflow-y-auto p-2 flex-1 min-h-0">
+            <div className="flex flex-col gap-6">
+                <header className="flex items-center justify-between pb-6 border-b">
+                  <RoopkothaLogo showTagline={false} width={150} height={36} />
+                </header>
+                
+                <section className="grid grid-cols-2 gap-8">
+                     <div className="space-y-4">
+                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bill To</h2>
+                         <div className="space-y-1">
+                             <Label htmlFor="customerName" className="text-xs">Customer Name</Label>
+                             <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                         </div>
+                         <div className="space-y-1">
+                             <Label htmlFor="customerPhone" className="text-xs">Customer Phone</Label>
+                             <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
+                         </div>
                      </div>
-                     <div className="space-y-1">
-                         <Label htmlFor="customerPhone" className="text-xs">Customer Phone</Label>
-                         <Input id="customerPhone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="1234567890" />
+                     <div className="text-right space-y-1">
+                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
+                         <p className="font-bold text-primary">Roopkotha</p>
+                         <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
+                         <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
+                         <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
                      </div>
-                 </div>
-                 <div className="text-right space-y-1">
-                     <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
-                     <p className="font-bold text-primary">Roopkotha</p>
-                     <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
-                     <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
-                     <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
-                 </div>
-            </section>
-            
-            <section className="border rounded-lg overflow-hidden mt-6">
+                </section>
+                
+                <section className="border rounded-lg overflow-hidden mt-auto">
+                  <Table>
+                    <TableFooter>
+                      <TableRow>
+                          <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
+                          <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                         <TableCell colSpan={2}></TableCell>
+                         <TableCell className="text-right font-medium">Discount</TableCell>
+                         <TableCell className="text-right font-medium">
+                            <div className="relative">
+                               <Input
+                                    type="number"
+                                    className="w-24 ml-auto text-right h-8 pr-7"
+                                    value={discountPercentage}
+                                    onChange={(e) => handleDiscountChange(e.target.value)}
+                                    min="0"
+                                    max="100"
+                                />
+                                <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            </div>
+                         </TableCell>
+                      </TableRow>
+                      {invoiceDetails.discountAmount > 0 && (
+                        <TableRow>
+                            <TableCell colSpan={3} className="text-right font-medium">Discount Amount</TableCell>
+                            <TableCell className="text-right font-medium text-destructive">-₹{invoiceDetails.discountAmount.toFixed(2)}</TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow>
+                          <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
+                          <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
+                      </TableRow>
+                      <TableRow className="bg-primary/10 font-bold">
+                          <TableCell colSpan={3} className="text-right text-primary text-base">Grand Total</TableCell>
+                          <TableCell className="text-right text-primary text-base">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </section>
+            </div>
+            <div className="border rounded-lg overflow-hidden flex flex-col">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -324,76 +374,43 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                     <TableHead className="w-[120px] text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {items.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.name}
-                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                      </TableCell>
-                      <TableCell>
-                          <Input
-                              type="number"
-                              className="w-20 mx-auto text-center h-8"
-                              value={item.quantity}
-                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
-                              onBlur={(e) => {
-                                if (!e.target.value) {
-                                  handleQuantityChange(item.id, 0);
-                                }
-                              }}
-                              min="0"
-                              max={item.stock}
-                              disabled={item.stock === 0}
-                          />
-                      </TableCell>
-                      <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-medium">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                      <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
-                      <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                     <TableCell colSpan={2}></TableCell>
-                     <TableCell className="text-right font-medium">Discount</TableCell>
-                     <TableCell className="text-right font-medium">
-                        <div className="relative">
-                           <Input
-                                type="number"
-                                className="w-24 ml-auto text-right h-8 pr-7"
-                                value={discountPercentage}
-                                onChange={(e) => handleDiscountChange(e.target.value)}
-                                min="0"
-                                max="100"
-                            />
-                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        </div>
-                     </TableCell>
-                  </TableRow>
-                  {invoiceDetails.discountAmount > 0 && (
-                    <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">Discount Amount</TableCell>
-                        <TableCell className="text-right font-medium text-destructive">-₹{invoiceDetails.discountAmount.toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                  <TableRow>
-                      <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
-                      <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-primary/10 font-bold">
-                      <TableCell colSpan={3} className="text-right text-primary text-base">Grand Total</TableCell>
-                      <TableCell className="text-right text-primary text-base">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
-                  </TableRow>
-                </TableFooter>
               </Table>
-            </section>
+               <div className="overflow-y-auto flex-1 min-h-0">
+                  <Table>
+                    <TableBody>
+                      {items.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium w-[50%]">
+                            {item.name}
+                            {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                          </TableCell>
+                          <TableCell className="w-[120px]">
+                              <Input
+                                  type="number"
+                                  className="w-20 mx-auto text-center h-8"
+                                  value={item.quantity}
+                                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                                  onBlur={(e) => {
+                                    if (!e.target.value) {
+                                      handleQuantityChange(item.id, 0);
+                                    }
+                                  }}
+                                  min="0"
+                                  max={item.stock}
+                                  disabled={item.stock === 0}
+                              />
+                          </TableCell>
+                          <TableCell className="w-[120px] text-right">₹{item.price.toFixed(2)}</TableCell>
+                          <TableCell className="w-[120px] text-right font-medium">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+            </div>
         </div>
         
-        <DialogFooter className="sm:justify-end pt-4">
+        <DialogFooter className="sm:justify-end pt-4 border-t">
             <>
                 <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
                 <Button onClick={handleProcessAndDownload} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>

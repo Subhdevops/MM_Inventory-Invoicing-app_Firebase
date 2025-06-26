@@ -45,7 +45,7 @@ export default function Header({ addProduct, onImportInventory, userRole }: Head
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <RoopkothaLogo />
+            <RoopkothaLogo showTagline={false} width={150} height={36} />
           </div>
           <div className="flex items-center gap-4">
              <ThemeToggle />
