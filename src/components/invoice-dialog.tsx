@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -210,7 +211,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
                 <p className="text-sm text-muted-foreground">Invoice number: {invoice.invoiceNumber}</p>
                 <p className="text-xs text-muted-foreground mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
-                <p className="text-xs text-muted-foreground">Time: {new Date(invoice.date).toLocaleTimeString()}</p>
+                <p className="text-xs text-muted-foreground">Time: {new Date(invoice.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}</p>
             </div>
         </header>
         
