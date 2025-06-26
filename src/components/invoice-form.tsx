@@ -4,7 +4,7 @@
 import React from 'react';
 import type { InvoiceItem } from '@/lib/types';
 import { Button } from "@/components/ui/button";
-import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,12 +47,6 @@ export function InvoiceForm({
 }: InvoiceFormProps) {
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Create Invoice</DialogTitle>
-        <DialogDescription>
-          Fill in the customer details and confirm the items to generate an invoice PDF.
-        </DialogDescription>
-      </DialogHeader>
       <div className="grid md:grid-cols-2 gap-8 overflow-y-auto p-2 flex-1 min-h-0">
           <div className="flex flex-col gap-6">
               <header className="flex items-center justify-between pb-6 border-b">
@@ -123,17 +117,16 @@ export function InvoiceForm({
               </section>
           </div>
           <div className="border rounded-lg overflow-hidden flex flex-col">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50%]">Product</TableHead>
-                  <TableHead className="w-[120px] text-center">Quantity</TableHead>
-                  <TableHead className="w-[120px] text-right">Price</TableHead>
-                  <TableHead className="w-[120px] text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-             <div className="overflow-y-auto flex-1 min-h-0">
+            <div className="overflow-y-auto flex-1 min-h-0">
                 <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50%]">Product</TableHead>
+                      <TableHead className="w-[120px] text-center">Quantity</TableHead>
+                      <TableHead className="w-[120px] text-right">Price</TableHead>
+                      <TableHead className="w-[120px] text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
                     {items.map((item: InvoiceItem) => (
                       <TableRow key={item.id}>

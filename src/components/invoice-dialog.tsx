@@ -286,21 +286,29 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh]">
         {!showSuccessScreen && (
-          <InvoiceForm
-            customerName={customerName}
-            setCustomerName={setCustomerName}
-            customerPhone={customerPhone}
-            setCustomerPhone={setCustomerPhone}
-            discountPercentage={discountPercentage}
-            handleDiscountChange={handleDiscountChange}
-            items={items}
-            handleQuantityChange={handleQuantityChange}
-            invoiceDetails={invoiceDetails}
-            onOpenChange={onOpenChange}
-            handleProcessAndDownload={handleProcessAndDownload}
-            isProcessing={isProcessing}
-            hasItemsToInvoice={hasItemsToInvoice}
-          />
+          <>
+            <DialogHeader>
+              <DialogTitle>Create Invoice</DialogTitle>
+              <DialogDescription>
+                Fill in the customer details and confirm the items to generate an invoice PDF.
+              </DialogDescription>
+            </DialogHeader>
+            <InvoiceForm
+              customerName={customerName}
+              setCustomerName={setCustomerName}
+              customerPhone={customerPhone}
+              setCustomerPhone={setCustomerPhone}
+              discountPercentage={discountPercentage}
+              handleDiscountChange={handleDiscountChange}
+              items={items}
+              handleQuantityChange={handleQuantityChange}
+              invoiceDetails={invoiceDetails}
+              onOpenChange={onOpenChange}
+              handleProcessAndDownload={handleProcessAndDownload}
+              isProcessing={isProcessing}
+              hasItemsToInvoice={hasItemsToInvoice}
+            />
+          </>
         )}
         {showSuccessScreen && (
           <SuccessScreen handleGoToHome={handleGoToHome} />
