@@ -26,21 +26,20 @@ import { Input } from "@/components/ui/input";
 import type { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-// Schema where all fields are optional.
+// Schema where all fields are optional. Empty strings are transformed to undefined
+// so they are ignored during the update.
 const bulkEditSchema = z.object({
-  price: z.preprocess(
-    (a) => (a === '' ? undefined : parseFloat(String(a))),
-    z.number().min(0, { message: "Price must be a positive number." }).optional()
-  ),
-  cost: z.preprocess(
-    (a) => (a === '' ? undefined : parseFloat(String(a))),
-    z.number().min(0, { message: "Cost must be a positive number." }).optional()
-  ),
-  quantity: z.preprocess(
-    (a) => (a === '' ? undefined : parseInt(String(a), 10)),
-    z.number().int().min(0, { message: "Quantity must be a positive integer." }).optional()
-  ),
+  price: z.string()
+    .transform(val => val === '' ? undefined : val)
+    .pipe(z.coerce.number({invalid_type_error: "Price must be a number."}).min(0).optional()),
+  cost: z.string()
+    .transform(val => val === '' ? undefined : val)
+    .pipe(z.coerce.number({invalid_type_error: "Cost must be a number."}).min(0).optional()),
+  quantity: z.string()
+    .transform(val => val === '' ? undefined : val)
+    .pipe(z.coerce.number({invalid_type_error: "Quantity must be a number."}).int().min(0).optional()),
 });
+
 
 type BulkEditDialogProps = {
   productIds: string[];
@@ -54,9 +53,9 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
   const form = useForm<z.infer<typeof bulkEditSchema>>({
     resolver: zodResolver(bulkEditSchema),
     defaultValues: {
-      price: undefined,
-      cost: undefined,
-      quantity: undefined,
+      price: '',
+      cost: '',
+      quantity: '',
     },
   });
 
@@ -110,7 +109,7 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
                 <FormItem>
                   <FormLabel>Selling Price (₹)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} value={field.value ?? ''} />
+                    <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -123,7 +122,7 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
                 <FormItem>
                   <FormLabel>Cost Price (₹)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} value={field.value ?? ''} />
+                    <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +135,7 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
                 <FormItem>
                   <FormLabel>Quantity</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g. 15" {...field} value={field.value ?? ''} />
+                    <Input type="number" placeholder="e.g. 15" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
