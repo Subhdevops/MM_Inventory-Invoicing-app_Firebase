@@ -7,19 +7,16 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import RoopkothaLogo from './icons/roopkotha-logo';
 import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
+import { DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
-const GST_RATE = 0.05; // 5%
 
 const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwardedRef: React.Ref<HTMLDivElement> }) => {
   if (!invoice) return null;
@@ -88,7 +85,7 @@ const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwar
               </TableRow>
             )}
             <TableRow>
-                <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({GST_RATE * 100}%)</TableCell>
+                <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({0.05 * 100}%)</TableCell>
                 <TableCell className="text-right font-medium px-4 py-2">₹{invoice.gstAmount.toFixed(2)}</TableCell>
             </TableRow>
             <TableRow className="bg-primary/10 font-bold">
@@ -225,7 +222,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const subtotal = items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
     const discountAmount = subtotal * (discountPercentage / 100);
     const subtotalAfterDiscount = subtotal - discountAmount;
-    const gstAmount = subtotalAfterDiscount * GST_RATE;
+    const gstAmount = subtotalAfterDiscount * 0.05;
     const grandTotal = subtotalAfterDiscount + gstAmount;
     return { subtotal, discountAmount, gstAmount, grandTotal };
   }, [items, discountPercentage]);
