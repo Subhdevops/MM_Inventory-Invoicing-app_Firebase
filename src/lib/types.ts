@@ -38,3 +38,13 @@ export type UserProfile = {
   email: string | null;
   role: 'admin' | 'user';
 };
+
+export type InvoiceItem = {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    cost: number;
+    stock: number;
+    quantity: number;
+};
