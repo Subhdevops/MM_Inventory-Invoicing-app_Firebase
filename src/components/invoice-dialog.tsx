@@ -107,7 +107,7 @@ const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
         <Image 
           src="/invoice-success.png" 
           alt="Invoice Created Successfully" 
-          width={800} 
+          width={300} 
           height={200}
           className="rounded-lg shadow-md"
         />
