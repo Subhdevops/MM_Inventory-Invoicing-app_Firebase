@@ -107,14 +107,10 @@ const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
         <Image 
           src="/invoice-success.png" 
           alt="Invoice Created Successfully" 
-          width={300} 
+          width={800} 
           height={200}
           className="rounded-lg shadow-md"
         />
-        <DialogHeader>
-          <DialogTitle className="text-2xl">Invoice Created!</DialogTitle>
-          <DialogDescription>The invoice PDF has been downloaded to your device.</DialogDescription>
-        </DialogHeader>
         <Button onClick={handleGoToHome} size="lg">Go to Home</Button>
     </div>
 );
