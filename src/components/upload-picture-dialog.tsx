@@ -50,12 +50,16 @@ export function UploadPictureDialog({ onUpload, disabled }: UploadPictureDialogP
   const handleUpload = async () => {
     if (!file) return;
     setIsUploading(true);
-    await onUpload(file);
-    setIsUploading(false);
-    setFile(null);
-    setPreviewUrl(null);
-    if(fileInputRef.current) fileInputRef.current.value = "";
-    setOpen(false);
+    try {
+      await onUpload(file);
+      setOpen(false); // Close dialog on success
+    } catch (error) {
+      // Error is caught and handled by the parent component's toast.
+      // The dialog will remain open for the user to retry or cancel.
+      console.error("Upload failed in dialog component.");
+    } finally {
+      setIsUploading(false); // Always stop loading indicator
+    }
   };
   
   const handleOpenChange = (isOpen: boolean) => {

@@ -480,9 +480,10 @@ export default function Home() {
       toast({
         id: toastId,
         title: "Upload Failed",
-        description: "Failed to upload picture.",
+        description: "Please check your Firebase Storage setup and security rules.",
         variant: "destructive",
       });
+      throw error; // Re-throw error to be caught by the dialog
     }
   };
 
