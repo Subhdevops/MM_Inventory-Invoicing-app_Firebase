@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Link as LinkIcon, Download, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Link as LinkIcon, Download, Loader2, Image as ImageIcon, Eye, X } from 'lucide-react';
 import type { SavedPicture } from '@/lib/types';
 import {
   AlertDialog,
@@ -37,6 +37,7 @@ type ViewPicturesDialogProps = {
 export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }: ViewPicturesDialogProps) {
   const [pictureToDelete, setPictureToDelete] = useState<SavedPicture | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [fullViewPicture, setFullViewPicture] = useState<SavedPicture | null>(null);
   const { toast } = useToast();
 
   const handleDelete = async () => {
@@ -74,32 +75,45 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
       });
     }
   };
+  
+  const handleDialogStateChange = (open: boolean) => {
+    if (!open) {
+      setFullViewPicture(null); // Ensure lightbox closes if main dialog closes
+    }
+    onOpenChange(open); // Propagate state change up
+  };
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <Dialog open={isOpen} onOpenChange={handleDialogStateChange}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Saved Pictures</DialogTitle>
             <DialogDescription>
-              Browse your saved designs and references. You can copy links, download, or delete them.
+              Browse your saved designs and references. Click an image to view it full screen.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-grow pr-4 -mr-4">
             {pictures.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
                 {pictures.map((pic) => (
-                  <Card key={pic.id} className="overflow-hidden">
+                  <Card key={pic.id} className="overflow-hidden group">
                     <CardContent className="p-0">
-                      <div className="aspect-square w-full relative bg-muted">
+                      <div 
+                        className="aspect-square w-full relative bg-muted cursor-pointer"
+                        onClick={() => setFullViewPicture(pic)}
+                      >
                         <Image
                           src={pic.url}
                           alt={pic.name}
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           style={{ objectFit: 'cover' }}
-                          className="hover:scale-105 transition-transform duration-300"
+                          className="group-hover:scale-105 transition-transform duration-300"
                         />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Eye className="text-white h-8 w-8" />
+                        </div>
                       </div>
                     </CardContent>
                     <CardFooter className="flex flex-col items-start p-3 bg-muted/50">
@@ -132,6 +146,34 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
           </ScrollArea>
         </DialogContent>
       </Dialog>
+      
+      {/* Full screen view overlay */}
+      {fullViewPicture && (
+        <div 
+            className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-in fade-in-0"
+            onClick={() => setFullViewPicture(null)}
+        >
+            <button 
+                className="absolute top-4 right-4 text-white hover:text-gray-300 z-[101]"
+                onClick={() => setFullViewPicture(null)}
+            >
+                <X className="h-8 w-8" />
+            </button>
+            <div 
+                className="relative w-full h-full"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <Image
+                    src={fullViewPicture.url}
+                    alt={fullViewPicture.name}
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    sizes="100vw"
+                />
+            </div>
+        </div>
+      )}
+
       <AlertDialog open={!!pictureToDelete} onOpenChange={(open) => !open && setPictureToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
