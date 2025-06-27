@@ -97,6 +97,16 @@ const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwar
       </section>
       <footer className="text-center text-sm text-muted-foreground pt-8 mt-8 border-t">
         <p className="font-semibold">Thank you for shopping with us! Do visit again.</p>
+        <div className="mt-8">
+            <Image
+                src="https://placehold.co/200x100.png"
+                alt="Signature or Stamp"
+                width={200}
+                height={100}
+                className="mx-auto"
+                data-ai-hint="signature stamp"
+            />
+        </div>
       </footer>
     </div>
   );
