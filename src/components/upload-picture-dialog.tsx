@@ -14,16 +14,16 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { UploadCloud, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 
-type UploadPictureDialogProps = {
+type UploadFileDialogProps = {
   onUpload: (file: File) => Promise<void>;
   disabled: boolean;
 };
 
-export function UploadPictureDialog({ onUpload, disabled }: UploadPictureDialogProps) {
+export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -37,13 +37,17 @@ export function UploadPictureDialog({ onUpload, disabled }: UploadPictureDialogP
        if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
           title: "File Too Large",
-          description: "Please select an image smaller than 5MB.",
+          description: "Please select a file smaller than 5MB.",
           variant: "destructive",
         });
         return;
       }
       setFile(selectedFile);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+      if (selectedFile.type.startsWith('image/')) {
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+      } else {
+        setPreviewUrl(null);
+      }
     }
   };
 
@@ -81,29 +85,35 @@ export function UploadPictureDialog({ onUpload, disabled }: UploadPictureDialogP
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Upload a Picture</DialogTitle>
+          <DialogTitle>Upload a File</DialogTitle>
           <DialogDescription>
-            Save a design or reference picture. It will be stored securely.
+            Save a design, document, or reference file. It will be stored securely. Max file size: 5MB.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          {previewUrl ? (
-             <div className="w-full h-64 relative rounded-md overflow-hidden border bg-muted/20">
-                <Image src={previewUrl} alt="Preview" fill style={{ objectFit: 'contain' }} />
-             </div>
-          ) : (
-             <label htmlFor="picture-upload" className="flex items-center justify-center w-full h-64 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="text-center text-muted-foreground">
-                    <ImageIcon className="mx-auto h-12 w-12" />
-                    <p className="mt-2">Click to select an image</p>
-                    <p className="text-xs">PNG, JPG, GIF up to 5MB</p>
-                </div>
-             </label>
-          )}
+          <label htmlFor="file-upload" className="flex items-center justify-center w-full h-64 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+            {previewUrl ? (
+              <div className="w-full h-full relative">
+                 <Image src={previewUrl} alt="Preview" fill style={{ objectFit: 'contain' }} />
+              </div>
+            ) : file ? (
+              <div className="text-center text-muted-foreground">
+                <FileIcon className="mx-auto h-12 w-12" />
+                <p className="mt-2 font-semibold">{file.name}</p>
+                <p className="text-xs">Click to choose a different file</p>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground">
+                  <UploadCloud className="mx-auto h-12 w-12" />
+                  <p className="mt-2">Click to select a file</p>
+                  <p className="text-xs">Images, PDF, DOC, TXT up to 5MB</p>
+              </div>
+            )}
+          </label>
           <Input 
-            id="picture-upload" 
+            id="file-upload" 
             type="file" 
-            accept="image/*" 
+            accept="image/*,application/pdf,.txt,.doc,.docx" 
             onChange={handleFileChange} 
             ref={fileInputRef}
             className="hidden"

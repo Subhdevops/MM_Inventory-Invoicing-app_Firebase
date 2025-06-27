@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct, UserProfile, SavedPicture } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile, SavedFile } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -17,7 +17,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
-import { ViewPicturesDialog } from '@/components/view-pictures-dialog';
+import { ViewFilesDialog } from '@/components/view-pictures-dialog';
 
 
 export default function Home() {
@@ -25,7 +25,7 @@ export default function Home() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [savedPictures, setSavedPictures] = useState<SavedPicture[]>([]);
+  const [savedFiles, setSavedFiles] = useState<SavedFile[]>([]);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
@@ -33,7 +33,7 @@ export default function Home() {
   const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
   const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
-  const [isViewPicturesOpen, setIsViewPicturesOpen] = useState(false);
+  const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
 
   useBarcodeScanner(setFilter);
 
@@ -105,20 +105,20 @@ export default function Home() {
       setIsProductsLoading(false);
     });
 
-    const savedPicturesQuery = query(collection(db, "savedPictures"), orderBy("createdAt", "desc"));
-    const unsubscribeSavedPictures = onSnapshot(savedPicturesQuery, (querySnapshot) => {
-        const picturesData: SavedPicture[] = querySnapshot.docs.map(doc => ({
+    const savedFilesQuery = query(collection(db, "savedFiles"), orderBy("createdAt", "desc"));
+    const unsubscribeSavedFiles = onSnapshot(savedFilesQuery, (querySnapshot) => {
+        const filesData: SavedFile[] = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-        } as SavedPicture));
-        setSavedPictures(picturesData);
+        } as SavedFile));
+        setSavedFiles(filesData);
     });
 
 
     return () => {
       unsubscribeProducts();
       unsubscribeInvoices();
-      unsubscribeSavedPictures();
+      unsubscribeSavedFiles();
     };
   }, [toast, user]);
 
@@ -453,24 +453,25 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
-  const handleUploadPicture = async (file: File) => {
+  const handleUploadFile = async (file: File) => {
     if (!file) return;
 
     const toastId = "upload-toast";
     toast({
       id: toastId,
-      title: "Uploading Picture...",
+      title: "Uploading File...",
       description: "Please wait while the file is being uploaded.",
     });
 
-    const storageRef = ref(storage, `savedPictures/${Date.now()}_${file.name}`);
+    const storageRef = ref(storage, `savedFiles/${Date.now()}_${file.name}`);
     try {
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      await addDoc(collection(db, "savedPictures"), {
+      await addDoc(collection(db, "savedFiles"), {
         name: file.name,
         url: downloadURL,
         createdAt: new Date().toISOString(),
+        fileType: file.type || 'application/octet-stream',
       });
       toast({
         id: toastId,
@@ -478,7 +479,7 @@ export default function Home() {
         description: `${file.name} has been saved.`,
       });
     } catch (error) {
-      console.error("Error uploading picture: ", error);
+      console.error("Error uploading file: ", error);
       toast({
         id: toastId,
         title: "Upload Failed",
@@ -489,44 +490,44 @@ export default function Home() {
     }
   };
 
-  const handleDeletePicture = async (pictureId: string, pictureUrl: string) => {
+  const handleDeleteFile = async (fileId: string, fileUrl: string) => {
     const toastId = "delete-toast";
     toast({
       id: toastId,
-      title: "Deleting Picture...",
+      title: "Deleting File...",
       description: "Please wait while the file is being removed.",
     });
 
     try {
       // Delete from Firestore
-      await deleteDoc(doc(db, "savedPictures", pictureId));
+      await deleteDoc(doc(db, "savedFiles", fileId));
       
       // Delete from Storage
-      const storageRef = ref(storage, pictureUrl);
+      const storageRef = ref(storage, fileUrl);
       await deleteObject(storageRef);
       
       toast({
         id: toastId,
         title: "Deletion Successful",
-        description: "The picture has been removed.",
+        description: "The file has been removed.",
         variant: "destructive"
       });
     } catch (error: any) {
-      console.error("Error deleting picture:", error);
+      console.error("Error deleting file:", error);
       // Handle cases where file might not exist in storage anymore but doc does
       if (error.code === 'storage/object-not-found') {
-         await deleteDoc(doc(db, "savedPictures", pictureId)); // Clean up firestore doc anyway
+         await deleteDoc(doc(db, "savedFiles", fileId)); // Clean up firestore doc anyway
          toast({
            id: toastId,
            title: "Deletion Successful",
-           description: "The picture record was removed.",
+           description: "The file record was removed.",
            variant: "destructive"
          });
       } else {
         toast({
           id: toastId,
           title: "Deletion Failed",
-          description: "Could not remove the picture. Please try again.",
+          description: "Could not remove the file. Please try again.",
           variant: "destructive",
         });
       }
@@ -648,9 +649,9 @@ export default function Home() {
           onClearAllInvoices={clearAllInvoices}
           onResetInvoiceCounter={handleResetInvoiceCounter}
           userRole={userRole}
-          savedPicturesCount={savedPictures.length}
-          onUploadPicture={handleUploadPicture}
-          onViewPictures={() => setIsViewPicturesOpen(true)}
+          savedFilesCount={savedFiles.length}
+          onUploadFile={handleUploadFile}
+          onViewFiles={() => setIsViewFilesOpen(true)}
         />
         <InventoryTable
           products={products}
@@ -667,11 +668,11 @@ export default function Home() {
           userRole={userRole}
         />
       </main>
-      <ViewPicturesDialog 
-        pictures={savedPictures}
-        isOpen={isViewPicturesOpen}
-        onOpenChange={setIsViewPicturesOpen}
-        onDelete={handleDeletePicture}
+      <ViewFilesDialog 
+        files={savedFiles}
+        isOpen={isViewFilesOpen}
+        onOpenChange={setIsViewFilesOpen}
+        onDelete={handleDeleteFile}
       />
     </div>
   );

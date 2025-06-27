@@ -28,12 +28,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, Image as ImageIcon, Eye } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
-import { UploadPictureDialog } from "./upload-picture-dialog";
+import { UploadFileDialog } from "./upload-picture-dialog";
 
 type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable';
 
@@ -61,9 +61,9 @@ type DashboardProps = {
   onClearAllInvoices: () => Promise<void>;
   onResetInvoiceCounter: (newStartNumber?: number) => Promise<void>;
   userRole: UserProfile['role'] | null;
-  savedPicturesCount: number;
-  onUploadPicture: (file: File) => Promise<void>;
-  onViewPictures: () => void;
+  savedFilesCount: number;
+  onUploadFile: (file: File) => Promise<void>;
+  onViewFiles: () => void;
 };
 
 const chartMeta: Record<ChartView, {
@@ -98,7 +98,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedPicturesCount, onUploadPicture, onViewPictures }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, onUploadFile, onViewFiles }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -165,17 +165,17 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
         </Card>
          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saved Pictures</CardTitle>
+            <CardTitle className="text-sm font-medium">Saved Files</CardTitle>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={onViewPictures} disabled={isLoading || savedPicturesCount === 0}>
+              <Button variant="outline" size="sm" onClick={onViewFiles} disabled={isLoading || savedFilesCount === 0}>
                 <Eye className="h-4 w-4" />
               </Button>
-              <UploadPictureDialog onUpload={onUploadPicture} disabled={isLoading || !isAdmin} />
+              <UploadFileDialog onUpload={onUploadFile} disabled={isLoading || !isAdmin} />
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{savedPicturesCount}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Designs & references you've saved.</p>}
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{savedFilesCount}</div>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Designs, documents, and references.</p>}
           </CardContent>
         </Card>
         <Card>

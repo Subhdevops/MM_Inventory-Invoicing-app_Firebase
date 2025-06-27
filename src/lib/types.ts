@@ -49,9 +49,10 @@ export type InvoiceItem = {
     quantity: number;
 };
 
-export type SavedPicture = {
+export type SavedFile = {
   id: string;
   name: string;
   url: string;
   createdAt: string;
+  fileType: string;
 };

@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Link as LinkIcon, Download, Loader2, Image as ImageIcon, Eye, X } from 'lucide-react';
-import type { SavedPicture } from '@/lib/types';
+import { Trash2, Link as LinkIcon, Download, Loader2, File as FileIcon, Eye, X, FolderOpen } from 'lucide-react';
+import type { SavedFile } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,25 +27,25 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
-type ViewPicturesDialogProps = {
-  pictures: SavedPicture[];
+type ViewFilesDialogProps = {
+  files: SavedFile[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onDelete: (pictureId: string, pictureUrl: string) => Promise<void>;
+  onDelete: (fileId: string, fileUrl: string) => Promise<void>;
 };
 
-export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }: ViewPicturesDialogProps) {
-  const [pictureToDelete, setPictureToDelete] = useState<SavedPicture | null>(null);
+export function ViewFilesDialog({ files, isOpen, onOpenChange, onDelete }: ViewFilesDialogProps) {
+  const [fileToDelete, setFileToDelete] = useState<SavedFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [fullViewPicture, setFullViewPicture] = useState<SavedPicture | null>(null);
+  const [fullViewFile, setFullViewFile] = useState<SavedFile | null>(null);
   const { toast } = useToast();
 
   const handleDelete = async () => {
-    if (!pictureToDelete) return;
+    if (!fileToDelete) return;
     setIsDeleting(true);
     try {
-      await onDelete(pictureToDelete.id, pictureToDelete.url);
-      setPictureToDelete(null);
+      await onDelete(fileToDelete.id, fileToDelete.url);
+      setFileToDelete(null);
     } finally {
       setIsDeleting(false);
     }
@@ -53,32 +53,40 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
 
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
-    toast({ title: 'Link Copied!', description: 'The image URL has been copied to your clipboard.' });
+    toast({ title: 'Link Copied!', description: 'The file URL has been copied to your clipboard.' });
   };
   
-  const handleDownload = async (picture: SavedPicture) => {
+  const handleDownload = async (file: SavedFile) => {
     try {
-      const response = await fetch(picture.url);
+      const response = await fetch(file.url);
       const blob = await response.blob();
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = picture.name;
+      link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error("Failed to download image", error);
+      console.error("Failed to download file", error);
       toast({
         title: "Download Failed",
-        description: "Could not download the image. Please try again.",
+        description: "Could not download the file. Please try again.",
         variant: "destructive"
       });
     }
   };
   
+  const handleView = (file: SavedFile) => {
+    if (file.fileType.startsWith('image/')) {
+      setFullViewFile(file);
+    } else {
+      window.open(file.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   const handleDialogStateChange = (open: boolean) => {
     if (!open) {
-      setFullViewPicture(null); // Ensure lightbox closes if main dialog closes
+      setFullViewFile(null); // Ensure lightbox closes if main dialog closes
     }
     onOpenChange(open); // Propagate state change up
   };
@@ -88,47 +96,48 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
       <Dialog open={isOpen} onOpenChange={handleDialogStateChange}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Saved Pictures</DialogTitle>
+            <DialogTitle>Saved Files</DialogTitle>
             <DialogDescription>
-              Browse your saved designs and references. Click an image to view it full screen.
+              Browse your saved files. Click view to open an image preview or open a document.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-grow pr-4 -mr-4">
-            {pictures.length > 0 ? (
+            {files.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4">
-                {pictures.map((pic) => (
-                  <Card key={pic.id} className="overflow-hidden group">
-                    <CardContent className="p-0">
-                      <div 
-                        className="aspect-square w-full relative bg-muted cursor-pointer"
-                        onClick={() => setFullViewPicture(pic)}
-                      >
-                        <Image
-                          src={pic.url}
-                          alt={pic.name}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          style={{ objectFit: 'cover' }}
-                          className="group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <Eye className="text-white h-8 w-8" />
-                        </div>
+                {files.map((file) => (
+                  <Card key={file.id} className="overflow-hidden group flex flex-col">
+                    <CardContent className="p-0 flex-grow">
+                      <div className="aspect-square w-full relative bg-muted flex items-center justify-center">
+                        {file.fileType.startsWith('image/') ? (
+                          <Image
+                            src={file.url}
+                            alt={file.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                            style={{ objectFit: 'cover' }}
+                            className="group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <FileIcon className="w-16 h-16 text-muted-foreground" />
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter className="flex flex-col items-start p-3 bg-muted/50">
-                        <p className="text-sm font-medium truncate w-full" title={pic.name}>{pic.name}</p>
+                        <p className="text-sm font-medium truncate w-full" title={file.name}>{file.name}</p>
                         <p className="text-xs text-muted-foreground">
-                            {new Date(pic.createdAt).toLocaleDateString()}
+                            {new Date(file.createdAt).toLocaleDateString()}
                         </p>
                         <div className="flex items-center justify-end w-full gap-1 mt-2">
-                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyLink(pic.url)}>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleView(file)}>
+                                <Eye className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyLink(file.url)}>
                                 <LinkIcon className="h-4 w-4" />
                            </Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(pic)}>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(file)}>
                                 <Download className="h-4 w-4" />
                            </Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setPictureToDelete(pic)}>
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setFileToDelete(file)}>
                                 <Trash2 className="h-4 w-4" />
                            </Button>
                         </div>
@@ -138,24 +147,24 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center text-muted-foreground">
-                <ImageIcon className="h-16 w-16 mb-4" />
-                <h3 className="text-lg font-semibold">No Pictures Saved</h3>
-                <p className="text-sm">Upload a picture to get started.</p>
+                <FolderOpen className="h-16 w-16 mb-4" />
+                <h3 className="text-lg font-semibold">No Files Saved</h3>
+                <p className="text-sm">Upload a file to get started.</p>
               </div>
             )}
           </ScrollArea>
         </DialogContent>
       </Dialog>
       
-      {/* Full screen view overlay */}
-      {fullViewPicture && (
+      {/* Full screen image view overlay */}
+      {fullViewFile && (
         <div 
             className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-in fade-in-0"
-            onClick={() => setFullViewPicture(null)}
+            onClick={() => setFullViewFile(null)}
         >
             <button 
                 className="absolute top-4 right-4 text-white hover:text-gray-300 z-[101]"
-                onClick={() => setFullViewPicture(null)}
+                onClick={() => setFullViewFile(null)}
             >
                 <X className="h-8 w-8" />
             </button>
@@ -164,8 +173,8 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
                 onClick={(e) => e.stopPropagation()}
             >
                 <Image
-                    src={fullViewPicture.url}
-                    alt={fullViewPicture.name}
+                    src={fullViewFile.url}
+                    alt={fullViewFile.name}
                     fill
                     style={{ objectFit: 'contain' }}
                     sizes="100vw"
@@ -174,12 +183,12 @@ export function ViewPicturesDialog({ pictures, isOpen, onOpenChange, onDelete }:
         </div>
       )}
 
-      <AlertDialog open={!!pictureToDelete} onOpenChange={(open) => !open && setPictureToDelete(null)}>
+      <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the picture from your storage.
+              This action cannot be undone. This will permanently delete the file from your storage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
