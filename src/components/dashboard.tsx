@@ -28,7 +28,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
@@ -55,6 +55,7 @@ type DashboardProps = {
   totalInvoices: number;
   totalRevenue: number;
   totalProfit: number;
+  totalGst: number;
   isLoading: boolean;
   onClearAllInvoices: () => Promise<void>;
   onResetInvoiceCounter: (newStartNumber?: number) => Promise<void>;
@@ -93,7 +94,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -144,6 +145,18 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
               new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)
             }</div>}
             {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total profit after costs</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total GST Collected</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{
+              new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalGst)
+            }</div>}
+            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total GST from all sales</p>}
           </CardContent>
         </Card>
         <Card>

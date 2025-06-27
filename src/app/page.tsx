@@ -457,6 +457,10 @@ export default function Home() {
     }, 0);
   }, [invoices]);
 
+  const totalGst = useMemo(() => {
+    return invoices.reduce((acc, inv) => acc + inv.gstAmount, 0);
+  }, [invoices]);
+
   const topStockedData = useMemo(() => {
     return [...products]
       .sort((a, b) => b.quantity - a.quantity)
@@ -543,6 +547,7 @@ export default function Home() {
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
           totalProfit={totalProfit}
+          totalGst={totalGst}
           isLoading={isLoading}
           onClearAllInvoices={clearAllInvoices}
           onResetInvoiceCounter={handleResetInvoiceCounter}
