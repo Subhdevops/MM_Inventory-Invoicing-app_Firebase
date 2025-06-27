@@ -48,3 +48,10 @@ export type InvoiceItem = {
     stock: number;
     quantity: number;
 };
+
+export type SavedPicture = {
+  id: string;
+  name: string;
+  url: string;
+  createdAt: string;
+};

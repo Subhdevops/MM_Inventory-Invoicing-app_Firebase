@@ -3,15 +3,16 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct, UserProfile } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile, SavedPicture } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
-import { db, auth } from '@/lib/firebase';
+import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function Home() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [savedPictures, setSavedPictures] = useState<SavedPicture[]>([]);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
@@ -101,9 +103,20 @@ export default function Home() {
       setIsProductsLoading(false);
     });
 
+    const savedPicturesQuery = query(collection(db, "savedPictures"), orderBy("createdAt", "desc"));
+    const unsubscribeSavedPictures = onSnapshot(savedPicturesQuery, (querySnapshot) => {
+        const picturesData: SavedPicture[] = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as SavedPicture));
+        setSavedPictures(picturesData);
+    });
+
+
     return () => {
       unsubscribeProducts();
       unsubscribeInvoices();
+      unsubscribeSavedPictures();
     };
   }, [toast, user]);
 
@@ -438,6 +451,41 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
+  const handleUploadPicture = async (file: File) => {
+    if (!file) return;
+
+    const toastId = "upload-toast";
+    toast({
+      id: toastId,
+      title: "Uploading Picture...",
+      description: "Please wait while the file is being uploaded.",
+    });
+
+    const storageRef = ref(storage, `savedPictures/${Date.now()}_${file.name}`);
+    try {
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      await addDoc(collection(db, "savedPictures"), {
+        name: file.name,
+        url: downloadURL,
+        createdAt: new Date().toISOString(),
+      });
+      toast({
+        id: toastId,
+        title: "Upload Successful",
+        description: `${file.name} has been saved.`,
+      });
+    } catch (error) {
+      console.error("Error uploading picture: ", error);
+      toast({
+        id: toastId,
+        title: "Upload Failed",
+        description: "Failed to upload picture.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -552,6 +600,8 @@ export default function Home() {
           onClearAllInvoices={clearAllInvoices}
           onResetInvoiceCounter={handleResetInvoiceCounter}
           userRole={userRole}
+          savedPicturesCount={savedPictures.length}
+          onUploadPicture={handleUploadPicture}
         />
         <InventoryTable
           products={products}
