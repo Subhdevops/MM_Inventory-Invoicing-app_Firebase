@@ -28,7 +28,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, Image as ImageIcon } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, Image as ImageIcon, Eye } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
@@ -63,6 +63,7 @@ type DashboardProps = {
   userRole: UserProfile['role'] | null;
   savedPicturesCount: number;
   onUploadPicture: (file: File) => Promise<void>;
+  onViewPictures: () => void;
 };
 
 const chartMeta: Record<ChartView, {
@@ -97,7 +98,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedPicturesCount, onUploadPicture }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedPicturesCount, onUploadPicture, onViewPictures }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -165,7 +166,12 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saved Pictures</CardTitle>
-            <UploadPictureDialog onUpload={onUploadPicture} disabled={isLoading || !isAdmin} />
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" onClick={onViewPictures} disabled={isLoading || savedPicturesCount === 0}>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <UploadPictureDialog onUpload={onUploadPicture} disabled={isLoading || !isAdmin} />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{savedPicturesCount}</div>}

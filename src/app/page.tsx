@@ -12,11 +12,12 @@ import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import Papa from 'papaparse';
 import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
+import { ViewPicturesDialog } from '@/components/view-pictures-dialog';
 
 
 export default function Home() {
@@ -32,6 +33,7 @@ export default function Home() {
   const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
   const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
+  const [isViewPicturesOpen, setIsViewPicturesOpen] = useState(false);
 
   useBarcodeScanner(setFilter);
 
@@ -487,6 +489,51 @@ export default function Home() {
     }
   };
 
+  const handleDeletePicture = async (pictureId: string, pictureUrl: string) => {
+    const toastId = "delete-toast";
+    toast({
+      id: toastId,
+      title: "Deleting Picture...",
+      description: "Please wait while the file is being removed.",
+    });
+
+    try {
+      // Delete from Firestore
+      await deleteDoc(doc(db, "savedPictures", pictureId));
+      
+      // Delete from Storage
+      const storageRef = ref(storage, pictureUrl);
+      await deleteObject(storageRef);
+      
+      toast({
+        id: toastId,
+        title: "Deletion Successful",
+        description: "The picture has been removed.",
+        variant: "destructive"
+      });
+    } catch (error: any) {
+      console.error("Error deleting picture:", error);
+      // Handle cases where file might not exist in storage anymore but doc does
+      if (error.code === 'storage/object-not-found') {
+         await deleteDoc(doc(db, "savedPictures", pictureId)); // Clean up firestore doc anyway
+         toast({
+           id: toastId,
+           title: "Deletion Successful",
+           description: "The picture record was removed.",
+           variant: "destructive"
+         });
+      } else {
+        toast({
+          id: toastId,
+          title: "Deletion Failed",
+          description: "Could not remove the picture. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
+    }
+  };
+
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -603,6 +650,7 @@ export default function Home() {
           userRole={userRole}
           savedPicturesCount={savedPictures.length}
           onUploadPicture={handleUploadPicture}
+          onViewPictures={() => setIsViewPicturesOpen(true)}
         />
         <InventoryTable
           products={products}
@@ -619,6 +667,12 @@ export default function Home() {
           userRole={userRole}
         />
       </main>
+      <ViewPicturesDialog 
+        pictures={savedPictures}
+        isOpen={isViewPicturesOpen}
+        onOpenChange={setIsViewPicturesOpen}
+        onDelete={handleDeletePicture}
+      />
     </div>
   );
 }
