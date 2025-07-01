@@ -18,6 +18,7 @@ import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
 import { ViewFilesDialog } from '@/components/view-pictures-dialog';
+import { useIdleTimeout } from '@/hooks/use-idle-timeout';
 
 
 export default function Home() {
@@ -35,6 +36,7 @@ export default function Home() {
   const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
   const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
 
+  useIdleTimeout(900000); // 15 minutes in milliseconds
   useBarcodeScanner(setFilter);
 
   useEffect(() => {
