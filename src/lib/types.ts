@@ -37,6 +37,7 @@ export type UserProfile = {
   uid: string;
   email: string | null;
   role: 'admin' | 'user';
+  lastSignOutTimestamp?: number;
 };
 
 export type InvoiceItem = {

@@ -5,7 +5,7 @@ import AddProductDialog from './add-product-dialog';
 import ImportInventoryDialog from './import-inventory-dialog';
 import type { Product, UserProfile } from '@/lib/types';
 import { Button } from './ui/button';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut, User as UserIcon } from 'lucide-react';
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { doc, updateDoc } from 'firebase/firestore';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
@@ -33,7 +34,16 @@ export default function Header({ addProduct, onImportInventory, userRole }: Head
   const { toast } = useToast();
 
   const handleLogout = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
     try {
+      // Signal global logout first
+      const userRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userRef, {
+          lastSignOutTimestamp: new Date().getTime()
+      });
+
       await signOut(auth);
       toast({
         title: "Logged Out",
