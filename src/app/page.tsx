@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
 import { ViewFilesDialog } from '@/components/view-pictures-dialog';
 import { useIdleTimeout } from '@/hooks/use-idle-timeout';
+import HummingbirdAnimation from '@/components/hummingbird-animation';
 
 
 export default function Home() {
@@ -633,6 +634,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full bg-background">
+      <HummingbirdAnimation />
       <Header addProduct={addProduct} onImportInventory={handleImportInventory} userRole={userRole} />
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
         <FirebaseConfigWarning />
