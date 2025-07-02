@@ -9,31 +9,45 @@ import { auth, db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { useToast } from './use-toast';
 
+const SESSION_SIGN_IN_TIME_KEY = 'roopkotha_session_signin_time';
+
 export const useMultiDeviceLogoutListener = (user: User | null | undefined) => {
     const { toast } = useToast();
-    const initialSignInTime = useRef<number | null>(null);
+    // This ref holds the sign-in time for the current session.
+    // It's initialized from sessionStorage to persist across refreshes.
+    const sessionSignInTime = useRef<number | null>(null);
 
     useEffect(() => {
         if (!user) {
-            initialSignInTime.current = null;
+            // User logged out, clear session storage and ref
+            sessionStorage.removeItem(SESSION_SIGN_IN_TIME_KEY);
+            sessionSignInTime.current = null;
             return;
         }
 
-        // Store the sign-in time of the current session when the user object first becomes available.
-        // This ensures we don't use a potentially updated lastSignInTime from a token refresh.
-        if (initialSignInTime.current === null && user.metadata.lastSignInTime) {
-            initialSignInTime.current = new Date(user.metadata.lastSignInTime).getTime();
+        // Try to get sign-in time from session storage first
+        const storedTime = sessionStorage.getItem(SESSION_SIGN_IN_TIME_KEY);
+
+        if (storedTime) {
+            sessionSignInTime.current = parseInt(storedTime, 10);
+        } else {
+            // If not in storage, this is a new session.
+            // Use current time and store it.
+            const now = new Date().getTime();
+            sessionSignInTime.current = now;
+            sessionStorage.setItem(SESSION_SIGN_IN_TIME_KEY, now.toString());
         }
 
         const userRef = doc(db, 'users', user.uid);
         
         const unsubscribe = onSnapshot(userRef, (docSnap) => {
-            if (docSnap.exists() && initialSignInTime.current) {
+            if (docSnap.exists() && sessionSignInTime.current) {
                 const userProfile = docSnap.data() as UserProfile;
                 const lastSignOut = userProfile.lastSignOutTimestamp;
 
-                if (lastSignOut && lastSignOut > initialSignInTime.current) {
-                    unsubscribe(); // Stop listening to prevent loops
+                // If a logout happened after this session started, sign out.
+                if (lastSignOut && lastSignOut > sessionSignInTime.current) {
+                    unsubscribe(); // Stop listening to prevent loops or multiple toasts
                     signOut(auth).then(() => {
                         toast({
                             title: "Signed Out",
