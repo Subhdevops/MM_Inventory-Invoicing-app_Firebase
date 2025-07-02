@@ -26,18 +26,18 @@ const PriceTag = ({ product }: { product: Product }) => (
       <RoopkothaLogo showTagline={true} width={150} height={36} />
     </div>
 
-    <div style={{ marginTop: '2px' }}>
+    <div style={{ marginTop: '0' }}>
       <QRCodeCanvas
         value={product.barcode}
-        size={40}
+        size={36}
         bgColor={"#ffffff"}
         fgColor={"#000000"}
-        level={"Q"}
+        level={"H"}
         includeMargin={false}
       />
     </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1px 0', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0', width: '100%' }}>
       <p style={{ fontSize: '9pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
         {product.name}
       </p>
@@ -50,7 +50,7 @@ const PriceTag = ({ product }: { product: Product }) => (
         {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '12px' }}>
+    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
