@@ -26,7 +26,7 @@ const PriceTag = ({ product }: { product: Product }) => (
       <RoopkothaLogo showTagline={true} width={150} height={36} />
     </div>
 
-    <div style={{ margin: '1px 0' }}>
+    <div style={{ margin: '0' }}>
       <QRCodeCanvas
         value={product.barcode}
         size={35}
