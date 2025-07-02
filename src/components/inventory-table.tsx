@@ -36,6 +36,7 @@ import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, File
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
+import { Badge } from '@/components/ui/badge';
 
 
 type InventoryTableProps = {
@@ -65,6 +66,13 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   const isAdmin = userRole === 'admin';
+
+  const { availableCount, soldOutCount } = useMemo(() => {
+    return {
+      availableCount: products.filter(p => p.quantity > 0).length,
+      soldOutCount: products.filter(p => p.quantity === 0).length
+    };
+  }, [products]);
 
   const handleScan = useCallback((barcode: string) => {
     onScan(barcode);
@@ -139,7 +147,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     <section className="space-y-6">
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -157,6 +165,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             >
                 <Camera className="h-4 w-4" />
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">Available: {availableCount}</Badge>
+            <Badge variant="destructive">Sold Out: {soldOutCount}</Badge>
           </div>
         </div>
         {isAdmin && selectedRows.length > 0 && (
