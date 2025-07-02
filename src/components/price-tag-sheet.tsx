@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -50,7 +49,7 @@ const PriceTag = ({ product }: { product: Product }) => (
         {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '2px' }}>
+    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '5px' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
