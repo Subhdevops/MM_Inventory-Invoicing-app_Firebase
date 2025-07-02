@@ -8,7 +8,7 @@ import RoopkothaLogo from './icons/roopkotha-logo';
 const PriceTag = ({ product }: { product: Product }) => (
   <div style={{
     border: '1px solid #ccc',
-    padding: '10px',
+    padding: '8px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
@@ -20,19 +20,25 @@ const PriceTag = ({ product }: { product: Product }) => (
     fontFamily: 'Inter, sans-serif',
     overflow: 'hidden',
     backgroundColor: 'white',
+    lineHeight: '1.2',
   }}>
-    <div style={{ transform: 'scale(0.7)', transformOrigin: 'top center', marginBottom: '-10px', height: '36px' }}>
-      <RoopkothaLogo showTagline={false} width={150} height={36} />
+    <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '2px' }}>
+      <RoopkothaLogo showTagline={true} width={150} height={36} />
     </div>
-    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '5px 0', width: '100%' }}>
-      <p style={{ fontSize: '11pt', fontWeight: '600', margin: 0, wordBreak: 'break-word' }}>
+    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
+      <p style={{ fontSize: '10pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
         {product.name}
       </p>
-      <p style={{ fontSize: '7pt', color: '#555', margin: '4px 0', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-        {product.id}
+      {product.description && (
+        <p style={{ fontSize: '7pt', color: '#555', margin: '2px 0', wordBreak: 'break-word', fontStyle: 'italic' }}>
+          {product.description}
+        </p>
+      )}
+      <p style={{ fontSize: '7pt', color: '#333', marginTop: '4px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+        {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '16pt', fontWeight: 'bold', margin: 0 }}>
+    <p style={{ fontSize: '14pt', fontWeight: 'bold', margin: '4px 0 0 0' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
