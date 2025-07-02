@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeError, Html5QrcodeResult } from 'html5-qrcode';
 import {
   Dialog,
@@ -25,72 +25,76 @@ const qrcodeRegionId = "camera-scanner-region";
 export function CameraScannerDialog({ isOpen, onOpenChange, onScan }: CameraScannerDialogProps) {
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const requestRef = useRef<number>();
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    // Cleanup function to stop the scanner safely
+    const cleanup = () => {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+      if (html5QrCodeRef.current?.isScanning) {
+        html5QrCodeRef.current.stop().catch(err => {
+          // It's possible the scanner was already stopped. We can ignore this error.
+          console.error("Failed to stop QR code scanner gracefully.", err);
+        });
+        html5QrCodeRef.current = null;
+      }
+    };
 
-    const html5QrCode = new Html5Qrcode(qrcodeRegionId);
-    let isScannerStopped = false;
-
-    const startScanner = async () => {
-      setError(null);
-      const config = {
-        fps: 10,
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-          const qrboxSize = Math.floor(minEdge * 0.8);
-          return { width: qrboxSize, height: qrboxSize };
-        },
-        aspectRatio: 1.0,
-      };
-
-      const onScanSuccess = (decodedText: string, decodedResult: Html5QrcodeResult) => {
-        if (!isScannerStopped) {
-            isScannerStopped = true;
-            onScan(decodedText);
-            onOpenChange(false);
+    if (isOpen) {
+      // Use requestAnimationFrame to ensure the DOM is ready before starting
+      requestRef.current = requestAnimationFrame(() => {
+        if (!html5QrCodeRef.current) {
+            html5QrCodeRef.current = new Html5Qrcode(qrcodeRegionId);
         }
-      };
-      
-      const onScanFailure = (errorMessage: string, error: Html5QrcodeError) => {
-        // This callback is called frequently, so we typically ignore it.
-      };
+        const scanner = html5QrCodeRef.current;
 
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          onScanSuccess,
-          onScanFailure
-        );
-      } catch (err: any) {
-        if (!isScannerStopped) {
-            const errorMessage = typeof err === 'string' ? err : err.message;
-            setError(errorMessage);
-            toast({
-              variant: 'destructive',
-              title: 'Camera Error',
-              description: `Could not start scanner: ${errorMessage}`,
+        const config = {
+          fps: 10,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdge * 0.8);
+            return { width: qrboxSize, height: qrboxSize };
+          },
+          aspectRatio: 1.0,
+        };
+  
+        const onScanSuccess = (decodedText: string, decodedResult: Html5QrcodeResult) => {
+          onOpenChange(false);
+          onScan(decodedText);
+        };
+  
+        const onScanFailure = (errorMessage: string, error: Html5QrcodeError) => {
+          // This callback is called frequently. We can ignore it.
+        };
+
+        if (!scanner.isScanning) {
+            scanner.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).catch((err: any) => {
+                const errorMessage = typeof err === 'string' ? err : err.message;
+                setError(errorMessage);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera Error',
+                    description: `Could not start scanner: ${errorMessage}`,
+                });
             });
         }
-      }
-    };
+      });
+    } else {
+      cleanup();
+    }
     
-    // Give a small delay for the dialog animation to complete.
-    const timer = setTimeout(startScanner, 100);
-
-    return () => {
-      clearTimeout(timer);
-      isScannerStopped = true;
-      if (html5QrCode.isScanning) {
-        html5QrCode.stop().catch(err => {
-          console.error("Failed to stop QR code scanner.", err);
-        });
-      }
-    };
-  }, [isOpen, onOpenChange, onScan, toast]);
+    // This return statement is the effect's cleanup function.
+    // It runs when the component unmounts or when `isOpen` changes.
+    return cleanup;
+  }, [isOpen, onScan, onOpenChange, toast]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
