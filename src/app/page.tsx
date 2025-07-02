@@ -49,17 +49,19 @@ export default function Home() {
   const handleScanAndAdd = (barcode: string) => {
     const product = products.find(p => p.barcode === barcode);
     if (product) {
-      if (product.quantity > 0) {
+      const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
+
+      if (alreadyScannedCount >= product.quantity) {
+        toast({
+          title: "Stock Limit Reached",
+          description: `All available units of ${product.name} have been added.`,
+          variant: "destructive",
+        });
+      } else {
         setScannedProducts(prev => [...prev, product]);
         toast({
           title: "Item Added",
           description: `${product.name} added to the scanning session.`,
-        });
-      } else {
-        toast({
-          title: "Out of Stock",
-          description: `${product.name} is out of stock and cannot be added.`,
-          variant: "destructive",
         });
       }
     } else {
@@ -780,3 +782,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
