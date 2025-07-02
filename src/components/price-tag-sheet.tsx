@@ -11,7 +11,6 @@ const PriceTag = ({ product }: { product: Product }) => (
     padding: '8px',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between',
     alignItems: 'center',
     textAlign: 'center',
     height: '100%',
@@ -25,7 +24,8 @@ const PriceTag = ({ product }: { product: Product }) => (
     <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '2px' }}>
       <RoopkothaLogo showTagline={true} width={150} height={36} />
     </div>
-    <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
+    {/* This container no longer grows, so it sits naturally below the logo */}
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
       <p style={{ fontSize: '10pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
         {product.name}
       </p>
@@ -38,7 +38,8 @@ const PriceTag = ({ product }: { product: Product }) => (
         {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '14pt', fontWeight: 'bold', margin: '4px 0 0 0' }}>
+    {/* marginTop: 'auto' pushes this element to the bottom of the flex container */}
+    <p style={{ fontSize: '14pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '4px' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
