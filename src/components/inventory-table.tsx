@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { Product, UserProfile, Invoice } from '@/lib/types';
 import {
   Table,
@@ -74,6 +74,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
 
 
   const isAdmin = userRole === 'admin';
+
+  const handleScan = useCallback((barcode: string) => {
+    onFilterChange(barcode);
+  }, [onFilterChange]);
 
   const filteredProducts = useMemo(() => {
     // Apply stock filter first
@@ -337,9 +341,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       <CameraScannerDialog
         isOpen={isScannerOpen}
         onOpenChange={setIsScannerOpen}
-        onScan={(barcode) => {
-            onFilterChange(barcode);
-        }}
+        onScan={handleScan}
       />
 
       <InvoiceDialog
