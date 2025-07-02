@@ -38,7 +38,7 @@ export default function Home() {
   const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
   const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
 
-  useIdleTimeout(900000, user?.uid || null); // 15 minutes in milliseconds
+  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
   useMultiDeviceLogoutListener(user);
   useBarcodeScanner(setFilter);
 
