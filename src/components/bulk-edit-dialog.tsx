@@ -85,14 +85,17 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
     onOpenChange(false);
     form.reset();
   };
+  
+  // Reset form when dialog is opened or closed
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
+    }
+    onOpenChange(open);
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        form.reset();
-      }
-      onOpenChange(open);
-    }}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Bulk Edit Products</DialogTitle>

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
-import type { Product, UserProfile, Invoice } from '@/lib/types';
+import type { Product, UserProfile } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -33,13 +33,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
 import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera } from 'lucide-react';
-import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
-import BulkEditDialog from './bulk-edit-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from '@/hooks/use-toast';
-import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
 import { CameraScannerDialog } from './camera-scanner-dialog';
 
 
@@ -48,47 +43,38 @@ type InventoryTableProps = {
   removeProduct: (productId: string) => void;
   bulkRemoveProducts: (productIds: string[]) => void;
   updateProduct: (productId: string, data: Partial<Omit<Product, 'id'>>) => void;
-  bulkUpdateProducts: (productIds: string[], data: Partial<Omit<Product, 'id'>>) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
   setSelectedRows: (ids: string[]) => void;
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
+  onCreateInvoice: (products: Product[]) => void;
   isLoading: boolean;
   userRole: UserProfile['role'] | null;
+  onScan: (barcode: string) => void;
+  onOpenBulkEditDialog: (products: Product[]) => void;
+  onGenerateTags: (products: Product[]) => void;
 };
 
 type SortKey = keyof Product | null;
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, bulkUpdateProducts, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole, onScan, onOpenBulkEditDialog, onGenerateTags }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
-  const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
-  const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
-  const [productToSell, setProductToSell] = useState<Product | null>(null);
-  const [stockFilter, setStockFilter] = useState<'available' | 'sold-out'>('available');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const { toast } = useToast();
-
-
+  
   const isAdmin = userRole === 'admin';
 
   const handleScan = useCallback((barcode: string) => {
-    onFilterChange(barcode);
-  }, [onFilterChange]);
+    onScan(barcode);
+    onFilterChange(''); // Clear search input for better UX
+    setIsScannerOpen(false);
+  }, [onScan, onFilterChange]);
 
   const filteredProducts = useMemo(() => {
-    // Apply stock filter first
-    let filtered = products.filter(p => {
-      if (stockFilter === 'available') {
-        return p.quantity > 0;
-      }
-      return p.quantity === 0;
-    });
-
-    // Then apply search filter
+    // Apply search filter
+    let filtered = products;
     if (filter) {
         filtered = filtered.filter(p =>
           p.name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -111,7 +97,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     }
 
     return sortableProducts;
-  }, [products, filter, sortConfig, stockFilter]);
+  }, [products, filter, sortConfig]);
 
   const requestSort = (key: keyof Product) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -141,18 +127,6 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const selectedProducts = useMemo(() => {
     return products.filter(p => selectedRows.includes(p.id));
   }, [products, selectedRows]);
-
-  const productsForInvoice = useMemo(() => {
-    if (productToSell) {
-      return [productToSell];
-    }
-    return selectedProducts;
-  }, [productToSell, selectedProducts]);
-
-  const handleInvoiceDialogClose = () => {
-    setIsBulkInvoiceDialogOpen(false);
-    setProductToSell(null);
-  };
   
   const SortableHeader = ({ tKey, title }: { tKey: keyof Product, title: string }) => (
     <Button variant="ghost" onClick={() => requestSort(tKey)}>
@@ -184,24 +158,18 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 <Camera className="h-4 w-4" />
             </Button>
           </div>
-          <Tabs value={stockFilter} onValueChange={(value) => setStockFilter(value as 'available' | 'sold-out')}>
-            <TabsList>
-                <TabsTrigger value="available">Available</TabsTrigger>
-                <TabsTrigger value="sold-out">Sold Out</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
         {isAdmin && selectedRows.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap justify-start">
              <Button 
-              onClick={() => generatePriceTagsPDF(selectedProducts, toast)}
+              onClick={() => onGenerateTags(selectedProducts)}
               variant="outline"
             >
                 <Tags className="mr-2 h-4 w-4" />
                 Generate Tags ({selectedRows.length})
             </Button>
             <Button 
-              onClick={() => setIsBulkInvoiceDialogOpen(true)} 
+              onClick={() => onCreateInvoice(selectedProducts)} 
               disabled={selectedProducts.length === 0 || selectedProducts.every(p => p.quantity === 0)}
             >
               <FileText className="mr-2 h-4 w-4" />
@@ -214,7 +182,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsBulkEditDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => onOpenBulkEditDialog(selectedProducts)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Selected
                 </DropdownMenuItem>
@@ -310,7 +278,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => setProductToSell(product)}
+                            onClick={() => onCreateInvoice([product])}
                             disabled={product.quantity === 0}
                           >
                             <ShoppingCart className="mr-2 h-4 w-4" />
@@ -330,7 +298,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             ) : (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
-                  No products found in this view.
+                  No products found.
                 </TableCell>
               </TableRow>
             )}
@@ -344,28 +312,12 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
         onScan={handleScan}
       />
 
-      <InvoiceDialog
-        products={productsForInvoice}
-        onCreateInvoice={onCreateInvoice}
-        isOpen={isBulkInvoiceDialogOpen || !!productToSell}
-        onOpenChange={(open) => !open && handleInvoiceDialogClose()}
-      />
-
       {productToEdit && (
         <EditProductDialog
           isOpen={!!productToEdit}
           onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}
           product={productToEdit}
           updateProduct={updateProduct}
-        />
-      )}
-
-      {isBulkEditDialogOpen && (
-        <BulkEditDialog
-          isOpen={isBulkEditDialogOpen}
-          onOpenChange={setIsBulkEditDialogOpen}
-          productIds={selectedRows}
-          onBulkUpdate={bulkUpdateProducts}
         />
       )}
 

@@ -21,6 +21,10 @@ import { ViewFilesDialog } from '@/components/view-pictures-dialog';
 import { useIdleTimeout } from '@/hooks/use-idle-timeout';
 import HummingbirdAnimation from '@/components/hummingbird-animation';
 import { useMultiDeviceLogoutListener } from '@/hooks/use-multi-device-logout-listener';
+import { ScanningSession } from '@/components/scanning-session';
+import InvoiceDialog from '@/components/invoice-dialog';
+import BulkEditDialog from '@/components/bulk-edit-dialog';
+import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
 
 
 export default function Home() {
@@ -37,10 +41,39 @@ export default function Home() {
   const { toast } = useToast();
   const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
   const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
+  const [scannedProducts, setScannedProducts] = useState<Product[]>([]);
+  const [productsForDialog, setProductsForDialog] = useState<Product[]>([]);
+  const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
+  const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+
+  const handleScanAndAdd = (barcode: string) => {
+    const product = products.find(p => p.barcode === barcode);
+    if (product) {
+      if (product.quantity > 0) {
+        setScannedProducts(prev => [...prev, product]);
+        toast({
+          title: "Item Added",
+          description: `${product.name} added to the scanning session.`,
+        });
+      } else {
+        toast({
+          title: "Out of Stock",
+          description: `${product.name} is out of stock and cannot be added.`,
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Product Not Found",
+        description: `No product with barcode "${barcode}" exists in the inventory.`,
+        variant: "destructive",
+      });
+    }
+  };
 
   useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
   useMultiDeviceLogoutListener(user);
-  useBarcodeScanner(setFilter);
+  useBarcodeScanner(handleScanAndAdd);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -173,6 +206,7 @@ export default function Home() {
       await batch.commit();
 
       setSelectedRows([]);
+      setScannedProducts([]);
       toast({
         title: "Products Removed",
         description: `${productIds.length} items have been removed.`,
@@ -214,6 +248,7 @@ export default function Home() {
         description: `${productIds.length} products have been updated.`,
         });
         setSelectedRows([]); // Clear selection after bulk action
+        setScannedProducts([]);
     } catch (error) {
         console.error("Error bulk updating products: ", error);
         toast({ title: "Error", description: "Failed to update selected products.", variant: "destructive" });
@@ -381,6 +416,7 @@ export default function Home() {
       
       await batch.commit();
       setSelectedRows([]);
+      setScannedProducts([]);
       toast({ title: "Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
       return newInvoice;
 
@@ -540,6 +576,44 @@ export default function Home() {
     }
   };
 
+  const handleOpenInvoiceDialog = (products: Product[]) => {
+    if (products.length === 0) {
+      toast({
+        title: "No Products Selected",
+        description: "Please select products to create an invoice.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setProductsForDialog(products);
+    setIsBulkInvoiceDialogOpen(true);
+  };
+  
+  const handleOpenBulkEditDialog = (products: Product[]) => {
+    if (products.length === 0) {
+      toast({
+        title: "No Products Selected",
+        description: "Please select products to edit.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setProductsForDialog(products);
+    setIsBulkEditDialogOpen(true);
+  };
+
+  const handleGenerateTags = (products: Product[]) => {
+    if (products.length === 0) {
+        toast({
+            title: "No Products Selected",
+            description: "Please select products to generate tags.",
+            variant: "destructive",
+        });
+        return;
+    }
+    generatePriceTagsPDF(products, toast);
+  };
+
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -659,6 +733,14 @@ export default function Home() {
           onUploadFile={handleUploadFile}
           onViewFiles={() => setIsViewFilesOpen(true)}
         />
+        <ScanningSession
+          scannedProducts={scannedProducts}
+          onClear={() => setScannedProducts([])}
+          onOpenInvoiceDialog={handleOpenInvoiceDialog}
+          onOpenBulkEditDialog={handleOpenBulkEditDialog}
+          onBulkRemove={bulkRemoveProducts}
+          onGenerateTags={handleGenerateTags}
+        />
         <InventoryTable
           products={products}
           removeProduct={removeProduct}
@@ -669,9 +751,12 @@ export default function Home() {
           onFilterChange={setFilter}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          onCreateInvoice={handleCreateInvoice}
+          onCreateInvoice={handleOpenInvoiceDialog}
           isLoading={isLoading}
           userRole={userRole}
+          onScan={handleScanAndAdd}
+          onOpenBulkEditDialog={handleOpenBulkEditDialog}
+          onGenerateTags={handleGenerateTags}
         />
       </main>
       <ViewFilesDialog 
@@ -679,6 +764,18 @@ export default function Home() {
         isOpen={isViewFilesOpen}
         onOpenChange={setIsViewFilesOpen}
         onDelete={handleDeleteFile}
+      />
+      <InvoiceDialog
+        products={productsForDialog}
+        onCreateInvoice={handleCreateInvoice}
+        isOpen={isBulkInvoiceDialogOpen}
+        onOpenChange={setIsBulkInvoiceDialogOpen}
+      />
+      <BulkEditDialog
+        isOpen={isBulkEditDialogOpen}
+        onOpenChange={setIsBulkEditDialogOpen}
+        productIds={productsForDialog.map(p => p.id)}
+        onBulkUpdate={bulkUpdateProducts}
       />
     </div>
   );

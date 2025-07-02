@@ -187,14 +187,25 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       setIsProcessing(false);
       setFinalInvoiceData(null);
       setShowSuccessScreen(false);
-      setItems(products.map(p => ({
+
+      // Calculate quantities from the products prop, which may have duplicates from scanning
+      const productCounts = products.reduce((acc, p) => {
+        acc[p.id] = (acc[p.id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Get a list of unique products for the invoice item list
+      const uniqueProducts = [...new Map(products.map(item => [item.id, item])).values()];
+
+      setItems(uniqueProducts.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description || '',
         price: p.price,
         cost: p.cost,
         stock: p.quantity,
-        quantity: p.quantity > 0 ? 1 : 0,
+        // Use the counted quantity if available, otherwise default to 1
+        quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
       })));
 
       const body = document.body;
@@ -203,6 +214,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       setPdfBackgroundColor(bgColor);
     }
   }, [products, isOpen]);
+
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     setItems(currentItems => currentItems.map(item => {
