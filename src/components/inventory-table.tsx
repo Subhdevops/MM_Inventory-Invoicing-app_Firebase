@@ -80,8 +80,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     setIsScannerOpen(false);
   }, [onScan, onFilterChange]);
 
-  const filteredProducts = useMemo(() => {
-    // Apply search filter
+  const { availableProducts, soldOutProducts } = useMemo(() => {
     let filtered = products;
     if (filter) {
         filtered = filtered.filter(p =>
@@ -90,7 +89,6 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
         );
     }
     
-    // Then sort
     const sortableProducts = [...filtered];
     if (sortConfig.key) {
       sortableProducts.sort((a, b) => {
@@ -104,16 +102,13 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       });
     }
 
-    return sortableProducts;
+    return {
+        availableProducts: sortableProducts.filter(p => p.quantity > 0),
+        soldOutProducts: sortableProducts.filter(p => p.quantity === 0)
+    };
   }, [products, filter, sortConfig]);
 
-  const requestSort = (key: keyof Product) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
+  const allFilteredProducts = useMemo(() => [...availableProducts, ...soldOutProducts], [availableProducts, soldOutProducts]);
   
   const handleSelectRow = (id: string) => {
     if (!isAdmin) return;
@@ -125,10 +120,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
 
   const handleSelectAll = () => {
     if (!isAdmin) return;
-    if (selectedRows.length === filteredProducts.length && filteredProducts.length > 0) {
+    if (selectedRows.length === allFilteredProducts.length && allFilteredProducts.length > 0) {
       setSelectedRows([]);
     } else {
-      setSelectedRows(filteredProducts.map(p => p.id));
+      setSelectedRows(allFilteredProducts.map(p => p.id));
     }
   };
 
@@ -141,6 +136,59 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       {title}
       <ArrowUpDown className="ml-2 h-4 w-4" />
     </Button>
+  );
+
+  const renderProductRow = (product: Product) => (
+    <TableRow
+      key={product.id}
+      data-state={selectedRows.includes(product.id) && "selected"}
+      className={product.quantity === 0 ? "opacity-60" : ""}
+    >
+      <TableCell>
+        <Checkbox
+          checked={selectedRows.includes(product.id)}
+          onCheckedChange={() => handleSelectRow(product.id)}
+          aria-label={`Select ${product.name}`}
+          disabled={!isAdmin}
+        />
+      </TableCell>
+      <TableCell className="font-medium">{product.name}</TableCell>
+      <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
+      <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
+      <TableCell className="text-center">{product.quantity}</TableCell>
+      <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
+      {isAdmin && (
+        <TableCell className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setProductToEdit(product)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onCreateInvoice([product])}
+                disabled={product.quantity === 0}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Sell One
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      )}
+    </TableRow>
   );
 
   return (
@@ -217,10 +265,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             <TableRow>
               <TableHead className="w-[50px]">
                 <Checkbox
-                  checked={!isLoading && selectedRows.length === filteredProducts.length && filteredProducts.length > 0}
+                  checked={!isLoading && allFilteredProducts.length > 0 && selectedRows.length === allFilteredProducts.length}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
-                  disabled={isLoading || filteredProducts.length === 0 || !isAdmin}
+                  disabled={isLoading || allFilteredProducts.length === 0 || !isAdmin}
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
@@ -258,55 +306,24 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   </TableCell>
                 </TableRow>
               ))
-            ) : filteredProducts.length > 0 ? (
-              filteredProducts.map(product => (
-                <TableRow key={product.id} data-state={selectedRows.includes(product.id) && "selected"}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedRows.includes(product.id)}
-                      onCheckedChange={() => handleSelectRow(product.id)}
-                      aria-label={`Select ${product.name}`}
-                      disabled={!isAdmin}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
-                  <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-center">{product.quantity}</TableCell>
-                  <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
-                  {isAdmin && (
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setProductToEdit(product)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => onCreateInvoice([product])}
-                            disabled={product.quantity === 0}
-                          >
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            Sell One
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Remove
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
+            ) : allFilteredProducts.length > 0 ? (
+              <>
+                {availableProducts.map(renderProductRow)}
+
+                {soldOutProducts.length > 0 && availableProducts.length > 0 && (
+                    <TableRow className="bg-muted/10 hover:bg-muted/10 pointer-events-none">
+                        <TableCell colSpan={isAdmin ? 7 : 6} className="py-3 text-center">
+                           <div className="flex items-center">
+                                <span className="flex-grow border-t"></span>
+                                <span className="flex-shrink-0 mx-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sold Out</span>
+                                <span className="flex-grow border-t"></span>
+                           </div>
+                        </TableCell>
+                    </TableRow>
+                )}
+                
+                {soldOutProducts.map(renderProductRow)}
+              </>
             ) : (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
