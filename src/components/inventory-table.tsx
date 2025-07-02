@@ -32,7 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera, ChevronDown } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera } from 'lucide-react';
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
@@ -64,7 +64,6 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [showSoldOut, setShowSoldOut] = useState(false);
   
   const isAdmin = userRole === 'admin';
 
@@ -320,23 +319,14 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 {availableProducts.map(renderProductRow)}
 
                 {soldOutProducts.length > 0 && (
-                  <TableRow
-                    className="bg-muted/20 hover:bg-muted/40 cursor-pointer"
-                    onClick={() => setShowSoldOut(!showSoldOut)}
-                    aria-expanded={showSoldOut}
-                  >
-                    <TableCell colSpan={isAdmin ? 7 : 6} className="py-3 text-center">
-                      <div className="flex items-center justify-center">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          {showSoldOut ? 'Hide' : 'View'} Sold Out ({soldOutProducts.length})
-                        </span>
-                        <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground transition-transform" style={{ transform: showSoldOut ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-                      </div>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableCell colSpan={isAdmin ? 7 : 6} className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Sold Out
                     </TableCell>
                   </TableRow>
                 )}
                 
-                {showSoldOut && soldOutProducts.map(renderProductRow)}
+                {soldOutProducts.map(renderProductRow)}
               </>
             ) : (
               <TableRow>
