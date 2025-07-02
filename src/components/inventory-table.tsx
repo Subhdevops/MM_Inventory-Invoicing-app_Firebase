@@ -32,7 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
 import BulkEditDialog from './bulk-edit-dialog';
@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
+import { CameraScannerDialog } from './camera-scanner-dialog';
 
 
 type InventoryTableProps = {
@@ -68,6 +69,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
   const [productToSell, setProductToSell] = useState<Product | null>(null);
   const [stockFilter, setStockFilter] = useState<'available' | 'sold-out'>('available');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { toast } = useToast();
 
 
@@ -166,8 +168,17 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               placeholder="Search by name or barcode..."
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                onClick={() => setIsScannerOpen(true)}
+                aria-label="Scan barcode with camera"
+            >
+                <Camera className="h-4 w-4" />
+            </Button>
           </div>
           <Tabs value={stockFilter} onValueChange={(value) => setStockFilter(value as 'available' | 'sold-out')}>
             <TabsList>
@@ -322,6 +333,14 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </TableBody>
         </Table>
       </div>
+
+      <CameraScannerDialog
+        isOpen={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onScan={(barcode) => {
+            onFilterChange(barcode);
+        }}
+      />
 
       <InvoiceDialog
         products={productsForInvoice}
