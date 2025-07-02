@@ -9,7 +9,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 const PriceTag = ({ product }: { product: Product }) => (
   <div style={{
     border: '1px solid #ccc',
-    padding: '8px',
+    padding: '4px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -26,10 +26,10 @@ const PriceTag = ({ product }: { product: Product }) => (
       <RoopkothaLogo showTagline={true} width={150} height={36} />
     </div>
 
-    <div style={{ margin: '2px 0' }}>
+    <div style={{ margin: '1px 0' }}>
       <QRCodeCanvas
         value={product.barcode}
-        size={38}
+        size={35}
         bgColor={"#ffffff"}
         fgColor={"#000000"}
         level={"L"}
@@ -37,20 +37,20 @@ const PriceTag = ({ product }: { product: Product }) => (
       />
     </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
-      <p style={{ fontSize: '10pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1px 0', width: '100%' }}>
+      <p style={{ fontSize: '9pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
         {product.name}
       </p>
       {product.description && (
-        <p style={{ fontSize: '7pt', color: '#555', margin: '2px 0', wordBreak: 'break-word', fontStyle: 'italic' }}>
+        <p style={{ fontSize: '6pt', color: '#555', margin: '1px 0', wordBreak: 'break-word', fontStyle: 'italic' }}>
           {product.description}
         </p>
       )}
-      <p style={{ fontSize: '7pt', color: '#333', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+      <p style={{ fontSize: '6pt', color: '#333', marginTop: '1px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
         {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '14pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '2px' }}>
+    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '2px' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
