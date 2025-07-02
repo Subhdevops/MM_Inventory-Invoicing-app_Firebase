@@ -32,12 +32,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags } from 'lucide-react';
 import InvoiceDialog from './invoice-dialog';
 import EditProductDialog from './edit-product-dialog';
 import BulkEditDialog from './bulk-edit-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from '@/hooks/use-toast';
+import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
+
 
 type InventoryTableProps = {
   products: Product[];
@@ -65,6 +68,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
   const [productToSell, setProductToSell] = useState<Product | null>(null);
   const [stockFilter, setStockFilter] = useState<'available' | 'sold-out'>('available');
+  const { toast } = useToast();
 
 
   const isAdmin = userRole === 'admin';
@@ -128,7 +132,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     }
   };
 
-  const selectedProductsForInvoice = useMemo(() => {
+  const selectedProducts = useMemo(() => {
     return products.filter(p => selectedRows.includes(p.id));
   }, [products, selectedRows]);
 
@@ -136,8 +140,8 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     if (productToSell) {
       return [productToSell];
     }
-    return selectedProductsForInvoice;
-  }, [productToSell, selectedProductsForInvoice]);
+    return selectedProducts;
+  }, [productToSell, selectedProducts]);
 
   const handleInvoiceDialogClose = () => {
     setIsBulkInvoiceDialogOpen(false);
@@ -173,10 +177,17 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </Tabs>
         </div>
         {isAdmin && selectedRows.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-start">
+             <Button 
+              onClick={() => generatePriceTagsPDF(selectedProducts, toast)}
+              variant="outline"
+            >
+                <Tags className="mr-2 h-4 w-4" />
+                Generate Tags ({selectedRows.length})
+            </Button>
             <Button 
               onClick={() => setIsBulkInvoiceDialogOpen(true)} 
-              disabled={selectedProductsForInvoice.length === 0 || selectedProductsForInvoice.every(p => p.quantity === 0)}
+              disabled={selectedProducts.length === 0 || selectedProducts.every(p => p.quantity === 0)}
             >
               <FileText className="mr-2 h-4 w-4" />
               Create Invoice ({selectedRows.length})
