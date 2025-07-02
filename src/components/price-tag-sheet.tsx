@@ -38,7 +38,7 @@ const PriceTag = ({ product }: { product: Product }) => (
     </div>
 
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1px 0', width: '100%' }}>
-      <p style={{ fontSize: '8pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
+      <p style={{ fontSize: '9pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
         {product.name}
       </p>
       {product.description && (
@@ -50,7 +50,7 @@ const PriceTag = ({ product }: { product: Product }) => (
         {product.barcode}
       </p>
     </div>
-    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '8px' }}>
+    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '12px' }}>
       ₹{product.price.toFixed(2)}
     </p>
   </div>
