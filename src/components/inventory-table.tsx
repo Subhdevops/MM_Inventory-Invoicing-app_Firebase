@@ -36,7 +36,6 @@ import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, File
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
-import { Badge } from '@/components/ui/badge';
 
 
 type InventoryTableProps = {
@@ -57,6 +56,7 @@ type InventoryTableProps = {
 };
 
 type SortKey = keyof Product | null;
+type View = 'available' | 'sold-out';
 
 export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole, onScan, onOpenBulkEditDialog, onGenerateTags }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
@@ -64,6 +64,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [view, setView] = useState<View>('available');
   
   const isAdmin = userRole === 'admin';
 
@@ -88,13 +89,20 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     setSortConfig({ key, direction });
   };
 
-  const { availableProducts, soldOutProducts } = useMemo(() => {
+  const displayedProducts = useMemo(() => {
     let filtered = products;
+
     if (filter) {
         filtered = filtered.filter(p =>
           p.name.toLowerCase().includes(filter.toLowerCase()) ||
           p.barcode.toLowerCase().includes(filter.toLowerCase())
         );
+    }
+    
+    if (view === 'available') {
+        filtered = filtered.filter(p => p.quantity > 0);
+    } else { // 'sold-out'
+        filtered = filtered.filter(p => p.quantity === 0);
     }
     
     const sortableProducts = [...filtered];
@@ -110,13 +118,8 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       });
     }
 
-    return {
-        availableProducts: sortableProducts.filter(p => p.quantity > 0),
-        soldOutProducts: sortableProducts.filter(p => p.quantity === 0)
-    };
-  }, [products, filter, sortConfig]);
-
-  const allFilteredProducts = useMemo(() => [...availableProducts, ...soldOutProducts], [availableProducts, soldOutProducts]);
+    return sortableProducts;
+  }, [products, filter, sortConfig, view]);
   
   const handleSelectRow = (id: string) => {
     if (!isAdmin) return;
@@ -128,10 +131,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
 
   const handleSelectAll = () => {
     if (!isAdmin) return;
-    if (selectedRows.length === allFilteredProducts.length && allFilteredProducts.length > 0) {
+    if (selectedRows.length === displayedProducts.length && displayedProducts.length > 0) {
       setSelectedRows([]);
     } else {
-      setSelectedRows(allFilteredProducts.map(p => p.id));
+      setSelectedRows(displayedProducts.map(p => p.id));
     }
   };
 
@@ -222,9 +225,21 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 <Camera className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">Available: {availableCount}</Badge>
-            <Badge variant="destructive">Sold Out: {soldOutCount}</Badge>
+          <div className="flex items-center gap-1 p-1 bg-muted rounded-md">
+            <Button
+              variant={view === 'available' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setView('available')}
+            >
+              Available ({availableCount})
+            </Button>
+            <Button
+              variant={view === 'sold-out' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setView('sold-out')}
+            >
+              Sold Out ({soldOutCount})
+            </Button>
           </div>
         </div>
         {isAdmin && selectedRows.length > 0 && (
@@ -273,10 +288,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             <TableRow>
               <TableHead className="w-[50px]">
                 <Checkbox
-                  checked={!isLoading && allFilteredProducts.length > 0 && selectedRows.length === allFilteredProducts.length}
+                  checked={!isLoading && displayedProducts.length > 0 && selectedRows.length === displayedProducts.length}
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all"
-                  disabled={isLoading || allFilteredProducts.length === 0 || !isAdmin}
+                  disabled={isLoading || displayedProducts.length === 0 || !isAdmin}
                 />
               </TableHead>
               <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
@@ -314,20 +329,8 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   </TableCell>
                 </TableRow>
               ))
-            ) : allFilteredProducts.length > 0 ? (
-              <>
-                {availableProducts.map(renderProductRow)}
-
-                {soldOutProducts.length > 0 && (
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableCell colSpan={isAdmin ? 7 : 6} className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Sold Out
-                    </TableCell>
-                  </TableRow>
-                )}
-                
-                {soldOutProducts.map(renderProductRow)}
-              </>
+            ) : displayedProducts.length > 0 ? (
+                displayedProducts.map(renderProductRow)
             ) : (
               <TableRow>
                 <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
