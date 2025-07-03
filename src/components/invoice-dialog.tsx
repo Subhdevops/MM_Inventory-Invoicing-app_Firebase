@@ -42,10 +42,15 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     
-    const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-    }).format(amount);
+    const formatCurrency = (amount: number) => {
+        // Manual currency formatting to avoid potential issues with jsPDF and Intl library
+        const fixedAmount = amount.toFixed(2);
+        const parts = fixedAmount.split('.');
+        const integerPart = parts[0];
+        const fractionalPart = parts[1];
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return `₹${formattedInteger}.${fractionalPart}`;
+    };
 
     doc.addImage(logoBase64, 'PNG', margin, 10, 60, 14.4); 
     doc.setFontSize(22);
