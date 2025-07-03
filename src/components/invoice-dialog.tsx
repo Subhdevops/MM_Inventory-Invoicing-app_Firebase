@@ -15,14 +15,8 @@ import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
 import { DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
-// Define the type for jspdf with the autotable plugin
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: any) => jsPDF;
-}
-
-
 const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof useToast>['toast']) => {
-  const doc = new jsPDF() as jsPDFWithAutoTable;
+  const doc = new jsPDF();
   const toastId = 'pdf-gen-toast';
   
   toast({
@@ -84,7 +78,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
 
     // Table
     const tableData = invoice.items.map((item, index) => {
-      const productName = item.name.length > 50 ? item.name.substring(0, 50) + '...' : item.name;
+      const productName = item.name;
       const productDescription = item.description ? `\n${item.description}` : '';
       return [
           index + 1,
@@ -96,7 +90,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     });
 
     let finalY = 0;
-    doc.autoTable({
+    autoTable(doc, {
         startY: 75,
         head: [['#', 'Product', 'Qty', 'Price', 'Total']],
         body: tableData,
@@ -104,6 +98,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
         headStyles: { fillColor: [248, 249, 250], textColor: [33, 37, 41], fontStyle: 'bold' },
         columnStyles: {
             0: { cellWidth: 10, halign: 'center' }, // S.No.
+            1: { cellWidth: 'auto' }, // Product Name
             2: { cellWidth: 15, halign: 'center' }, // Qty
             3: { cellWidth: 25, halign: 'right' }, // Price
             4: { cellWidth: 30, halign: 'right' }, // Total
@@ -114,7 +109,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
         },
     });
 
-    finalY = (doc.lastAutoTable as any).finalY;
+    finalY = (doc as any).lastAutoTable.finalY;
     
     let totalsY = finalY + 10;
     if (totalsY > pageHeight - 60) {
@@ -153,7 +148,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     // Footer
     const footerY = pageHeight - 45;
     doc.setPage(doc.internal.getNumberOfPages()); // Go to last page
-    finalY = (doc.lastAutoTable as any).finalY;
+    finalY = (doc as any).lastAutoTable.finalY || currentY; // Use currentY as a fallback
 
     const placeFooter = (y: number) => {
       doc.setFontSize(10);
@@ -162,7 +157,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
       doc.addImage(stampBase64, 'PNG', pageWidth / 2 - 25, y + 5, 50, 25);
     };
 
-    if (currentY > footerY - 10) {
+    if (currentY > footerY - 30) {
       doc.addPage();
       placeFooter(margin + 10);
     } else {
