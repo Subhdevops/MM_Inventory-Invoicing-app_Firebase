@@ -33,6 +33,7 @@ const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
       alt="Invoice Created Successfully" 
       width={300} 
       height={200}
+      data-ai-hint="success celebration"
       className="rounded-lg shadow-md"
     />
     <Button onClick={handleGoToHome} size="lg">Go to Home</Button>
@@ -67,7 +68,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
-    const formatCurrency = (amount: number) => amount.toFixed(2);
+    
+    // Use "Rs." to avoid font encoding issues with the Rupee symbol.
+    const formatCurrency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 
     const addFooter = (docInstance: jsPDF) => {
         const pageCount = (docInstance.internal as any).pages.length - 1;
@@ -86,14 +89,14 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
      const addHeader = (docInstance: jsPDF) => {
         const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
         if (logoElement) {
-            // Original aspect ratio is 150:36
-            const logoWidth = 40;
-            const logoHeight = logoWidth * (36 / 150); // Maintain aspect ratio
+            // Original aspect ratio is 150:36. Maintain it.
+            const logoWidth = 50;
+            const logoHeight = logoWidth * (36 / 150);
             docInstance.addImage(logoElement, 'PNG', 15, 12, logoWidth, logoHeight);
             
             // Add tagline
             docInstance.setFontSize(7);
-            docInstance.setTextColor(100); // Muted foreground color
+            docInstance.setTextColor(100);
             docInstance.setFont('helvetica', 'italic');
             docInstance.text('Where fashion meets fairytale', 15, 12 + logoHeight + 4);
             docInstance.setFont('helvetica', 'normal'); // Reset font style
@@ -143,8 +146,12 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      head: [['#', 'Product', 'Qty', 'Price (₹)', 'Total (₹)']],
+      head: [['#', 'Product', 'Qty', 'Price', 'Total']],
       body: tableData,
+      columnStyles: {
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+      },
       theme: 'striped',
       margin: { top: 40, bottom: 20 },
       didDrawPage: (data) => {
@@ -157,7 +164,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     // Totals Section
     const totalsData: any[] = [
-        ['Subtotal (₹)', formatCurrency(invoice.subtotal)],
+        ['Subtotal', formatCurrency(invoice.subtotal)],
     ];
     
     if (invoice.discountAmount > 0) {
@@ -168,8 +175,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     }
     
     totalsData.push(
-        ['GST (5%) (₹)', formatCurrency(invoice.gstAmount)],
-        [{ content: 'Grand Total (₹)', styles: { fontStyle: 'bold' } }, { content: formatCurrency(invoice.grandTotal), styles: { fontStyle: 'bold' } }]
+        ['GST (5%)', formatCurrency(invoice.gstAmount)],
+        [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: formatCurrency(invoice.grandTotal), styles: { fontStyle: 'bold' } }]
     );
     
     const qrCodeDataUrl = await QRCode.toDataURL(
@@ -178,7 +185,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     );
     
     let currentY = finalY;
-    const qrCodeSize = 35;
+    const qrCodeSize = 30; // Render as 30x30 mm square
     const totalsTableHeight = 25; // Estimated
     const requiredHeight = Math.max(qrCodeSize, totalsTableHeight) + 10;
     
