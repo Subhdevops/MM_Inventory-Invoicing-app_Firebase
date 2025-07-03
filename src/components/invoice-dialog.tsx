@@ -66,7 +66,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     
-    // Use "Rs." to avoid font encoding issues with the Rupee symbol.
     const formatCurrency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 
     const addFooter = (docInstance: jsPDF) => {
@@ -112,13 +111,14 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
     };
 
-    const tableData = invoice.items.map((item, index) => [
-        index + 1,
-        item.name,
-        item.quantity,
-        formatCurrency(item.price),
-        formatCurrency(item.price * item.quantity)
-    ]);
+    const tableBody = invoice.items.map((item, index) => ({
+        index: index + 1,
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        price: formatCurrency(item.price),
+        total: formatCurrency(item.price * item.quantity),
+    }));
     
     // Address table
     autoTable(doc, {
@@ -146,11 +146,31 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      head: [['#', 'Product', 'Qty', 'Price', 'Total']],
-      body: tableData,
+      columns: [
+        { header: '#', dataKey: 'index' },
+        { header: 'Product', dataKey: 'name' },
+        { header: 'Qty', dataKey: 'quantity' },
+        { header: 'Price (Rs.)', dataKey: 'price' },
+        { header: 'Total (Rs.)', dataKey: 'total' },
+      ],
+      body: tableBody,
       columnStyles: {
-        3: { halign: 'right' },
-        4: { halign: 'right' },
+        index: { halign: 'center' },
+        quantity: { halign: 'center' },
+        price: { halign: 'right' },
+        total: { halign: 'right' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.dataKey === 'name') {
+            const description = data.row.raw.description;
+            if (description) {
+                const productName = data.cell.text[0];
+                data.cell.text = [
+                    productName,
+                    { content: description, styles: { fontSize: 8, textColor: [100, 100, 100], fontStyle: 'italic' } }
+                ];
+            }
+        }
       },
       theme: 'striped',
       margin: { top: 40, bottom: 20 },
