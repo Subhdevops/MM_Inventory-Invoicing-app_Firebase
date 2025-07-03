@@ -69,7 +69,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const pageWidth = doc.internal.pageSize.width;
 
     const addFooter = (docInstance: jsPDF) => {
-        const pageCount = docInstance.internal.pages.length - 1;
+        const pageCount = (docInstance.internal as any).pages.length - 1;
         const pageHeight = docInstance.internal.pageSize.height;
         docInstance.setFontSize(8);
         docInstance.setTextColor(100);
@@ -85,8 +85,16 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
      const addHeader = (docInstance: jsPDF) => {
         const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
         if (logoElement) {
-            // Use width of 40 and calculate height to maintain aspect ratio (150/36) -> 40 * 36 / 150 = 9.6
-            docInstance.addImage(logoElement, 'PNG', 15, 12, 40, 9.6);
+            const logoWidth = 40;
+            const logoHeight = 9.6; // Maintained aspect ratio (150/36)
+            docInstance.addImage(logoElement, 'PNG', 15, 12, logoWidth, logoHeight);
+            
+            // Add tagline
+            docInstance.setFontSize(7);
+            docInstance.setTextColor(100); // Muted foreground color
+            docInstance.setFont('helvetica', 'italic');
+            docInstance.text('Where fashion meets fairytale', 15, 12 + logoHeight + 4);
+            docInstance.setFont('helvetica', 'normal'); // Reset font style
         }
 
         docInstance.setFontSize(18);
@@ -103,8 +111,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         index + 1,
         item.name,
         item.quantity,
-        `₹${item.price.toFixed(2)}`,
-        `₹${(item.price * item.quantity).toFixed(2)}`
+        item.price.toFixed(2),
+        (item.price * item.quantity).toFixed(2)
     ]);
     
     // Address table
@@ -117,7 +125,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             ],
             [
               { content: `${invoice.customerName}\n${invoice.customerPhone}` },
-              { content: `Roopkotha\nProfessor Colony, C/O, Deshbandhu Pal\nHolding No :- 195/8, Ward no. 14\nBolpur, Birbhum, West Bengal - 731204\nGSTIN: 19AANCR9537M1ZC`, styles: { halign: 'right', fontSize: 8 } }
+              { content: `Roopkotha\nProfessor Colony, C/O, Deshbandhu Pal\nHolding No :- 195/8, Ward no. 14\nBolpur, Birbhum, West Bengal - 731204\nPhone: 9476468690\nGSTIN: 19AANCR9537M1ZC`, styles: { halign: 'right', fontSize: 8 } }
             ]
         ],
         theme: 'plain',
@@ -133,10 +141,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      head: [['#', 'Product', 'Qty', 'Price', 'Total']],
+      head: [['#', 'Product', 'Qty', 'Price (₹)', 'Total (₹)']],
       body: tableData,
       theme: 'striped',
-      margin: { top: 50, bottom: 20 },
+      margin: { top: 40, bottom: 20 },
       didDrawPage: (data) => {
         addHeader(doc); // Header for all pages
         addFooter(doc); // Footer for all pages
@@ -147,23 +155,23 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     // Totals Section
     const totalsData: any[] = [
-        ['Subtotal', `₹${invoice.subtotal.toFixed(2)}`],
+        ['Subtotal', invoice.subtotal.toFixed(2)],
     ];
     
     if (invoice.discountAmount > 0) {
         totalsData.push([
             { content: `Discount (${invoice.discountPercentage}%)`, styles: { textColor: [255, 0, 0] } },
-            { content: `-₹${invoice.discountAmount.toFixed(2)}`, styles: { textColor: [255, 0, 0] } }
+            { content: `- ${invoice.discountAmount.toFixed(2)}`, styles: { textColor: [255, 0, 0] } }
         ]);
     }
     
     totalsData.push(
-        ['GST (5%)', `₹${invoice.gstAmount.toFixed(2)}`],
-        [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: `₹${invoice.grandTotal.toFixed(2)}`, styles: { fontStyle: 'bold' } }]
+        ['GST (5%)', invoice.gstAmount.toFixed(2)],
+        [{ content: 'Grand Total (₹)', styles: { fontStyle: 'bold' } }, { content: invoice.grandTotal.toFixed(2), styles: { fontStyle: 'bold' } }]
     );
     
     const qrCodeDataUrl = await QRCode.toDataURL(
-        `Invoice No: ${invoice.invoiceNumber}\nAmount: ₹${invoice.grandTotal.toFixed(2)}`,
+        `Invoice No: ${invoice.invoiceNumber}\nAmount: ${invoice.grandTotal.toFixed(2)}`,
         { width: 40, margin: 1 }
     );
     
@@ -330,9 +338,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
           <SuccessScreen handleGoToHome={handleGoToHome} />
         ) : (
           <>
-            <DialogHeader className="sr-only">
-              <DialogTitle>Create Invoice</DialogTitle>
-              <DialogDescription>
+            <DialogHeader>
+              <DialogTitle className="sr-only">Create Invoice</DialogTitle>
+              <DialogDescription className="sr-only">
                 Fill in the customer details and confirm the items to generate an invoice PDF.
               </DialogDescription>
             </DialogHeader>
