@@ -26,7 +26,6 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
   });
 
   try {
-    // --- Load assets ---
     const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(blob);
@@ -39,30 +38,36 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     const logoBase64 = await toBase64(logoImg);
     const stampBase64 = await toBase64(stampImg);
 
-    // --- PDF Content ---
     const pageHeight = doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
+    
+    const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+    }).format(amount);
 
-    // Header
-    doc.addImage(logoBase64, 'PNG', margin, 10, 50, 12);
+    doc.addImage(logoBase64, 'PNG', margin, 10, 60, 14.4); 
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 50, 70);
     doc.text('INVOICE', pageWidth - margin, 18, { align: 'right' });
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
     doc.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - margin, 24, { align: 'right' });
     doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - margin, 29, { align: 'right' });
     
-    doc.setDrawColor(224, 224, 224); // A light grey color
+    doc.setDrawColor(224, 224, 224);
     doc.line(margin, 35, pageWidth - margin, 35);
 
-    // Billing Info
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 50, 70);
     doc.text('Bill To:', margin, 45);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(50, 50, 50);
     doc.text(invoice.customerName, margin, 50);
     doc.text(invoice.customerPhone, margin, 55);
     
@@ -74,9 +79,10 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
       'GSTIN: 19AANCR9537M1ZC',
       'Phone: 9476468690'
     ];
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(50, 50, 50);
     doc.text(fromAddress, pageWidth - margin, 45, { align: 'right', 'lineHeightFactor': 1.5 });
 
-    // Table
     const tableData = invoice.items.map((item, index) => {
       const productName = item.name;
       const productDescription = item.description ? `\n${item.description}` : '';
@@ -84,32 +90,28 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
           index + 1,
           `${productName}${productDescription}`,
           item.quantity,
-          `₹${item.price.toFixed(2)}`,
-          `₹${(item.price * item.quantity).toFixed(2)}`,
+          formatCurrency(item.price),
+          formatCurrency(item.price * item.quantity),
       ]
     });
 
-    let finalY = 0;
     autoTable(doc, {
         startY: 75,
         head: [['#', 'Product', 'Qty', 'Price', 'Total']],
         body: tableData,
         theme: 'grid',
-        headStyles: { fillColor: [248, 249, 250], textColor: [33, 37, 41], fontStyle: 'bold' },
+        headStyles: { fillColor: [33, 150, 243], textColor: [255, 255, 255], fontStyle: 'bold' },
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' }, // S.No.
-            1: { cellWidth: 'auto' }, // Product Name
-            2: { cellWidth: 15, halign: 'center' }, // Qty
-            3: { cellWidth: 25, halign: 'right' }, // Price
-            4: { cellWidth: 30, halign: 'right' }, // Total
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 15, halign: 'center' },
+            3: { cellWidth: 30, halign: 'right' },
+            4: { cellWidth: 35, halign: 'right' },
         },
         margin: { left: margin, right: margin },
-        didDrawPage: (data) => {
-            // Can add page-specific footers here if needed, e.g., page numbers
-        },
     });
 
-    finalY = (doc as any).lastAutoTable.finalY;
+    const finalY = (doc as any).lastAutoTable.finalY;
     
     let totalsY = finalY + 10;
     if (totalsY > pageHeight - 60) {
@@ -117,38 +119,41 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
         totalsY = margin;
     }
 
-    // Totals Section
     const totalsX = pageWidth - margin;
+    const totalsBlockWidth = 70;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Subtotal:', totalsX - 35, totalsY, { align: 'right' });
-    doc.text(`₹${invoice.subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right' });
+    doc.setTextColor(50, 50, 50);
+    doc.text('Subtotal:', totalsX - totalsBlockWidth, totalsY, { align: 'right' });
+    doc.text(formatCurrency(invoice.subtotal), totalsX, totalsY, { align: 'right' });
 
     let currentY = totalsY;
     if (invoice.discountAmount > 0) {
-      currentY += 5;
-      doc.text(`Discount (${invoice.discountPercentage}%):`, totalsX - 35, currentY, { align: 'right' });
-      doc.text(`-₹${invoice.discountAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+      currentY += 7;
+      doc.text(`Discount (${invoice.discountPercentage}%):`, totalsX - totalsBlockWidth, currentY, { align: 'right' });
+      doc.setTextColor(220, 53, 69);
+      doc.text(`-${formatCurrency(invoice.discountAmount)}`, totalsX, currentY, { align: 'right' });
+      doc.setTextColor(50, 50, 50);
     }
 
-    currentY += 5;
-    doc.text('GST (5%):', totalsX - 35, currentY, { align: 'right' });
-    doc.text(`₹${invoice.gstAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+    currentY += 7;
+    doc.text('GST (5%):', totalsX - totalsBlockWidth, currentY, { align: 'right' });
+    doc.text(formatCurrency(invoice.gstAmount), totalsX, currentY, { align: 'right' });
     
     currentY += 3;
     doc.setDrawColor(224, 224, 224);
-    doc.line(totalsX - 70, currentY, totalsX, currentY);
+    doc.line(totalsX - totalsBlockWidth, currentY, totalsX, currentY);
     
-    currentY += 5;
+    currentY += 7;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Grand Total:', totalsX - 35, currentY, { align: 'right' });
-    doc.text(`₹${invoice.grandTotal.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+    doc.setTextColor(40, 50, 70);
+    doc.text('Grand Total:', totalsX - totalsBlockWidth, currentY, { align: 'right' });
+    doc.text(formatCurrency(invoice.grandTotal), totalsX, currentY, { align: 'right' });
 
-    // Footer
     const footerY = pageHeight - 45;
-    doc.setPage(doc.internal.getNumberOfPages()); // Go to last page
-    finalY = (doc as any).lastAutoTable.finalY || currentY; // Use currentY as a fallback
+    doc.setPage(doc.internal.getNumberOfPages());
+    const lastPageFinalY = (doc as any).lastAutoTable.finalY || currentY;
 
     const placeFooter = (y: number) => {
       doc.setFontSize(10);
@@ -157,8 +162,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
       doc.addImage(stampBase64, 'PNG', pageWidth / 2 - 25, y + 5, 50, 25);
     };
 
-    // Place footer on the last page, adding a new page if there isn't enough space
-    if (finalY > footerY - 30) {
+    if (lastPageFinalY > footerY - 30) {
         doc.addPage();
         placeFooter(margin);
     } else {
