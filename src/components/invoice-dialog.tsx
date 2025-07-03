@@ -111,14 +111,25 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
     };
 
-    const tableBody = invoice.items.map((item, index) => ({
-        index: index + 1,
-        name: item.name,
-        description: item.description,
-        quantity: item.quantity,
-        price: formatCurrency(item.price),
-        total: formatCurrency(item.price * item.quantity),
-    }));
+    const tableBody = invoice.items.map((item, index) => {
+        const nameCellContent = [
+            { content: item.name, styles: { fontStyle: 'normal' } }
+        ];
+        if (item.description) {
+            nameCellContent.push({
+                content: item.description,
+                styles: { fontSize: 8, textColor: [100, 100, 100], fontStyle: 'italic' }
+            });
+        }
+        
+        return [
+            index + 1,
+            nameCellContent,
+            item.quantity,
+            formatCurrency(item.price),
+            formatCurrency(item.price * item.quantity),
+        ];
+    });
     
     // Address table
     autoTable(doc, {
@@ -146,31 +157,13 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      columns: [
-        { header: '#', dataKey: 'index' },
-        { header: 'Product', dataKey: 'name' },
-        { header: 'Qty', dataKey: 'quantity' },
-        { header: 'Price (Rs.)', dataKey: 'price' },
-        { header: 'Total (Rs.)', dataKey: 'total' },
-      ],
+      head: [['#', 'Product', 'Qty', 'Price (Rs.)', 'Total (Rs.)']],
       body: tableBody,
       columnStyles: {
-        index: { halign: 'center' },
-        quantity: { halign: 'center' },
-        price: { halign: 'right' },
-        total: { halign: 'right' },
-      },
-      didParseCell: (data) => {
-        if (data.section === 'body' && data.column.dataKey === 'name') {
-            const description = data.row.raw.description;
-            if (description) {
-                const productName = data.cell.text[0];
-                data.cell.text = [
-                    productName,
-                    { content: description, styles: { fontSize: 8, textColor: [100, 100, 100], fontStyle: 'italic' } }
-                ];
-            }
-        }
+        0: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
       },
       theme: 'striped',
       margin: { top: 40, bottom: 20 },
