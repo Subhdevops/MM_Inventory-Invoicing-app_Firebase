@@ -18,9 +18,10 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
 
     return (
         <div ref={ref} style={{ width: '210mm', backgroundColor: 'white' }}>
-            <div className="p-[15mm] font-sans text-xs text-gray-800">
-                {/* Header */}
-                <header className="flex justify-between items-start pb-3 border-b border-gray-200">
+            {/* Added a main padding container to control overall margins */}
+            <div className="p-[10mm] font-sans text-xs text-gray-800">
+                {/* Header with more bottom padding */}
+                <header className="flex justify-between items-start pb-6 border-b border-gray-200">
                     <div>
                         <RoopkothaLogo showTagline={true} width={200} height={48} />
                     </div>
@@ -31,8 +32,8 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                     </div>
                 </header>
 
-                {/* Billing Info */}
-                <section className="flex justify-between mt-6">
+                {/* Billing Info with more top margin */}
+                <section className="flex justify-between mt-8">
                     <div className="leading-normal">
                         <h2 className="font-bold uppercase text-sm text-gray-500 mb-1">Bill To:</h2>
                         <p>{invoice.customerName}</p>
@@ -79,7 +80,7 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                 </section>
 
                 {/* Totals Section */}
-                <section className="flex justify-end mt-6">
+                <section className="flex justify-end mt-4">
                     <div className="w-1/2">
                         <table className="w-full">
                             <tbody>
@@ -105,11 +106,11 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                         </table>
                     </div>
                 </section>
-
-                {/* Footer */}
-                <footer className="text-center mt-8 border-t border-gray-200 pt-4 relative">
-                    <p className="italic mb-12">Thank you for shopping with us! Do visit again.</p>
-                    <img src="/stamp.png" alt="Stamp" style={{ width: '150px', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '35px', opacity: 0.8 }} />
+                
+                {/* Footer with improved spacing to prevent overlap */}
+                <footer className="text-center mt-12 border-t border-gray-200 pt-6">
+                    <p className="italic mb-4">Thank you for shopping with us! Do visit again.</p>
+                    <img src="/stamp.png" alt="Stamp" style={{ width: '150px', display: 'inline-block' }} />
                 </footer>
             </div>
         </div>
