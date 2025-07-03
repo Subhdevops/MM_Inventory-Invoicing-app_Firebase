@@ -42,16 +42,18 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     
+    // Use Intl.NumberFormat for robust, correct currency formatting.
+    // This should resolve issues with strange characters appearing in the PDF.
     const formatCurrency = (amount: number) => {
-        // Manual currency formatting to avoid potential issues with jsPDF and Intl library
-        const fixedAmount = amount.toFixed(2);
-        const parts = fixedAmount.split('.');
-        const integerPart = parts[0];
-        const fractionalPart = parts[1];
-        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        return `₹${formattedInteger}.${fractionalPart}`;
+        return new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(amount);
     };
 
+    // --- Header ---
     doc.addImage(logoBase64, 'PNG', margin, 10, 60, 14.4); 
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
@@ -67,6 +69,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     doc.setDrawColor(224, 224, 224);
     doc.line(margin, 35, pageWidth - margin, 35);
 
+    // --- Billing Info ---
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(40, 50, 70);
@@ -88,6 +91,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     doc.setTextColor(50, 50, 50);
     doc.text(fromAddress, pageWidth - margin, 45, { align: 'right', 'lineHeightFactor': 1.5 });
 
+    // --- Table ---
     const tableData = invoice.items.map((item, index) => {
       const productName = item.name;
       const productDescription = item.description ? `\n${item.description}` : '';
@@ -118,6 +122,7 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
 
     const finalY = (doc as any).lastAutoTable.finalY;
     
+    // --- Totals ---
     let totalsY = finalY + 10;
     if (totalsY > pageHeight - 60) {
         doc.addPage();
@@ -129,10 +134,11 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(50, 50, 50);
-    doc.text('Subtotal:', totalsX - totalsBlockWidth, totalsY, { align: 'right' });
-    doc.text(formatCurrency(invoice.subtotal), totalsX, totalsY, { align: 'right' });
-
+    
     let currentY = totalsY;
+    doc.text('Subtotal:', totalsX - totalsBlockWidth, currentY, { align: 'right' });
+    doc.text(formatCurrency(invoice.subtotal), totalsX, currentY, { align: 'right' });
+
     if (invoice.discountAmount > 0) {
       currentY += 7;
       doc.text(`Discount (${invoice.discountPercentage}%):`, totalsX - totalsBlockWidth, currentY, { align: 'right' });
@@ -155,7 +161,8 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     doc.setTextColor(40, 50, 70);
     doc.text('Grand Total:', totalsX - totalsBlockWidth, currentY, { align: 'right' });
     doc.text(formatCurrency(invoice.grandTotal), totalsX, currentY, { align: 'right' });
-
+    
+    // --- Footer ---
     const footerY = pageHeight - 45;
     doc.setPage(doc.internal.getNumberOfPages());
     const lastPageFinalY = (doc as any).lastAutoTable.finalY || currentY;
