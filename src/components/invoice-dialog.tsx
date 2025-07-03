@@ -111,28 +111,20 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
     };
 
-    // Prepare table body. We need to reserve space for descriptions if they exist.
     const tableBody = invoice.items.map((item, index) => {
-        let nameAndDesc = item.name;
+        let productName = item.name;
         if (item.description) {
-            // Reserve space for description by adding newlines to the main content.
-            // This ensures the row has enough height before we manually draw the description.
-            const textWidth = 80; // Estimated width of product column in mm
-            doc.setFontSize(8); // Set font for calculation
-            const descriptionLines = doc.splitTextToSize(item.description, textWidth);
-            nameAndDesc += '\n'.repeat(descriptionLines.length);
+            productName += ` (${item.description})`;
         }
 
         return [
             index + 1,
-            nameAndDesc,
+            productName,
             item.quantity,
             formatCurrency(item.price),
             formatCurrency(item.price * item.quantity),
         ];
     });
-    // Reset font size after calculations
-    doc.setFontSize(10);
     
     // Address table
     autoTable(doc, {
@@ -167,35 +159,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         2: { halign: 'center' },
         3: { halign: 'right' },
         4: { halign: 'right' },
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'body' && data.column.index === 1) { // Product column
-            const item = invoice.items[data.row.index];
-            if (item && item.description) {
-                const oldSize = doc.getFontSize();
-                const oldColor = doc.getTextColor();
-                const oldStyle = doc.getFont().fontStyle;
-
-                doc.setFontSize(8);
-                doc.setTextColor(150); // Lighter gray
-                doc.setFont('helvetica', 'italic');
-
-                // Get height of the product name to draw below it
-                const nameHeight = doc.getTextDimensions(item.name).h;
-                // Add text at the correct position
-                doc.text(
-                    item.description,
-                    data.cell.x + data.cell.padding('left'),
-                    data.cell.y + data.cell.padding('top') + nameHeight + 1, // Y pos + name height + margin
-                    { maxWidth: data.cell.width - data.cell.padding('horizontal') }
-                );
-
-                // Restore styles
-                doc.setFontSize(oldSize);
-                doc.setTextColor(oldColor);
-                doc.setFont('helvetica', oldStyle);
-            }
-        }
       },
       theme: 'striped',
       didDrawPage: (data) => {
