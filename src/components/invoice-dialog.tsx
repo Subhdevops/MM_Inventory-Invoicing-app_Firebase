@@ -17,6 +17,8 @@ import autoTable from 'jspdf-autotable';
 import { createRoot } from 'react-dom/client';
 import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
+import QRCode from 'qrcode';
+
 
 const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
   <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 h-full">
@@ -65,9 +67,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
 
-    const addFooter = (docInstance: jsPDF, pageCount: number) => {
+    const addFooter = (docInstance: jsPDF) => {
+        const pageCount = docInstance.internal.pages.length - 1;
         const pageHeight = docInstance.internal.pageSize.height;
         docInstance.setFontSize(8);
         docInstance.setTextColor(100);
@@ -80,25 +82,21 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
     };
 
-    // Main Header Table
-    autoTable(doc, {
-      head: [
-        [
-          { content: 'Roopkotha', colSpan: 5, styles: { halign: 'center', fillColor: [41, 128, 185], textColor: 255 } }
-        ]
-      ],
-      body: [
-        [{ content: `Invoice #: ${invoice.invoiceNumber}`, styles: { halign: 'left' } }, { content: `Date: ${new Date(invoice.date).toLocaleDateString()}`, styles: { halign: 'right' }, colSpan: 4 }],
-        [{ content: '', colSpan: 5 }],
-        [{ content: 'Bill To:', styles: { fontStyle: 'bold' } }, { content: 'From:', styles: { fontStyle: 'bold', halign: 'right' }, colSpan: 4 }],
-        [
-            { content: `${invoice.customerName}\n${invoice.customerPhone}`, styles: { halign: 'left' } },
-            { content: `Roopkotha\nProfessor Colony, C/O, Deshbandhu Pal\nHolding No :- 195/8, Ward no. 14\nBolpur, Birbhum, West Bengal - 731204\nGSTIN: 19AANCR9537M1ZC`, styles: { halign: 'right', fontSize: 8 }, colSpan: 4 }
-        ],
-      ],
-      theme: 'plain',
-      styles: { fontSize: 9 },
-    });
+     const addHeader = (docInstance: jsPDF) => {
+        const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
+        if (logoElement) {
+            docInstance.addImage(logoElement, 'PNG', 15, 12, 40, 9);
+        }
+
+        docInstance.setFontSize(18);
+        docInstance.setTextColor(41, 128, 185);
+        docInstance.text("INVOICE", pageWidth - 15, 20, { align: 'right' });
+
+        docInstance.setFontSize(9);
+        docInstance.setTextColor(100);
+        docInstance.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - 15, 26, { align: 'right' });
+        docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
+    };
 
     const tableData = invoice.items.map((item, index) => [
         index + 1,
@@ -107,6 +105,24 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         item.price.toFixed(2),
         (item.price * item.quantity).toFixed(2)
     ]);
+    
+    addHeader(doc);
+
+    // Address table
+    autoTable(doc, {
+        startY: 40,
+        body: [
+             [
+              { content: 'Bill To:', styles: { fontStyle: 'bold' } },
+              { content: 'From:', styles: { fontStyle: 'bold', halign: 'right' } }
+            ],
+            [
+              { content: `${invoice.customerName}\n${invoice.customerPhone}` },
+              { content: `Roopkotha\nProfessor Colony, C/O, Deshbandhu Pal\nHolding No :- 195/8, Ward no. 14\nBolpur, Birbhum, West Bengal - 731204\nGSTIN: 19AANCR9537M1ZC`, styles: { halign: 'right', fontSize: 8 } }
+            ]
+        ],
+        theme: 'plain',
+    });
 
     // Items table
     autoTable(doc, {
@@ -121,16 +137,12 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       head: [['#', 'Product', 'Qty', 'Price', 'Total']],
       body: tableData,
       theme: 'striped',
-      margin: { top: 40, bottom: 30 },
+      margin: { top: 40, bottom: 20 },
       didDrawPage: (data) => {
-        // Header on every page
-        doc.setFontSize(20);
-        doc.setTextColor(41, 128, 185);
-        doc.text("Roopkotha", data.settings.margin.left, 15);
-
-        // Footer on every page
-        const pageCount = doc.internal.pages.length - 1;
-        addFooter(doc, pageCount);
+        if (data.pageNumber > 1) { // Header for subsequent pages
+            addHeader(doc);
+        }
+        addFooter(doc); // Footer for all pages
       },
     });
 
@@ -143,19 +155,36 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         ['GST (5%)', `Rs. ${invoice.gstAmount.toFixed(2)}`],
         [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: `Rs. ${invoice.grandTotal.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
     ];
+    
+    const qrCodeDataUrl = await QRCode.toDataURL(
+        `Invoice No: ${invoice.invoiceNumber}\nAmount: Rs. ${invoice.grandTotal.toFixed(2)}`,
+        { width: 35, margin: 1 }
+    );
+    
+    let currentY = finalY;
+    const qrCodeSize = 35;
+    const totalsTableHeight = 25; // Estimated
+    const requiredHeight = Math.max(qrCodeSize, totalsTableHeight) + 10;
+    
+    if (doc.internal.pageSize.height - finalY < requiredHeight) {
+        doc.addPage();
+        currentY = 20; // Start Y on new page
+        addHeader(doc);
+        addFooter(doc);
+    }
+    
+    // Draw QR code on the left of the last page
+    doc.addImage(qrCodeDataUrl, 'PNG', 15, currentY + 10, qrCodeSize, qrCodeSize);
 
     autoTable(doc, {
-        startY: finalY + 10,
+        startY: currentY + 10,
         body: totalsData,
         theme: 'plain',
         tableWidth: 'wrap',
         styles: { halign: 'right', fontSize: 10 },
         columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
-        margin: { left: pageWidth / 2 + 15, right: 15 },
+        margin: { left: pageWidth / 2, right: 15 },
     });
-    
-    const pageCount = doc.internal.pages.length - 1;
-    addFooter(doc, pageCount);
     
     try {
         doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);

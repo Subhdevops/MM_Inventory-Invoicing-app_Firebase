@@ -167,6 +167,7 @@ export function InvoiceForm({
               {isProcessing ? 'Processing...' : 'Process & Download PDF'}
           </Button>
       </DialogFooter>
+      <img id="invoice-logo-for-pdf" src="/logo.png" style={{ display: 'none' }} alt="logo" />
     </>
   );
 }
