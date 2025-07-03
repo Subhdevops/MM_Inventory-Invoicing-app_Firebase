@@ -67,6 +67,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
+    const formatCurrency = (amount: number) => amount.toFixed(2);
 
     const addFooter = (docInstance: jsPDF) => {
         const pageCount = (docInstance.internal as any).pages.length - 1;
@@ -85,8 +86,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
      const addHeader = (docInstance: jsPDF) => {
         const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
         if (logoElement) {
+            // Original aspect ratio is 150:36
             const logoWidth = 40;
-            const logoHeight = 9.6; // Maintained aspect ratio (150/36)
+            const logoHeight = logoWidth * (36 / 150); // Maintain aspect ratio
             docInstance.addImage(logoElement, 'PNG', 15, 12, logoWidth, logoHeight);
             
             // Add tagline
@@ -111,8 +113,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         index + 1,
         item.name,
         item.quantity,
-        item.price.toFixed(2),
-        (item.price * item.quantity).toFixed(2)
+        formatCurrency(item.price),
+        formatCurrency(item.price * item.quantity)
     ]);
     
     // Address table
@@ -155,19 +157,19 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     // Totals Section
     const totalsData: any[] = [
-        ['Subtotal', invoice.subtotal.toFixed(2)],
+        ['Subtotal (₹)', formatCurrency(invoice.subtotal)],
     ];
     
     if (invoice.discountAmount > 0) {
         totalsData.push([
             { content: `Discount (${invoice.discountPercentage}%)`, styles: { textColor: [255, 0, 0] } },
-            { content: `- ${invoice.discountAmount.toFixed(2)}`, styles: { textColor: [255, 0, 0] } }
+            { content: `- ${formatCurrency(invoice.discountAmount)}`, styles: { textColor: [255, 0, 0] } }
         ]);
     }
     
     totalsData.push(
-        ['GST (5%)', invoice.gstAmount.toFixed(2)],
-        [{ content: 'Grand Total (₹)', styles: { fontStyle: 'bold' } }, { content: invoice.grandTotal.toFixed(2), styles: { fontStyle: 'bold' } }]
+        ['GST (5%) (₹)', formatCurrency(invoice.gstAmount)],
+        [{ content: 'Grand Total (₹)', styles: { fontStyle: 'bold' } }, { content: formatCurrency(invoice.grandTotal), styles: { fontStyle: 'bold' } }]
     );
     
     const qrCodeDataUrl = await QRCode.toDataURL(
