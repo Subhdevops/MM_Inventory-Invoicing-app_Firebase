@@ -19,12 +19,6 @@ import { InvoiceForm } from './invoice-form';
 
 const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
   <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 h-full">
-    <DialogHeader className="text-center">
-        <DialogTitle className="text-2xl">Invoice Processed!</DialogTitle>
-        <DialogDescription>
-            The invoice has been created and downloaded successfully.
-        </DialogDescription>
-    </DialogHeader>
     <Image 
       src="/invoice-success.png" 
       alt="Invoice Created Successfully" 
