@@ -82,33 +82,34 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
     };
 
-     const addPageHeader = (docInstance: jsPDF, isFirstPage: boolean) => {
-        if (isFirstPage) {
-            const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
-            if (logoElement && logoElement.naturalWidth > 0) {
-                const logoWidth = 50;
-                const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
-                const logoHeight = logoWidth * logoAspectRatio;
-                const yPosition = 15; // Added vertical space
-                docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
-                
-                // Add tagline
-                docInstance.setFontSize(7);
-                docInstance.setTextColor(100);
-                docInstance.setFont('helvetica', 'italic');
-                docInstance.text('Where fashion meets fairytale', 15, yPosition + logoHeight + 4);
-                docInstance.setFont('helvetica', 'normal'); // Reset font style
-            }
-        }
+    const addPageHeader = (docInstance: jsPDF, isFirstPage: boolean) => {
+      if (isFirstPage) {
+          const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
+          if (logoElement && logoElement.naturalWidth > 0) {
+              const logoWidth = 50;
+              const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
+              const logoHeight = logoWidth * logoAspectRatio;
+              const yPosition = 15; // Added vertical space
+              docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
+              
+              // Add tagline, centered
+              docInstance.setFontSize(7);
+              docInstance.setTextColor(100);
+              docInstance.setFont('helvetica', 'italic');
+              const logoCenterX = 15 + logoWidth / 2;
+              docInstance.text('Where fashion meets fairytale', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
+              docInstance.setFont('helvetica', 'normal'); // Reset font style
+          }
 
-        docInstance.setFontSize(18);
-        docInstance.setTextColor(41, 128, 185);
-        docInstance.text("INVOICE", pageWidth - 15, 20, { align: 'right' });
+          docInstance.setFontSize(18);
+          docInstance.setTextColor(41, 128, 185);
+          docInstance.text("INVOICE", pageWidth - 15, 20, { align: 'right' });
 
-        docInstance.setFontSize(9);
-        docInstance.setTextColor(100);
-        docInstance.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - 15, 26, { align: 'right' });
-        docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
+          docInstance.setFontSize(9);
+          docInstance.setTextColor(100);
+          docInstance.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - 15, 26, { align: 'right' });
+          docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
+      }
     };
 
     const tableBody = invoice.items.map((item, index) => {
