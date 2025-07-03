@@ -14,11 +14,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { createRoot } from 'react-dom/client';
 import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
-import QRCode from 'qrcode';
-
 
 const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
   <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 h-full">
@@ -88,17 +85,18 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
      const addHeader = (docInstance: jsPDF) => {
         const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
-        if (logoElement) {
-            // Original aspect ratio is 150:36. Maintain it.
+        if (logoElement && logoElement.naturalWidth > 0) {
             const logoWidth = 50;
-            const logoHeight = logoWidth * (36 / 150);
-            docInstance.addImage(logoElement, 'PNG', 15, 12, logoWidth, logoHeight);
+            const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
+            const logoHeight = logoWidth * logoAspectRatio;
+            const yPosition = 15; // Added vertical space
+            docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
             
             // Add tagline
             docInstance.setFontSize(7);
             docInstance.setTextColor(100);
             docInstance.setFont('helvetica', 'italic');
-            docInstance.text('Where fashion meets fairytale', 15, 12 + logoHeight + 4);
+            docInstance.text('Where fashion meets fairytale', 15, yPosition + logoHeight + 4);
             docInstance.setFont('helvetica', 'normal'); // Reset font style
         }
 
@@ -122,7 +120,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     
     // Address table
     autoTable(doc, {
-        startY: 40,
+        startY: 55, // Increased startY for more header space
         body: [
              [
               { content: 'Bill To:', styles: { fontStyle: 'bold' } },
@@ -179,27 +177,28 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: formatCurrency(invoice.grandTotal), styles: { fontStyle: 'bold' } }]
     );
     
-    const qrCodeDataUrl = await QRCode.toDataURL(
-        `Invoice No: ${invoice.invoiceNumber}\nAmount: ${invoice.grandTotal.toFixed(2)}`,
-        { width: 40, margin: 1 }
-    );
+    const qrCodeElement = document.getElementById('invoice-qr-for-pdf') as HTMLImageElement;
     
     let currentY = finalY;
-    const qrCodeSize = 30; // Render as 30x30 mm square
+    const qrWidth = 30;
+    const qrHeight = (qrCodeElement && qrCodeElement.naturalWidth > 0) ? qrWidth * (qrCodeElement.naturalHeight / qrCodeElement.naturalWidth) : qrWidth;
+    
     const totalsTableHeight = 25; // Estimated
-    const requiredHeight = Math.max(qrCodeSize, totalsTableHeight) + 10;
+    const requiredHeight = Math.max(qrHeight, totalsTableHeight) + 10;
     
     let startYForTotals = currentY + 10;
 
+    // Check if there is enough space on the current page
     if (doc.internal.pageSize.height - finalY < requiredHeight) {
         doc.addPage();
-        currentY = 0; // Reset Y on new page
-        startYForTotals = 20;
+        startYForTotals = 20; // Start near top on new page
     }
     
-    // Draw QR code on the left of the last page
-    doc.addImage(qrCodeDataUrl, 'PNG', 15, startYForTotals, qrCodeSize, qrCodeSize);
-
+    // Draw QR code on the left side
+    if (qrCodeElement && qrCodeElement.naturalWidth > 0) {
+        doc.addImage(qrCodeElement, 'PNG', 15, startYForTotals, qrWidth, qrHeight);
+    }
+    
     autoTable(doc, {
         startY: startYForTotals,
         body: totalsData,
