@@ -1,116 +1,192 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Product, Invoice, InvoiceItem } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import autoTable from 'jspdf-autotable';
 import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
 import { DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
+// Define the type for jspdf with the autotable plugin
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDF;
+}
 
-const PdfContent = React.forwardRef<HTMLDivElement, { invoice: Invoice | null }>(({ invoice }, ref) => {
-  if (!invoice) return null;
 
-  return (
-    <div ref={ref} className="p-8 rounded-lg bg-background text-foreground" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
-      <header className="flex items-center justify-between pb-6 border-b">
-          <RoopkothaLogo showTagline={true} />
-          <div className="text-right">
-              <h1 className="text-3xl font-bold text-primary tracking-tight">INVOICE</h1>
-              <p className="text-sm text-muted-foreground">Invoice number: {invoice.invoiceNumber}</p>
-              <p className="text-xs text-muted-foreground mt-1">Date: {new Date(invoice.date).toLocaleDateString()}</p>
-              <p className="text-xs text-muted-foreground">Time: {new Date(invoice.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}</p>
-          </div>
-      </header>
-      
-      <section className="grid grid-cols-2 gap-8 my-6">
-            <div className="space-y-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bill To</h2>
-                <p className="text-sm font-medium">Name: {invoice.customerName}</p>
-                <p className="text-sm text-muted-foreground">Phone No: {invoice.customerPhone}</p>
-            </div>
-            <div className="text-right space-y-1">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
-                <p className="font-bold text-primary">Roopkotha</p>
-                <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
-                <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
-                <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
-                <p className="text-xs text-muted-foreground"><span className="font-semibold">GSTIN:</span> 19AANCR9537M1ZC</p>
-                <p className="text-xs text-muted-foreground"><span className="font-semibold">Phone:</span> 9476468690</p>
-            </div>
-      </section>
-      
-      <section className="border border-border rounded-lg overflow-hidden mt-6">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="w-[50%] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product</TableHead>
-              <TableHead className="w-[120px] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantity</TableHead>
-              <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Price</TableHead>
-              <TableHead className="w-[120px] px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoice.items.map(item => (
-              <TableRow key={item.id} className="border-b border-border">
-                <TableCell className="font-medium px-4 py-3">
-                  {item.name}
-                  {item.description && <p className="text-xs text-muted-foreground font-normal">{item.description}</p>}
-                </TableCell>
-                <TableCell className="px-4 py-3 text-center">{item.quantity}</TableCell>
-                <TableCell className="text-right px-4 py-3">₹{item.price.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-medium px-4 py-3">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-                <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Subtotal</TableCell>
-                <TableCell className="text-right font-medium px-4 py-2">₹{invoice.subtotal.toFixed(2)}</TableCell>
-            </TableRow>
-             {invoice.discountAmount > 0 && (
-              <TableRow>
-                  <TableCell colSpan={3} className="text-right font-medium px-4 py-2">Discount ({invoice.discountPercentage}%)</TableCell>
-                  <TableCell className="text-right font-medium px-4 py-2 text-destructive">-₹{invoice.discountAmount.toFixed(2)}</TableCell>
-              </TableRow>
-            )}
-            <TableRow>
-                <TableCell colSpan={3} className="text-right font-medium px-4 py-2">GST ({0.05 * 100}%)</TableCell>
-                <TableCell className="text-right font-medium px-4 py-2">₹{invoice.gstAmount.toFixed(2)}</TableCell>
-            </TableRow>
-            <TableRow className="bg-primary/10 font-bold">
-                <TableCell colSpan={3} className="text-right text-primary text-base px-4 py-3">Grand Total</TableCell>
-                <TableCell className="text-right text-primary text-base px-4 py-3">₹{invoice.grandTotal.toFixed(2)}</TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-      </section>
-      <footer className="text-center text-sm text-muted-foreground pt-8 mt-8 border-t">
-        <p className="font-semibold">Thank you for shopping with us! Do visit again.</p>
-        <div className="mt-8">
-            <Image
-                src="/stamp.png"
-                alt="Signature or Stamp"
-                width={200}
-                height={100}
-                className="mx-auto"
-            />
-        </div>
-      </footer>
-    </div>
-  );
-});
-PdfContent.displayName = "PdfContent";
+const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof useToast>['toast']) => {
+  const doc = new jsPDF() as jsPDFWithAutoTable;
+  const toastId = 'pdf-gen-toast';
+  
+  toast({
+    id: toastId,
+    title: 'Generating PDF...',
+    description: 'Preparing your invoice, please wait.'
+  });
+
+  try {
+    // --- Load assets ---
+    const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+
+    const logoImg = await fetch('/logo.png').then(res => res.blob());
+    const stampImg = await fetch('/stamp.png').then(res => res.blob());
+    const logoBase64 = await toBase64(logoImg);
+    const stampBase64 = await toBase64(stampImg);
+
+    // --- PDF Content ---
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+
+    // Header
+    doc.addImage(logoBase64, 'PNG', margin, 10, 50, 12);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE', pageWidth - margin, 18, { align: 'right' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - margin, 24, { align: 'right' });
+    doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - margin, 29, { align: 'right' });
+    
+    doc.setDrawColor(224, 224, 224); // A light grey color
+    doc.line(margin, 35, pageWidth - margin, 35);
+
+    // Billing Info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bill To:', margin, 45);
+    doc.setFont('helvetica', 'normal');
+    doc.text(invoice.customerName, margin, 50);
+    doc.text(invoice.customerPhone, margin, 55);
+    
+    const fromAddress = [
+      'Roopkotha',
+      'Professor Colony, C/O, Deshbandhu Pal',
+      'Holding No :- 195/8, Ward no. 14',
+      'Bolpur, Birbhum, West Bengal - 731204',
+      'GSTIN: 19AANCR9537M1ZC',
+      'Phone: 9476468690'
+    ];
+    doc.text(fromAddress, pageWidth - margin, 45, { align: 'right', 'lineHeightFactor': 1.5 });
+
+    // Table
+    const tableData = invoice.items.map((item, index) => {
+      const productName = item.name.length > 50 ? item.name.substring(0, 50) + '...' : item.name;
+      const productDescription = item.description ? `\n${item.description}` : '';
+      return [
+          index + 1,
+          `${productName}${productDescription}`,
+          item.quantity,
+          `₹${item.price.toFixed(2)}`,
+          `₹${(item.price * item.quantity).toFixed(2)}`,
+      ]
+    });
+
+    let finalY = 0;
+    doc.autoTable({
+        startY: 75,
+        head: [['#', 'Product', 'Qty', 'Price', 'Total']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [248, 249, 250], textColor: [33, 37, 41], fontStyle: 'bold' },
+        columnStyles: {
+            0: { cellWidth: 10, halign: 'center' }, // S.No.
+            2: { cellWidth: 15, halign: 'center' }, // Qty
+            3: { cellWidth: 25, halign: 'right' }, // Price
+            4: { cellWidth: 30, halign: 'right' }, // Total
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: (data) => {
+            // Can add page-specific footers here if needed, e.g., page numbers
+        },
+    });
+
+    finalY = (doc.lastAutoTable as any).finalY;
+    
+    let totalsY = finalY + 10;
+    if (totalsY > pageHeight - 60) {
+        doc.addPage();
+        totalsY = margin;
+    }
+
+    // Totals Section
+    const totalsX = pageWidth - margin;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal:', totalsX - 35, totalsY, { align: 'right' });
+    doc.text(`₹${invoice.subtotal.toFixed(2)}`, totalsX, totalsY, { align: 'right' });
+
+    let currentY = totalsY;
+    if (invoice.discountAmount > 0) {
+      currentY += 5;
+      doc.text(`Discount (${invoice.discountPercentage}%):`, totalsX - 35, currentY, { align: 'right' });
+      doc.text(`-₹${invoice.discountAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+    }
+
+    currentY += 5;
+    doc.text('GST (5%):', totalsX - 35, currentY, { align: 'right' });
+    doc.text(`₹${invoice.gstAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+    
+    currentY += 3;
+    doc.setDrawColor(224, 224, 224);
+    doc.line(totalsX - 70, currentY, totalsX, currentY);
+    
+    currentY += 5;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Grand Total:', totalsX - 35, currentY, { align: 'right' });
+    doc.text(`₹${invoice.grandTotal.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+
+    // Footer
+    const footerY = pageHeight - 45;
+    doc.setPage(doc.internal.getNumberOfPages()); // Go to last page
+    finalY = (doc.lastAutoTable as any).finalY;
+
+    const placeFooter = (y: number) => {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Thank you for shopping with us! Do visit again.', pageWidth / 2, y, { align: 'center' });
+      doc.addImage(stampBase64, 'PNG', pageWidth / 2 - 25, y + 5, 50, 25);
+    };
+
+    if (currentY > footerY - 10) {
+      doc.addPage();
+      placeFooter(margin + 10);
+    } else {
+      placeFooter(footerY);
+    }
+    
+    doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+    toast({
+      id: toastId,
+      title: 'Success!',
+      description: 'Your invoice has been downloaded.'
+    });
+
+  } catch (error) {
+    console.error("PDF generation failed:", error);
+    toast({ 
+      id: toastId,
+      title: 'PDF Generation Failed', 
+      description: 'There was an error creating the invoice PDF.',
+      variant: 'destructive'
+    });
+    throw error;
+  }
+};
 
 
 const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
@@ -140,66 +216,21 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [finalInvoiceData, setFinalInvoiceData] = useState<Invoice | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
-  const pdfContentRef = useRef<HTMLDivElement | null>(null);
-
-  const generatePdf = useCallback(async () => {
-    const invoiceElement = pdfContentRef.current;
-    if (!invoiceElement || !finalInvoiceData) {
-      toast({ title: "PDF Error", description: "Could not find invoice content to generate PDF.", variant: "destructive" });
-      setIsProcessing(false);
-      return;
-    }
-
-    try {
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      await pdf.html(invoiceElement, {
-        callback: (doc) => {
-          doc.save(`${finalInvoiceData.invoiceNumber}.pdf`);
-          setShowSuccessScreen(true);
-        },
-        x: 0,
-        y: 0,
-        width: 210, // A4 width in mm
-        windowWidth: 800, // The width of the offscreen component
-        autoPaging: 'text', // Tries to avoid cutting text lines.
-        margin: [15, 10, 15, 10], // Top, Left, Bottom, Right margins
-      });
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      toast({ title: "PDF Generation Failed", description: "An error occurred while generating the PDF.", variant: "destructive" });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [finalInvoiceData, toast]);
   
-  useEffect(() => {
-    if (finalInvoiceData && pdfContentRef.current && !showSuccessScreen) {
-        // A small delay to ensure images/fonts are loaded and rendered in the off-screen div.
-        const timer = setTimeout(() => {
-            generatePdf();
-        }, 500); 
-        return () => clearTimeout(timer);
-    }
-  }, [finalInvoiceData, showSuccessScreen, generatePdf]);
-
   useEffect(() => {
     if (isOpen) {
       setCustomerName('');
       setCustomerPhone('');
       setDiscountPercentage(0);
       setIsProcessing(false);
-      setFinalInvoiceData(null);
       setShowSuccessScreen(false);
 
-      // Calculate quantities from the products prop, which may have duplicates from scanning
       const productCounts = products.reduce((acc, p) => {
         acc[p.id] = (acc[p.id] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      // Get a list of unique products for the invoice item list
       const uniqueProducts = [...new Map(products.map(item => [item.id, item])).values()];
 
       setItems(uniqueProducts.map(p => ({
@@ -209,7 +240,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         price: p.price,
         cost: p.cost,
         stock: p.quantity,
-        // Use the counted quantity if available, otherwise default to 1
         quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
       })));
     }
@@ -282,11 +312,13 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         })),
       });
 
-      setFinalInvoiceData(finalInvoice);
+      await generateInvoicePdf(finalInvoice, toast);
+      setShowSuccessScreen(true);
 
     } catch (error) {
         console.error("Processing failed:", error);
         toast({ title: "Processing Failed", description: "Could not create invoice. Please try again.", variant: "destructive" });
+    } finally {
         setIsProcessing(false);
     }
   };
@@ -296,7 +328,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   };
   
   return (
-    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[90vh]">
         {!showSuccessScreen && (
@@ -329,7 +360,5 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         )}
       </DialogContent>
     </Dialog>
-    <PdfContent invoice={finalInvoiceData} ref={pdfContentRef} />
-    </>
   );
 }
