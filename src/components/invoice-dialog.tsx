@@ -83,21 +83,23 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
     };
 
-     const addHeader = (docInstance: jsPDF) => {
-        const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
-        if (logoElement && logoElement.naturalWidth > 0) {
-            const logoWidth = 50;
-            const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
-            const logoHeight = logoWidth * logoAspectRatio;
-            const yPosition = 15; // Added vertical space
-            docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
-            
-            // Add tagline
-            docInstance.setFontSize(7);
-            docInstance.setTextColor(100);
-            docInstance.setFont('helvetica', 'italic');
-            docInstance.text('Where fashion meets fairytale', 15, yPosition + logoHeight + 4);
-            docInstance.setFont('helvetica', 'normal'); // Reset font style
+     const addPageHeader = (docInstance: jsPDF, isFirstPage: boolean) => {
+        if (isFirstPage) {
+            const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
+            if (logoElement && logoElement.naturalWidth > 0) {
+                const logoWidth = 50;
+                const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
+                const logoHeight = logoWidth * logoAspectRatio;
+                const yPosition = 15; // Added vertical space
+                docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
+                
+                // Add tagline
+                docInstance.setFontSize(7);
+                docInstance.setTextColor(100);
+                docInstance.setFont('helvetica', 'italic');
+                docInstance.text('Where fashion meets fairytale', 15, yPosition + logoHeight + 4);
+                docInstance.setFont('helvetica', 'normal'); // Reset font style
+            }
         }
 
         docInstance.setFontSize(18);
@@ -153,8 +155,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       theme: 'striped',
       margin: { top: 40, bottom: 20 },
       didDrawPage: (data) => {
-        addHeader(doc); // Header for all pages
-        addFooter(doc); // Footer for all pages
+        addPageHeader(doc, data.pageNumber === 1);
+        addFooter(doc);
       },
     });
 
@@ -177,14 +179,14 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: formatCurrency(invoice.grandTotal), styles: { fontStyle: 'bold' } }]
     );
     
-    const qrCodeElement = document.getElementById('invoice-qr-for-pdf') as HTMLImageElement;
+    const stampElement = document.getElementById('invoice-stamp-for-pdf') as HTMLImageElement;
     
     let currentY = finalY;
-    const qrWidth = 30;
-    const qrHeight = (qrCodeElement && qrCodeElement.naturalWidth > 0) ? qrWidth * (qrCodeElement.naturalHeight / qrCodeElement.naturalWidth) : qrWidth;
+    const stampWidth = 30;
+    const stampHeight = (stampElement && stampElement.naturalWidth > 0) ? stampWidth * (stampElement.naturalHeight / stampElement.naturalWidth) : stampWidth;
     
     const totalsTableHeight = 25; // Estimated
-    const requiredHeight = Math.max(qrHeight, totalsTableHeight) + 10;
+    const requiredHeight = Math.max(stampHeight, totalsTableHeight) + 10;
     
     let startYForTotals = currentY + 10;
 
@@ -194,9 +196,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         startYForTotals = 20; // Start near top on new page
     }
     
-    // Draw QR code on the left side
-    if (qrCodeElement && qrCodeElement.naturalWidth > 0) {
-        doc.addImage(qrCodeElement, 'PNG', 15, startYForTotals, qrWidth, qrHeight);
+    // Draw stamp on the left side
+    if (stampElement && stampElement.naturalWidth > 0) {
+        doc.addImage(stampElement, 'PNG', 15, startYForTotals, stampWidth, stampHeight);
     }
     
     autoTable(doc, {

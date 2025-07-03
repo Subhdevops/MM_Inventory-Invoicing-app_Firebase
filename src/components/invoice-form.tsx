@@ -168,7 +168,7 @@ export function InvoiceForm({
           </Button>
       </DialogFooter>
       <img id="invoice-logo-for-pdf" src="/logo.png" style={{ display: 'none' }} alt="logo" />
-      <img id="invoice-qr-for-pdf" src="/qr-code.png" style={{ display: 'none' }} alt="QR Code" />
+      <img id="invoice-stamp-for-pdf" src="/stamp.png" style={{ display: 'none' }} alt="Stamp" />
     </>
   );
 }
