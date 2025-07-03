@@ -33,12 +33,12 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
 
                 {/* Billing Info */}
                 <section className="flex justify-between mt-8">
-                    <div>
+                    <div className="leading-snug">
                         <h2 className="font-bold uppercase text-sm text-gray-500 mb-2">Bill To:</h2>
                         <p>{invoice.customerName}</p>
                         <p>{invoice.customerPhone}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right leading-snug">
                         <h2 className="font-bold uppercase text-sm text-gray-500 mb-2">From:</h2>
                         <p className="font-bold text-primary">Roopkotha</p>
                         <p>Professor Colony, C/O, Deshbandhu Pal</p>
@@ -54,24 +54,24 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-primary text-primary-foreground">
-                                <th className="p-2 text-left w-12 font-semibold">#</th>
-                                <th className="p-2 text-left font-semibold">Product</th>
-                                <th className="p-2 text-center w-20 font-semibold">Qty</th>
-                                <th className="p-2 text-right w-32 font-semibold">Price</th>
-                                <th className="p-2 text-right w-32 font-semibold">Total</th>
+                                <th className="px-2 py-1.5 text-left w-12 font-semibold">#</th>
+                                <th className="px-2 py-1.5 text-left font-semibold">Product</th>
+                                <th className="px-2 py-1.5 text-center w-20 font-semibold">Qty</th>
+                                <th className="px-2 py-1.5 text-right w-32 font-semibold">Price</th>
+                                <th className="px-2 py-1.5 text-right w-32 font-semibold">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             {invoice.items.map((item, index) => (
                                 <tr key={item.id} className="border-b border-gray-100 last:border-b-0">
-                                    <td className="p-2 align-top">{index + 1}</td>
-                                    <td className="p-2 align-top">
+                                    <td className="px-2 py-1.5 align-top">{index + 1}</td>
+                                    <td className="px-2 py-1.5 align-top">
                                         <p className="font-semibold">{item.name}</p>
                                         {item.description && <p className="text-gray-500 text-xs">{item.description}</p>}
                                     </td>
-                                    <td className="p-2 text-center align-top">{item.quantity}</td>
-                                    <td className="p-2 text-right align-top">{formatCurrency(item.price)}</td>
-                                    <td className="p-2 text-right align-top">{formatCurrency(item.price * item.quantity)}</td>
+                                    <td className="px-2 py-1.5 text-center align-top">{item.quantity}</td>
+                                    <td className="px-2 py-1.5 text-right align-top">{formatCurrency(item.price)}</td>
+                                    <td className="px-2 py-1.5 text-right align-top">{formatCurrency(item.price * item.quantity)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -84,22 +84,22 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                         <table className="w-full">
                             <tbody>
                                 <tr className="border-t border-gray-200">
-                                    <td className="p-2 text-right">Subtotal:</td>
-                                    <td className="p-2 text-right w-40">{formatCurrency(invoice.subtotal)}</td>
+                                    <td className="px-2 py-1.5 text-right">Subtotal:</td>
+                                    <td className="px-2 py-1.5 text-right w-40">{formatCurrency(invoice.subtotal)}</td>
                                 </tr>
                                 {invoice.discountAmount > 0 && (
                                 <tr className="border-t border-gray-200">
-                                    <td className="p-2 text-right">Discount ({invoice.discountPercentage}%):</td>
-                                    <td className="p-2 text-right text-red-500 w-40">-{formatCurrency(invoice.discountAmount)}</td>
+                                    <td className="px-2 py-1.5 text-right">Discount ({invoice.discountPercentage}%):</td>
+                                    <td className="px-2 py-1.5 text-right text-red-500 w-40">-{formatCurrency(invoice.discountAmount)}</td>
                                 </tr>
                                 )}
                                 <tr className="border-t border-gray-200">
-                                    <td className="p-2 text-right">GST (5%):</td>
-                                    <td className="p-2 text-right w-40">{formatCurrency(invoice.gstAmount)}</td>
+                                    <td className="px-2 py-1.5 text-right">GST (5%):</td>
+                                    <td className="px-2 py-1.5 text-right w-40">{formatCurrency(invoice.gstAmount)}</td>
                                 </tr>
                                 <tr className="border-t-2 border-primary/50 bg-primary/10">
-                                    <td className="p-2 text-right font-bold text-lg text-primary">Grand Total:</td>
-                                    <td className="p-2 text-right font-bold text-lg text-primary w-40">{formatCurrency(invoice.grandTotal)}</td>
+                                    <td className="px-2 py-1.5 text-right font-bold text-lg text-primary">Grand Total:</td>
+                                    <td className="px-2 py-1.5 text-right font-bold text-lg text-primary w-40">{formatCurrency(invoice.grandTotal)}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -107,9 +107,9 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                 </section>
 
                 {/* Footer */}
-                <footer className="text-center mt-16 border-t border-gray-200 pt-8 relative">
-                    <p className="italic">Thank you for shopping with us! Do visit again.</p>
-                    <img src="/stamp.png" alt="Stamp" style={{ width: '150px', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '40px', opacity: 0.8 }} />
+                <footer className="text-center mt-12 border-t border-gray-200 pt-6 relative">
+                    <p className="italic mb-16">Thank you for shopping with us! Do visit again.</p>
+                    <img src="/stamp.png" alt="Stamp" style={{ width: '150px', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: '45px', opacity: 0.8 }} />
                 </footer>
             </div>
         </div>
