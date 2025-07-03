@@ -18,11 +18,11 @@ import { InvoiceForm } from './invoice-form';
 import { DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 
-const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwardedRef: React.Ref<HTMLDivElement> }) => {
+const PdfContent = React.forwardRef<HTMLDivElement, { invoice: Invoice | null }>(({ invoice }, ref) => {
   if (!invoice) return null;
 
   return (
-    <div ref={forwardedRef} className="p-8 rounded-lg bg-background text-foreground" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
+    <div ref={ref} className="p-8 rounded-lg bg-background text-foreground" style={{ width: '800px', position: 'absolute', left: '-9999px', top: 0 }}>
       <header className="flex items-center justify-between pb-6 border-b">
           <RoopkothaLogo showTagline={true} />
           <div className="text-right">
@@ -109,7 +109,9 @@ const PdfContent = ({ invoice, forwardedRef }: { invoice: Invoice | null, forwar
       </footer>
     </div>
   );
-};
+});
+PdfContent.displayName = "PdfContent";
+
 
 const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 h-full">
@@ -141,41 +143,44 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   const [finalInvoiceData, setFinalInvoiceData] = useState<Invoice | null>(null);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const pdfContentRef = useRef<HTMLDivElement | null>(null);
-  const [pdfBackgroundColor, setPdfBackgroundColor] = useState('#ffffff');
 
   const generatePdf = useCallback(async () => {
     const invoiceElement = pdfContentRef.current;
-    if (!invoiceElement) {
-        toast({ title: "PDF Error", description: "Could not find invoice content to generate PDF.", variant: "destructive" });
-        setIsProcessing(false);
-        return;
+    if (!invoiceElement || !finalInvoiceData) {
+      toast({ title: "PDF Error", description: "Could not find invoice content to generate PDF.", variant: "destructive" });
+      setIsProcessing(false);
+      return;
     }
 
     try {
-        const canvas = await html2canvas(invoiceElement, { scale: 1.5, backgroundColor: pdfBackgroundColor });
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${finalInvoiceData!.invoiceNumber}.pdf`);
-        
-        setShowSuccessScreen(true);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      await pdf.html(invoiceElement, {
+        callback: (doc) => {
+          doc.save(`${finalInvoiceData.invoiceNumber}.pdf`);
+          setShowSuccessScreen(true);
+        },
+        x: 0,
+        y: 0,
+        width: 210, // A4 width in mm
+        windowWidth: 800, // The width of the offscreen component
+        autoPaging: 'text', // Tries to avoid cutting text lines.
+        margin: [15, 10, 15, 10], // Top, Left, Bottom, Right margins
+      });
     } catch (error) {
-        console.error("PDF generation failed:", error);
-        toast({ title: "PDF Generation Failed", description: "An error occurred while generating the PDF.", variant: "destructive" });
+      console.error("PDF generation failed:", error);
+      toast({ title: "PDF Generation Failed", description: "An error occurred while generating the PDF.", variant: "destructive" });
     } finally {
-        setIsProcessing(false);
+      setIsProcessing(false);
     }
-  }, [finalInvoiceData, pdfBackgroundColor, toast]);
-
-  const setPdfContentRef = useCallback((node: HTMLDivElement) => {
-    if (node) {
-      pdfContentRef.current = node;
-      if (finalInvoiceData && !showSuccessScreen) {
-        generatePdf();
-      }
+  }, [finalInvoiceData, toast]);
+  
+  useEffect(() => {
+    if (finalInvoiceData && pdfContentRef.current && !showSuccessScreen) {
+        // A small delay to ensure images/fonts are loaded and rendered in the off-screen div.
+        const timer = setTimeout(() => {
+            generatePdf();
+        }, 500); 
+        return () => clearTimeout(timer);
     }
   }, [finalInvoiceData, showSuccessScreen, generatePdf]);
 
@@ -207,11 +212,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         // Use the counted quantity if available, otherwise default to 1
         quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
       })));
-
-      const body = document.body;
-      const computedStyle = window.getComputedStyle(body);
-      const bgColor = computedStyle.backgroundColor;
-      setPdfBackgroundColor(bgColor);
     }
   }, [products, isOpen]);
 
@@ -329,7 +329,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         )}
       </DialogContent>
     </Dialog>
-    <PdfContent invoice={finalInvoiceData} forwardedRef={setPdfContentRef} />
+    <PdfContent invoice={finalInvoiceData} ref={pdfContentRef} />
     </>
   );
 }
