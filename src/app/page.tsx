@@ -434,7 +434,7 @@ export default function Home() {
     const dataToExport = invoices.flatMap(inv => 
         inv.items.map(item => ({
             invoiceId: inv.invoiceNumber || inv.id,
-            invoiceDate: new Date(inv.date).toLocaleDateString(),
+            invoiceDate: new Date(inv.date).toLocaleString('en-IN'),
             customerName: inv.customerName,
             customerPhone: inv.customerPhone,
             productId: item.barcode || productsMap.get(item.id) || item.id,

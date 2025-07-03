@@ -108,7 +108,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
           docInstance.setFontSize(9);
           docInstance.setTextColor(100);
           docInstance.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - 15, 26, { align: 'right' });
-          docInstance.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - 15, 30, { align: 'right' });
+          docInstance.text(`Date & Time: ${new Date(invoice.date).toLocaleString('en-IN')}`, pageWidth - 15, 30, { align: 'right' });
       }
     };
 
