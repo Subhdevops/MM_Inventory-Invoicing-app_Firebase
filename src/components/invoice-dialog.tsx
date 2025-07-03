@@ -85,7 +85,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
      const addHeader = (docInstance: jsPDF) => {
         const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
         if (logoElement) {
-            docInstance.addImage(logoElement, 'PNG', 15, 12, 40, 9);
+            // Use width of 40 and calculate height to maintain aspect ratio (150/36) -> 40 * 36 / 150 = 9.6
+            docInstance.addImage(logoElement, 'PNG', 15, 12, 40, 9.6);
         }
 
         docInstance.setFontSize(18);
@@ -102,12 +103,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         index + 1,
         item.name,
         item.quantity,
-        item.price.toFixed(2),
-        (item.price * item.quantity).toFixed(2)
+        `₹${item.price.toFixed(2)}`,
+        `₹${(item.price * item.quantity).toFixed(2)}`
     ]);
     
-    addHeader(doc);
-
     // Address table
     autoTable(doc, {
         startY: 40,
@@ -137,11 +136,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       head: [['#', 'Product', 'Qty', 'Price', 'Total']],
       body: tableData,
       theme: 'striped',
-      margin: { top: 40, bottom: 20 },
+      margin: { top: 50, bottom: 20 },
       didDrawPage: (data) => {
-        if (data.pageNumber > 1) { // Header for subsequent pages
-            addHeader(doc);
-        }
+        addHeader(doc); // Header for all pages
         addFooter(doc); // Footer for all pages
       },
     });
@@ -149,16 +146,25 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const finalY = (doc as any).lastAutoTable.finalY;
 
     // Totals Section
-    const totalsData = [
-        ['Subtotal', `Rs. ${invoice.subtotal.toFixed(2)}`],
-        [`Discount (${invoice.discountPercentage}%)`, `Rs. ${invoice.discountAmount.toFixed(2)}`],
-        ['GST (5%)', `Rs. ${invoice.gstAmount.toFixed(2)}`],
-        [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: `Rs. ${invoice.grandTotal.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
+    const totalsData: any[] = [
+        ['Subtotal', `₹${invoice.subtotal.toFixed(2)}`],
     ];
     
+    if (invoice.discountAmount > 0) {
+        totalsData.push([
+            { content: `Discount (${invoice.discountPercentage}%)`, styles: { textColor: [255, 0, 0] } },
+            { content: `-₹${invoice.discountAmount.toFixed(2)}`, styles: { textColor: [255, 0, 0] } }
+        ]);
+    }
+    
+    totalsData.push(
+        ['GST (5%)', `₹${invoice.gstAmount.toFixed(2)}`],
+        [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, { content: `₹${invoice.grandTotal.toFixed(2)}`, styles: { fontStyle: 'bold' } }]
+    );
+    
     const qrCodeDataUrl = await QRCode.toDataURL(
-        `Invoice No: ${invoice.invoiceNumber}\nAmount: Rs. ${invoice.grandTotal.toFixed(2)}`,
-        { width: 35, margin: 1 }
+        `Invoice No: ${invoice.invoiceNumber}\nAmount: ₹${invoice.grandTotal.toFixed(2)}`,
+        { width: 40, margin: 1 }
     );
     
     let currentY = finalY;
@@ -166,25 +172,29 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const totalsTableHeight = 25; // Estimated
     const requiredHeight = Math.max(qrCodeSize, totalsTableHeight) + 10;
     
+    let startYForTotals = currentY + 10;
+
     if (doc.internal.pageSize.height - finalY < requiredHeight) {
         doc.addPage();
-        currentY = 20; // Start Y on new page
-        addHeader(doc);
-        addFooter(doc);
+        currentY = 0; // Reset Y on new page
+        startYForTotals = 20;
     }
     
     // Draw QR code on the left of the last page
-    doc.addImage(qrCodeDataUrl, 'PNG', 15, currentY + 10, qrCodeSize, qrCodeSize);
+    doc.addImage(qrCodeDataUrl, 'PNG', 15, startYForTotals, qrCodeSize, qrCodeSize);
 
     autoTable(doc, {
-        startY: currentY + 10,
+        startY: startYForTotals,
         body: totalsData,
         theme: 'plain',
         tableWidth: 'wrap',
         styles: { halign: 'right', fontSize: 10 },
         columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
-        margin: { left: pageWidth / 2, right: 15 },
+        margin: { left: pageWidth - 95, right: 15 }, // Shifted to the right
     });
+    
+    // Manually draw the footer on the last page because autotable's didDrawPage won't run if no new page is added
+    addFooter(doc);
     
     try {
         doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
