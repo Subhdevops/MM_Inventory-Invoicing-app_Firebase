@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
+import { createRoot } from 'react-dom/client';
 import Image from 'next/image';
 import { InvoiceForm } from './invoice-form';
 import { DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { InvoicePDFTemplate } from './invoice-pdf-template';
+
 
 const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof useToast>['toast']) => {
-  const doc = new jsPDF();
   const toastId = 'pdf-gen-toast';
   
   toast({
@@ -25,163 +27,62 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
     description: 'Preparing your invoice, please wait.'
   });
 
+  // Create a temporary, off-screen container for rendering
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  document.body.appendChild(container);
+
+  const root = createRoot(container);
+
   try {
-    const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
+    // Render the React component to the off-screen div
+    root.render(React.createElement(InvoicePDFTemplate, { invoice }));
 
-    const logoImg = await fetch('/logo.png').then(res => res.blob());
-    const stampImg = await fetch('/stamp.png').then(res => res.blob());
-    const logoBase64 = await toBase64(logoImg);
-    const stampBase64 = await toBase64(stampImg);
+    // Wait a moment for all content, especially images, to render
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    
-    // Use Intl.NumberFormat for robust, correct currency formatting.
-    // This should resolve issues with strange characters appearing in the PDF.
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-          style: 'currency',
-          currency: 'INR',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(amount);
-    };
-
-    // --- Header ---
-    doc.addImage(logoBase64, 'PNG', margin, 10, 60, 14.4); 
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 50, 70);
-    doc.text('INVOICE', pageWidth - margin, 18, { align: 'right' });
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - margin, 24, { align: 'right' });
-    doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, pageWidth - margin, 29, { align: 'right' });
-    
-    doc.setDrawColor(224, 224, 224);
-    doc.line(margin, 35, pageWidth - margin, 35);
-
-    // --- Billing Info ---
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 50, 70);
-    doc.text('Bill To:', margin, 45);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(50, 50, 50);
-    doc.text(invoice.customerName, margin, 50);
-    doc.text(invoice.customerPhone, margin, 55);
-    
-    const fromAddress = [
-      'Roopkotha',
-      'Professor Colony, C/O, Deshbandhu Pal',
-      'Holding No :- 195/8, Ward no. 14',
-      'Bolpur, Birbhum, West Bengal - 731204',
-      'GSTIN: 19AANCR9537M1ZC',
-      'Phone: 9476468690'
-    ];
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(50, 50, 50);
-    doc.text(fromAddress, pageWidth - margin, 45, { align: 'right', 'lineHeightFactor': 1.5 });
-
-    // --- Table ---
-    const tableData = invoice.items.map((item, index) => {
-      const productName = item.name;
-      const productDescription = item.description ? `\n${item.description}` : '';
-      return [
-          index + 1,
-          `${productName}${productDescription}`,
-          item.quantity,
-          formatCurrency(item.price),
-          formatCurrency(item.price * item.quantity),
-      ]
-    });
-
-    autoTable(doc, {
-        startY: 75,
-        head: [['#', 'Product', 'Qty', 'Price', 'Total']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [33, 150, 243], textColor: [255, 255, 255], fontStyle: 'bold' },
-        columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 15, halign: 'center' },
-            3: { cellWidth: 30, halign: 'right' },
-            4: { cellWidth: 35, halign: 'right' },
-        },
-        margin: { left: margin, right: margin },
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY;
-    
-    // --- Totals ---
-    let totalsY = finalY + 10;
-    if (totalsY > pageHeight - 60) {
-        doc.addPage();
-        totalsY = margin;
-    }
-
-    const totalsX = pageWidth - margin;
-    const totalsBlockWidth = 70;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(50, 50, 50);
-    
-    let currentY = totalsY;
-    doc.text('Subtotal:', totalsX - totalsBlockWidth, currentY, { align: 'right' });
-    doc.text(formatCurrency(invoice.subtotal), totalsX, currentY, { align: 'right' });
-
-    if (invoice.discountAmount > 0) {
-      currentY += 7;
-      doc.text(`Discount (${invoice.discountPercentage}%):`, totalsX - totalsBlockWidth, currentY, { align: 'right' });
-      doc.setTextColor(220, 53, 69);
-      doc.text(`-${formatCurrency(invoice.discountAmount)}`, totalsX, currentY, { align: 'right' });
-      doc.setTextColor(50, 50, 50);
-    }
-
-    currentY += 7;
-    doc.text('GST (5%):', totalsX - totalsBlockWidth, currentY, { align: 'right' });
-    doc.text(formatCurrency(invoice.gstAmount), totalsX, currentY, { align: 'right' });
-    
-    currentY += 3;
-    doc.setDrawColor(224, 224, 224);
-    doc.line(totalsX - totalsBlockWidth, currentY, totalsX, currentY);
-    
-    currentY += 7;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 50, 70);
-    doc.text('Grand Total:', totalsX - totalsBlockWidth, currentY, { align: 'right' });
-    doc.text(formatCurrency(invoice.grandTotal), totalsX, currentY, { align: 'right' });
-    
-    // --- Footer ---
-    const footerY = pageHeight - 45;
-    doc.setPage(doc.internal.getNumberOfPages());
-    const lastPageFinalY = (doc as any).lastAutoTable.finalY || currentY;
-
-    const placeFooter = (y: number) => {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
-      doc.text('Thank you for shopping with us! Do visit again.', pageWidth / 2, y, { align: 'center' });
-      doc.addImage(stampBase64, 'PNG', pageWidth / 2 - 25, y + 5, 50, 25);
-    };
-
-    if (lastPageFinalY > footerY - 30) {
-        doc.addPage();
-        placeFooter(margin);
-    } else {
-        placeFooter(footerY);
+    const content = container.querySelector('div');
+    if (!content) {
+      throw new Error("Could not find rendered invoice content.");
     }
     
-    doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+    // Use html2canvas to capture the rendered content as a canvas
+    const canvas = await html2canvas(content, {
+      scale: 2, // Use a higher scale for better PDF quality
+      useCORS: true,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Calculate the height of the image in the PDF's coordinate system to maintain aspect ratio
+    const ratio = canvasWidth / pdfWidth;
+    const imgHeightInPdf = canvasHeight / ratio;
+    
+    let heightLeft = imgHeightInPdf;
+    let position = 0;
+
+    // Add the first page
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
+    heightLeft -= pdfHeight;
+
+    // Add subsequent pages if the content is taller than a single A4 page
+    while (heightLeft > 0) {
+      position -= pdfHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
+      heightLeft -= pdfHeight;
+    }
+    
+    pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+
     toast({
       id: toastId,
       title: 'Success!',
@@ -197,6 +98,10 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
       variant: 'destructive'
     });
     throw error;
+  } finally {
+    // Cleanup: unmount the React component and remove the temporary div
+    root.unmount();
+    document.body.removeChild(container);
   }
 };
 
