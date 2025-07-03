@@ -157,11 +157,12 @@ const generateInvoicePdf = async (invoice: Invoice, toast: ReturnType<typeof use
       doc.addImage(stampBase64, 'PNG', pageWidth / 2 - 25, y + 5, 50, 25);
     };
 
-    if (currentY > footerY - 30) {
-      doc.addPage();
-      placeFooter(margin + 10);
+    // Place footer on the last page, adding a new page if there isn't enough space
+    if (finalY > footerY - 30) {
+        doc.addPage();
+        placeFooter(margin);
     } else {
-      placeFooter(footerY);
+        placeFooter(footerY);
     }
     
     doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
