@@ -3,6 +3,7 @@
 
 import { useState, useRef } from 'react';
 import * as z from "zod";
+import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,16 +18,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Upload, FileCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
-import Papa from 'papaparse';
 import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
   quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
-  barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
+  barcode: z.string().min(1, { message: "Barcode cannot be empty." }).transform(val => String(val)), // Ensure barcode is a string
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
-  description: z.string().default(''),
+  description: z.string().optional().default(''),
 });
 
 type ImportInventoryDialogProps = {
@@ -54,26 +54,49 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
     if (!file) {
       toast({
         title: "No file selected",
-        description: "Please select a CSV file to import.",
+        description: "Please select an Excel file (.xlsx) to import.",
         variant: "destructive",
       });
       return;
     }
 
     setIsImporting(true);
+    const reader = new FileReader();
 
-    Papa.parse<Omit<Product, 'id'>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: header => header.trim().toLowerCase(),
-      complete: async (results) => {
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+        if (jsonData.length === 0) {
+            toast({
+                title: "Empty File",
+                description: "The selected Excel file is empty or has no data.",
+                variant: "destructive",
+            });
+            setIsImporting(false);
+            return;
+        }
+        
+        // Normalize headers to lowercase and trimmed
+        const normalizedJsonData = jsonData.map(row => {
+            const newRow: {[key: string]: any} = {};
+            for (const key in row) {
+                newRow[key.trim().toLowerCase()] = row[key];
+            }
+            return newRow;
+        });
+
         const requiredHeaders = ["barcode", "name", "price", "cost", "quantity"];
-        const actualHeaders = results.meta.fields || [];
+        const actualHeaders = Object.keys(normalizedJsonData[0] || {});
         const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
 
         if (missingHeaders.length > 0) {
           toast({
-            title: "Invalid CSV Format",
+            title: "Invalid Excel Format",
             description: `Your file is missing required columns: ${missingHeaders.join(', ')}.`,
             variant: "destructive",
           });
@@ -81,15 +104,16 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
           return;
         }
 
-        const validation = z.array(productSchema).safeParse(results.data);
+        const validation = z.array(productSchema).safeParse(normalizedJsonData);
         if (!validation.success) {
           const firstError = validation.error.errors[0];
-          const field = firstError.path.slice(-1)[0] as string; // get the field name
-          const description = `Error in column '${field.charAt(0).toUpperCase() + field.slice(1)}': ${firstError.message}. Please check your CSV data.`;
+          const errorRow = (firstError.path[0] as number) + 2; 
+          const field = firstError.path[1] as string;
+          const description = `Error in row ${errorRow}, column '${field}': ${firstError.message}. Please check your Excel data.`;
           
           console.error(validation.error.errors);
           toast({
-            title: "Invalid Data in CSV",
+            title: "Invalid Data in Excel File",
             description: description,
             variant: "destructive",
           });
@@ -102,16 +126,26 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         setFileName("");
         if (fileInputRef.current) fileInputRef.current.value = "";
         setOpen(false);
-      },
-      error: (error) => {
+      } catch (error) {
         toast({
           title: "Parsing Error",
-          description: `Failed to parse CSV file: ${error.message}`,
+          description: `Failed to parse Excel file. Ensure it is a valid .xlsx file.`,
           variant: "destructive",
         });
         setIsImporting(false);
-      },
-    });
+      }
+    };
+    
+    reader.onerror = () => {
+       toast({
+          title: "File Read Error",
+          description: "Could not read the selected file.",
+          variant: "destructive",
+        });
+        setIsImporting(false);
+    }
+
+    reader.readAsArrayBuffer(file);
   };
 
   return (
@@ -123,25 +157,25 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Import Inventory from CSV</DialogTitle>
+          <DialogTitle>Import Inventory from Excel</DialogTitle>
           <DialogDescription>
-            Select a CSV file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. An optional 'description' column can be included.
+            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. An optional 'description' column can be included.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="grid w-full max-w-sm items-center gap-1.5">
             <Input
-              id="csv-file"
+              id="excel-file"
               type="file"
-              accept=".csv"
+              accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileChange}
               ref={fileInputRef}
               className="hidden"
             />
             <Button asChild variant="outline">
-                <label htmlFor="csv-file" className="cursor-pointer">
+                <label htmlFor="excel-file" className="cursor-pointer">
                     <FileCode className="mr-2 h-4 w-4"/>
-                    {fileName || "Choose a .csv file"}
+                    {fileName || "Choose a .xlsx file"}
                 </label>
             </Button>
           </div>

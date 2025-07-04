@@ -9,7 +9,7 @@ import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
 import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -429,25 +429,25 @@ export default function Home() {
     }
   };
 
-  const exportInvoicesToCsv = () => {
+  const exportInvoicesToXlsx = () => {
     const productsMap = new Map(products.map(p => [p.id, p.barcode]));
     const dataToExport = invoices.flatMap(inv => 
         inv.items.map(item => ({
-            invoiceId: inv.invoiceNumber || inv.id,
-            invoiceDate: new Date(inv.date).toLocaleString('en-IN'),
-            customerName: inv.customerName,
-            customerPhone: inv.customerPhone,
-            productId: item.barcode || productsMap.get(item.id) || item.id,
-            productName: item.name,
-            productDescription: item.description,
-            quantity: item.quantity,
-            price: item.price.toFixed(2),
-            cost: (item.cost || 0).toFixed(2),
-            subtotal: inv.subtotal.toFixed(2),
-            discountPercentage: inv.discountPercentage,
-            discountAmount: inv.discountAmount.toFixed(2),
-            gst: inv.gstAmount.toFixed(2),
-            total: inv.grandTotal.toFixed(2),
+            "Invoice Number": inv.invoiceNumber || inv.id,
+            "Date": new Date(inv.date).toLocaleString('en-IN'),
+            "Customer Name": inv.customerName,
+            "Customer Phone": inv.customerPhone,
+            "Product Barcode": item.barcode || productsMap.get(item.id) || item.id,
+            "Product Name": item.name,
+            "Product Description": item.description,
+            "Quantity": item.quantity,
+            "Price": item.price,
+            "Cost": item.cost || 0,
+            "Subtotal": inv.subtotal,
+            "Discount %": inv.discountPercentage,
+            "Discount Amount": inv.discountAmount,
+            "GST": inv.gstAmount,
+            "Grand Total": inv.grandTotal,
         }))
     );
 
@@ -456,44 +456,53 @@ export default function Home() {
         return;
     }
 
-    const csv = Papa.unparse(dataToExport);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'invoices.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
+
+    worksheet['!cols'] = [
+        { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
+        { wch: 40 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
+        { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+    ];
+
+    XLSX.writeFile(workbook, "invoices.xlsx");
   }
 
-  const exportInventoryToCsv = () => {
+  const exportInventoryToXlsx = () => {
     if (products.length === 0) {
       toast({ title: "No inventory to export", variant: "destructive", description: "Add a product first." });
       return;
     }
 
-    const dataToExport = products.map(p => ({
-      productId: p.id,
-      productName: p.name,
-      description: p.description,
-      quantity: p.quantity,
-      price: p.price.toFixed(2),
-      cost: p.cost.toFixed(2),
-      barcode: p.barcode,
-    }));
+    const heading = [
+      ["Barcode", "Name", "Description", "Quantity", "Price", "Cost"],
+    ];
 
-    const csv = Papa.unparse(dataToExport);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'inventory.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const dataToExport = products.map(p => [
+      p.barcode,
+      p.name,
+      p.description,
+      p.quantity,
+      p.price,
+      p.cost,
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([...heading, ...dataToExport]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
+    
+    // Set column widths for better readability
+    worksheet['!cols'] = [
+        { wch: 20 }, // Barcode
+        { wch: 40 }, // Name
+        { wch: 50 }, // Description
+        { wch: 10 }, // Quantity
+        { wch: 15 }, // Price
+        { wch: 15 }, // Cost
+    ];
+
+    XLSX.writeFile(workbook, "inventory.xlsx");
   };
 
   const handleUploadFile = async (file: File) => {
@@ -721,8 +730,8 @@ export default function Home() {
           chartData={chartData}
           chartView={chartView}
           onChartViewChange={setChartView} 
-          onExportInvoices={exportInvoicesToCsv} 
-          onExportInventory={exportInventoryToCsv}
+          onExportInvoices={exportInvoicesToXlsx} 
+          onExportInventory={exportInventoryToXlsx}
           totalInvoices={invoices.length} 
           totalRevenue={totalRevenue}
           totalProfit={totalProfit}
@@ -748,7 +757,6 @@ export default function Home() {
           removeProduct={removeProduct}
           bulkRemoveProducts={bulkRemoveProducts}
           updateProduct={updateProduct}
-          bulkUpdateProducts={bulkUpdateProducts}
           filter={filter}
           onFilterChange={setFilter}
           selectedRows={selectedRows}
@@ -782,5 +790,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

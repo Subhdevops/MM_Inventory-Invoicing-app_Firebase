@@ -120,11 +120,11 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
               <>
                 <Button onClick={onExportInventory} variant="outline" size="icon" className="sm:w-auto sm:px-4" disabled={isLoading}>
                   <PackageSearch className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Export Inventory (CSV)</span>
+                  <span className="hidden sm:inline">Export Inventory (Excel)</span>
                 </Button>
                 <Button onClick={onExportInvoices} variant="outline" size="icon" className="sm:w-auto sm:px-4" disabled={isLoading}>
                   <Download className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Export Invoices (CSV)</span>
+                  <span className="hidden sm:inline">Export Invoices (Excel)</span>
                 </Button>
               </>
             )}
