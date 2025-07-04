@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, query, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 
@@ -7,14 +7,8 @@ export const checkAndCreateUserProfile = async (user: User) => {
   const userSnap = await getDoc(userRef);
 
   if (!userSnap.exists()) {
-    // New user, determine role
-    const usersCollectionRef = collection(db, 'users');
-    // Check if any user document exists at all.
-    const q = query(usersCollectionRef, limit(1));
-    const existingUsersSnap = await getDocs(q);
-    
-    // If no users exist, the first one is an admin.
-    const role = existingUsersSnap.empty ? 'admin' : 'user';
+    // New user, determine role based on email address
+    const role = user.email === 'admin@admin.com' ? 'admin' : 'user';
 
     try {
       await setDoc(userRef, {
@@ -28,6 +22,7 @@ export const checkAndCreateUserProfile = async (user: User) => {
        throw error;
     }
   }
+  
   // If profile exists, just return their role.
   return userSnap.data().role;
 };
