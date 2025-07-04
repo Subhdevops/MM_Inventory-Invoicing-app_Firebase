@@ -131,10 +131,45 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             ],
             [
               { content: `${invoice.customerName}\n${invoice.customerPhone}` },
-              { content: `Roopkotha\nProfessor Colony, C/O, Deshbandhu Pal\nHolding No :- 195/8, Ward no. 14\nBolpur, Birbhum, West Bengal - 731204\nPhone: 9476468690\nGSTIN: 19AANCR9537M1ZC`, styles: { halign: 'right', fontSize: 8 } }
+              // Placeholder to reserve space. Height is determined by newlines.
+              { content: `\n\n\n\n\n`, styles: { halign: 'right', fontSize: 8 } }
             ]
         ],
         theme: 'plain',
+        didDrawCell: function(data) {
+            // Target the second cell of the second row in the body (the "From" address cell)
+            if (data.section === 'body' && data.row.index === 1 && data.column.index === 1) {
+                const cell = data.cell;
+                const x = cell.x + cell.width - cell.padding('right');
+                let y = cell.y + cell.padding('top');
+
+                // Save current style to restore later
+                const oldSize = doc.getFontSize();
+                const oldStyle = doc.getFont().fontStyle;
+
+                // Draw "Roopkotha" with custom style
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Roopkotha', x, y, { align: 'right' });
+                y += doc.getTextDimensions('R', {fontSize: 10}).h + 1; // Move y down for the next line
+
+                // Draw the rest of the address
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'normal');
+                const addressLines = [
+                    'Professor Colony, C/O, Deshbandhu Pal',
+                    'Holding No :- 195/8, Ward no. 14',
+                    'Bolpur, Birbhum, West Bengal - 731204',
+                    'Phone: 9476468690',
+                    'GSTIN: 19AANCR9537M1ZC'
+                ];
+                doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
+
+                // Restore previous style
+                doc.setFontSize(oldSize);
+                doc.setFont('helvetica', oldStyle);
+            }
+        }
     });
 
     // Items table
