@@ -182,7 +182,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      head: [['#', 'Product', 'Qty', 'Price (Rs.)', 'Total (Rs.)']],
+      head: [['#', 'Product', 'Qty', 'Price (pre-GST)', 'Total (pre-GST)']],
       body: tableBody,
       columnStyles: {
         0: { halign: 'center' },
@@ -201,7 +201,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     // Totals Section
     const totalsData: any[] = [
-        ['Subtotal', formatCurrency(invoice.subtotal)],
+        ['Subtotal (pre-GST)', formatCurrency(invoice.subtotal)],
     ];
     
     if (invoice.discountAmount > 0) {
@@ -278,6 +278,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       setIsProcessing(false);
       setShowSuccessScreen(false);
 
+      const GST_INCLUSIVE_MULTIPLIER = 1.05;
+
       const productCounts = products.reduce((acc, p) => {
         acc[p.id] = (acc[p.id] || 0) + 1;
         return acc;
@@ -289,7 +291,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         id: p.id,
         name: p.name,
         description: p.description || '',
-        price: p.price,
+        price: p.price / GST_INCLUSIVE_MULTIPLIER, // Calculate pre-GST base price
         cost: p.cost,
         stock: p.quantity,
         quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),

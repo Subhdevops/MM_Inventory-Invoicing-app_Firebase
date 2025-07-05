@@ -78,7 +78,7 @@ export function InvoiceForm({
                 <Table>
                   <TableFooter>
                     <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">Subtotal</TableCell>
+                        <TableCell colSpan={3} className="text-right font-medium">Subtotal (pre-GST)</TableCell>
                         <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
@@ -123,8 +123,8 @@ export function InvoiceForm({
                     <TableRow>
                       <TableHead className="w-[50%]">Product</TableHead>
                       <TableHead className="w-[120px] text-center">Quantity</TableHead>
-                      <TableHead className="w-[120px] text-right">Price</TableHead>
-                      <TableHead className="w-[120px] text-right">Total</TableHead>
+                      <TableHead className="w-[120px] text-right">Price (pre-GST)</TableHead>
+                      <TableHead className="w-[120px] text-right">Total (pre-GST)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
