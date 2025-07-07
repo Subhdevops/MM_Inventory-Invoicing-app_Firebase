@@ -32,6 +32,7 @@ interface InvoiceFormProps {
   handleProcessAndDownload: () => void;
   isProcessing: boolean;
   hasItemsToInvoice: boolean;
+  totalPossibleDiscount: number;
 }
 
 export function InvoiceForm({
@@ -43,7 +44,8 @@ export function InvoiceForm({
   onOpenChange,
   handleProcessAndDownload,
   isProcessing,
-  hasItemsToInvoice
+  hasItemsToInvoice,
+  totalPossibleDiscount
 }: InvoiceFormProps) {
   return (
     <>
@@ -82,7 +84,11 @@ export function InvoiceForm({
                         <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
-                       <TableCell colSpan={2}></TableCell>
+                       <TableCell colSpan={2} className="text-right">
+                         {totalPossibleDiscount > 0 && (
+                           <p className="text-xs text-muted-foreground">Max suggested discount: <span className="font-bold text-destructive">₹{totalPossibleDiscount.toFixed(2)}</span></p>
+                         )}
+                       </TableCell>
                        <TableCell className="text-right font-medium">Discount</TableCell>
                        <TableCell className="text-right font-medium">
                           <div className="relative">

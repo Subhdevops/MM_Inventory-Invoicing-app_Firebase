@@ -108,10 +108,12 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     const sortableProducts = [...filtered];
     if (sortConfig.key) {
       sortableProducts.sort((a, b) => {
-        if (a[sortConfig.key!] < b[sortConfig.key!]) {
+        const valA = a[sortConfig.key!] ?? 0;
+        const valB = b[sortConfig.key!] ?? 0;
+        if (valA < valB) {
           return sortConfig.direction === 'asc' ? -1 : 1;
         }
-        if (a[sortConfig.key!] > b[sortConfig.key!]) {
+        if (valA > valB) {
           return sortConfig.direction === 'asc' ? 1 : -1;
         }
         return 0;
@@ -167,6 +169,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
       <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
       <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
       <TableCell className="text-center">{product.quantity}</TableCell>
+      <TableCell className="text-right">
+        {product.possibleDiscount && product.possibleDiscount > 0 ? (
+          <span className="text-destructive font-semibold animate-pulse-red">
+            ₹{product.possibleDiscount.toFixed(2)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        )}
+      </TableCell>
       <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
       {isAdmin && (
         <TableCell className="text-right">
@@ -298,6 +309,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
               <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
               <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
+              <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
               <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
               {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
             </TableRow>
@@ -321,6 +333,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   <TableCell className="text-center">
                     <Skeleton className="h-5 w-8 mx-auto" />
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-5 w-20 ml-auto" />
+                  </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <Skeleton className="h-5 w-full" />
                   </TableCell>
@@ -333,7 +348,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 displayedProducts.map(renderProductRow)
             ) : (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
+                <TableCell colSpan={isAdmin ? 8 : 7} className="h-24 text-center">
                   No products found.
                 </TableCell>
               </TableRow>

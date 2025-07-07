@@ -7,6 +7,7 @@ export type Product = {
   barcode: string;
   price: number;
   cost: number;
+  possibleDiscount?: number;
 };
 
 export type SoldProduct = {
@@ -17,6 +18,7 @@ export type SoldProduct = {
   quantity: number;
   cost: number;
   barcode: string;
+  possibleDiscount?: number;
 }
 
 export type Invoice = {
@@ -48,6 +50,7 @@ export type InvoiceItem = {
     cost: number;
     stock: number;
     quantity: number;
+    possibleDiscount?: number;
 };
 
 export type SavedFile = {

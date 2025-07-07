@@ -295,6 +295,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         cost: p.cost,
         stock: p.quantity,
         quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
+        possibleDiscount: p.possibleDiscount || 0,
       })));
     }
   }, [products, isOpen]);
@@ -326,6 +327,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const grandTotal = subtotalAfterDiscount + gstAmount;
     return { subtotal, discountAmount, gstAmount, grandTotal };
   }, [items, discountPercentage]);
+
+  const totalPossibleDiscount = useMemo(() => {
+    return items.reduce((acc, item) => acc + (item.possibleDiscount || 0) * item.quantity, 0);
+  }, [items]);
 
   const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
@@ -407,6 +412,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               handleProcessAndDownload={handleProcessAndDownload}
               isProcessing={isProcessing}
               hasItemsToInvoice={hasItemsToInvoice}
+              totalPossibleDiscount={totalPossibleDiscount}
             />
           </>
         )}

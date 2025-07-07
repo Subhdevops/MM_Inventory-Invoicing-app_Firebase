@@ -27,6 +27,7 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
   description: z.string().optional().default(''),
+  possibleDiscount: z.coerce.number().min(0).optional().default(0),
 });
 
 type ImportInventoryDialogProps = {
@@ -81,11 +82,15 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
             return;
         }
         
-        // Normalize headers to lowercase and trimmed
+        // Normalize headers to lowercase and trimmed, and handle different casing
         const normalizedJsonData = jsonData.map(row => {
             const newRow: {[key: string]: any} = {};
             for (const key in row) {
-                newRow[key.trim().toLowerCase()] = row[key];
+                let normalizedKey = key.trim().toLowerCase();
+                if (normalizedKey === 'possible discount') { // Handle specific case
+                    normalizedKey = 'possiblediscount';
+                }
+                newRow[normalizedKey.replace(/\s+/g, '')] = row[key];
             }
             return newRow;
         });
@@ -159,7 +164,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from Excel</DialogTitle>
           <DialogDescription>
-            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. An optional 'description' column can be included.
+            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional columns: 'description', 'possibleDiscount'.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

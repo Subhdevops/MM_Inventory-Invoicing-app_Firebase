@@ -37,6 +37,7 @@ const productSchema = z.object({
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
+  possibleDiscount: z.coerce.number().min(0, { message: "Discount must be a positive number." }).optional(),
 });
 
 type AddProductDialogProps = {
@@ -54,6 +55,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
       barcode: "",
       price: 0,
       cost: 0,
+      possibleDiscount: 0,
     },
   });
 
@@ -146,7 +148,20 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 )}
               />
             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="possibleDiscount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Possible Discount (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 500.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="quantity"
@@ -160,6 +175,8 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   </FormItem>
                 )}
               />
+            </div>
+             <div className="grid grid-cols-1 gap-4">
                <FormField
                 control={form.control}
                 name="barcode"

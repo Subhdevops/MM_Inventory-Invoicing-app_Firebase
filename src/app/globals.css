@@ -127,3 +127,13 @@ body {
 .hummingbird .right-wing {
   animation: flap-wings-right 0.15s infinite;
 }
+
+@keyframes pulse-red {
+  50% {
+    opacity: .7;
+  }
+}
+
+.animate-pulse-red {
+  animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
