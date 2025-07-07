@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct, UserProfile, SavedFile } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -15,7 +15,7 @@ import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, 
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
-import { Loader2 } from 'lucide-react';
+import { Activity, Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
 import { ViewFilesDialog } from '@/components/view-pictures-dialog';
 import { useIdleTimeout } from '@/hooks/use-idle-timeout';
@@ -33,9 +33,11 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [savedFiles, setSavedFiles] = useState<SavedFile[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserProfile['role'] | null>(null);
   const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
@@ -77,6 +79,7 @@ export default function Home() {
   useMultiDeviceLogoutListener(user);
   useBarcodeScanner(handleScanAndAdd);
 
+  // Effect to fetch user profile, including their last active event
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -84,8 +87,9 @@ export default function Home() {
       const fetchUserRole = async () => {
         setIsRoleLoading(true);
         try {
-          const role = await checkAndCreateUserProfile(user);
-          setUserRole(role);
+          const profile = await checkAndCreateUserProfile(user);
+          setUserRole(profile.role);
+          setActiveEventId(profile.activeEventId || null);
         } catch (error) {
           console.error("Failed to check or create user profile:", error);
           setUserRole('user'); // Default to restricted access on error
@@ -102,22 +106,50 @@ export default function Home() {
     }
   }, [user, authLoading, router, toast]);
 
+  // Effect to fetch the list of all available events
   useEffect(() => {
-    if (!user) return; // Don't fetch data if user is not authenticated
+    if (!user) return;
+    const eventsQuery = query(collection(db, "events"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(eventsQuery, (snapshot) => {
+        const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+        setEvents(eventsData);
+    }, (error) => {
+        console.error("Error fetching events:", error);
+        toast({
+            title: "Error fetching events",
+            description: "Could not retrieve the list of events.",
+            variant: "destructive",
+        });
+    });
+    return () => unsubscribe();
+  }, [user, toast]);
 
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      setIsProductsLoading(false);
+  // Effect to fetch data scoped to the active event
+  useEffect(() => {
+    if (!user || !activeEventId) {
+      setProducts([]);
+      setInvoices([]);
+      setSavedFiles([]);
+      setIsDataLoading(false);
       return;
     }
 
-    const productsQuery = query(collection(db, "products"), orderBy("name"));
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      setIsDataLoading(false);
+      return;
+    }
+
+    setIsDataLoading(true);
+    const eventRef = doc(db, "events", activeEventId);
+
+    const productsQuery = query(collection(eventRef, "products"), orderBy("name"));
     const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
       const productsData: Product[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Product));
       setProducts(productsData);
-      setIsProductsLoading(false);
+      setIsDataLoading(false);
     }, (error) => {
       console.error("Error fetching products:", error);
       toast({
@@ -125,10 +157,10 @@ export default function Home() {
         description: "Could not fetch products. Please ensure your Firebase config is correct and your Firestore security rules allow reads.",
         variant: "destructive",
       });
-      setIsProductsLoading(false);
+      setIsDataLoading(false);
     });
 
-    const invoicesQuery = query(collection(db, "invoices"), orderBy("date", "desc"));
+    const invoicesQuery = query(collection(eventRef, "invoices"), orderBy("date", "desc"));
     const unsubscribeInvoices = onSnapshot(invoicesQuery, (querySnapshot) => {
       const invoicesData: Invoice[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -137,15 +169,9 @@ export default function Home() {
       setInvoices(invoicesData);
     }, (error) => {
       console.error("Error fetching invoices:", error);
-      toast({
-        title: "Database Connection Error",
-        description: "Could not fetch invoices. Please check your Firestore security rules.",
-        variant: "destructive",
-      });
-      setIsProductsLoading(false);
     });
 
-    const savedFilesQuery = query(collection(db, "savedFiles"), orderBy("createdAt", "desc"));
+    const savedFilesQuery = query(collection(eventRef, "savedFiles"), orderBy("createdAt", "desc"));
     const unsubscribeSavedFiles = onSnapshot(savedFilesQuery, (querySnapshot) => {
         const filesData: SavedFile[] = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -154,25 +180,58 @@ export default function Home() {
         setSavedFiles(filesData);
     });
 
-
     return () => {
       unsubscribeProducts();
       unsubscribeInvoices();
       unsubscribeSavedFiles();
     };
-  }, [toast, user]);
+  }, [toast, user, activeEventId]);
+
+  const handleSwitchEvent = async (eventId: string) => {
+    if (!user) return;
+    try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { activeEventId: eventId });
+        setActiveEventId(eventId);
+        toast({ title: 'Event Switched', description: 'Loading data for the selected event.' });
+    } catch (error) {
+        console.error("Error switching event:", error);
+        toast({ title: "Error", description: "Failed to switch event.", variant: "destructive" });
+    }
+  };
+
+  const handleCreateEvent = async (name: string): Promise<Event> => {
+      if (!user) throw new Error("User not authenticated");
+      try {
+          const newEventRef = doc(collection(db, "events"));
+          const newEvent: Event = {
+              id: newEventRef.id,
+              name,
+              createdAt: new Date().toISOString(),
+          };
+          await setDoc(newEventRef, newEvent);
+          await handleSwitchEvent(newEvent.id);
+          toast({ title: 'Event Created', description: `Successfully created and switched to "${name}".` });
+          return newEvent;
+      } catch (error) {
+          console.error("Error creating event:", error);
+          toast({ title: "Error", description: "Failed to create new event.", variant: "destructive" });
+          throw error;
+      }
+  };
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
+    if (!activeEventId) return;
     if (products.some(p => p.barcode === product.barcode)) {
       toast({
         title: "Duplicate Barcode",
-        description: `A product with the barcode "${product.barcode}" already exists.`,
+        description: `A product with the barcode "${product.barcode}" already exists in this event.`,
         variant: "destructive",
       });
       return;
     }
     try {
-      await addDoc(collection(db, "products"), product);
+      await addDoc(collection(db, "events", activeEventId, "products"), product);
       toast({
         title: "Product Added",
         description: `${product.name} has been added to the inventory.`,
@@ -184,9 +243,10 @@ export default function Home() {
   };
 
   const removeProduct = async (productId: string) => {
+    if (!activeEventId) return;
     const productName = products.find(p => p.id === productId)?.name || 'Product';
     try {
-      await deleteDoc(doc(db, "products", productId));
+      await deleteDoc(doc(db, "events", activeEventId, "products", productId));
       toast({
         title: "Product Removed",
         description: `${productName} has been removed from the inventory.`,
@@ -199,10 +259,11 @@ export default function Home() {
   };
 
   const bulkRemoveProducts = async (productIds: string[]) => {
+    if (!activeEventId) return;
     try {
       const batch = writeBatch(db);
       productIds.forEach(id => {
-        const docRef = doc(db, "products", id);
+        const docRef = doc(db, "events", activeEventId, "products", id);
         batch.delete(docRef);
       });
       await batch.commit();
@@ -221,7 +282,8 @@ export default function Home() {
   };
 
   const updateProduct = async (productId: string, data: Partial<Omit<Product, 'id'>>) => {
-    const productRef = doc(db, "products", productId);
+    if (!activeEventId) return;
+    const productRef = doc(db, "events", activeEventId, "products", productId);
     try {
       await updateDoc(productRef, data);
       toast({
@@ -235,11 +297,11 @@ export default function Home() {
   };
   
   const bulkUpdateProducts = async (productIds: string[], data: Partial<Omit<Product, 'id'>>) => {
-    if (productIds.length === 0) return;
+    if (productIds.length === 0 || !activeEventId) return;
 
     const batch = writeBatch(db);
     productIds.forEach(id => {
-        const docRef = doc(db, "products", id);
+        const docRef = doc(db, "events", activeEventId, "products", id);
         batch.update(docRef, data);
     });
 
@@ -258,6 +320,7 @@ export default function Home() {
   };
   
   const handleImportInventory = async (newProducts: Omit<Product, 'id'>[]) => {
+    if (!activeEventId) return;
     const existingProductsMap = new Map(products.map(p => [p.barcode, p]));
     const batch = writeBatch(db);
 
@@ -267,11 +330,11 @@ export default function Home() {
     for (const p of newProducts) {
       if (existingProductsMap.has(p.barcode)) {
         const existingProduct = existingProductsMap.get(p.barcode)!;
-        const productRef = doc(db, "products", existingProduct.id);
+        const productRef = doc(db, "events", activeEventId, "products", existingProduct.id);
         batch.update(productRef, p as any);
         updatedCount++;
       } else {
-        const productRef = doc(collection(db, "products"));
+        const productRef = doc(collection(db, "events", activeEventId, "products"));
         batch.set(productRef, p);
         addedCount++;
         existingProductsMap.set(p.barcode, { ...p, id: productRef.id }); // Add to map to handle duplicates in CSV
@@ -295,12 +358,13 @@ export default function Home() {
   };
 
   const clearAllInvoices = async () => {
+    if (!activeEventId) return;
     if (invoices.length === 0) {
       toast({ title: "No invoices to clear", description: "Your invoice list is already empty." });
       return;
     }
     try {
-      const invoicesRef = collection(db, "invoices");
+      const invoicesRef = collection(db, "events", activeEventId, "invoices");
       const querySnapshot = await getDocs(invoicesRef);
       const batch = writeBatch(db);
       querySnapshot.forEach(doc => {
@@ -319,8 +383,7 @@ export default function Home() {
   };
 
   const handleResetInvoiceCounter = async (newStartNumber?: number) => {
-    // The transaction logic adds 1 to the current number to get the new invoice number.
-    // So, to make the *next* invoice X, we must set the counter to X-1.
+    if (!activeEventId) return;
     const DEFAULT_START_NUMBER = 20250600001;
     const numberToSet = newStartNumber ?? DEFAULT_START_NUMBER;
 
@@ -334,7 +397,7 @@ export default function Home() {
     }
 
     const counterValue = numberToSet - 1;
-    const invoiceCounterRef = doc(db, 'counters', 'invoices');
+    const invoiceCounterRef = doc(db, 'events', activeEventId, 'counters', 'invoices');
 
     try {
       await setDoc(invoiceCounterRef, { currentNumber: counterValue });
@@ -354,7 +417,9 @@ export default function Home() {
   };
 
   const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }): Promise<Invoice> => {
-    const invoiceCounterRef = doc(db, 'counters', 'invoices');
+    if (!activeEventId) throw new Error("No active event selected.");
+    const eventRef = doc(db, "events", activeEventId);
+    const invoiceCounterRef = doc(eventRef, 'counters', 'invoices');
     
     const newInvoiceNumber = await runTransaction(db, async (transaction) => {
         const counterDoc = await transaction.get(invoiceCounterRef);
@@ -388,7 +453,7 @@ export default function Home() {
     const gstAmount = subtotalAfterDiscount * GST_RATE;
     const grandTotal = subtotalAfterDiscount + gstAmount;
     
-    const invoiceRef = doc(collection(db, "invoices"));
+    const invoiceRef = doc(collection(eventRef, "invoices"));
 
     const newInvoice: Invoice = {
       id: invoiceRef.id,
@@ -411,7 +476,7 @@ export default function Home() {
       invoiceData.items.forEach(p => {
         const currentProduct = products.find(prod => prod.id === p.id);
         if (currentProduct) {
-          const productRef = doc(db, "products", p.id);
+          const productRef = doc(db, "events", activeEventId, "products", p.id);
           const newStock = Math.max(0, currentProduct.quantity - p.quantity);
           batch.update(productRef, { quantity: newStock });
         }
@@ -509,7 +574,7 @@ export default function Home() {
   };
 
   const handleUploadFile = async (file: File) => {
-    if (!file) return;
+    if (!file || !activeEventId) return;
 
     const toastId = "upload-toast";
     toast({
@@ -518,11 +583,11 @@ export default function Home() {
       description: "Please wait while the file is being uploaded.",
     });
 
-    const storageRef = ref(storage, `savedFiles/${Date.now()}_${file.name}`);
+    const storageRef = ref(storage, `events/${activeEventId}/savedFiles/${Date.now()}_${file.name}`);
     try {
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      await addDoc(collection(db, "savedFiles"), {
+      await addDoc(collection(db, "events", activeEventId, "savedFiles"), {
         name: file.name,
         url: downloadURL,
         createdAt: new Date().toISOString(),
@@ -541,11 +606,12 @@ export default function Home() {
         description: "Please check your Firebase Storage setup and security rules.",
         variant: "destructive",
       });
-      throw error; // Re-throw error to be caught by the dialog
+      throw error;
     }
   };
 
   const handleDeleteFile = async (fileId: string, fileUrl: string) => {
+    if (!activeEventId) return;
     const toastId = "delete-toast";
     toast({
       id: toastId,
@@ -554,10 +620,8 @@ export default function Home() {
     });
 
     try {
-      // Delete from Firestore
-      await deleteDoc(doc(db, "savedFiles", fileId));
+      await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
       
-      // Delete from Storage
       const storageRef = ref(storage, fileUrl);
       await deleteObject(storageRef);
       
@@ -569,9 +633,8 @@ export default function Home() {
       });
     } catch (error: any) {
       console.error("Error deleting file:", error);
-      // Handle cases where file might not exist in storage anymore but doc does
       if (error.code === 'storage/object-not-found') {
-         await deleteDoc(doc(db, "savedFiles", fileId)); // Clean up firestore doc anyway
+         await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
          toast({
            id: toastId,
            title: "Deletion Successful",
@@ -711,8 +774,9 @@ export default function Home() {
     'best-sellers': bestSellersData,
     'most-profitable': mostProfitableData,
   };
-
-  const isLoading = authLoading || isRoleLoading || isProductsLoading;
+  
+  const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
+  const isLoading = authLoading || isRoleLoading;
 
   if (isLoading || !user) {
     return (
@@ -722,56 +786,86 @@ export default function Home() {
     );
   }
 
+  const renderContent = () => {
+    if (!activeEventId) {
+        return (
+            <main className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <Activity className="mx-auto h-12 w-12 text-primary" />
+                    <h2 className="text-2xl font-bold tracking-tight">Welcome to Roopkotha</h2>
+                    <p className="text-muted-foreground">
+                        {events.length > 0 
+                            ? "Select an event from the menu above to begin." 
+                            : "Create your first event from the menu to get started."}
+                    </p>
+                </div>
+            </main>
+        );
+    }
+
+    return (
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+            <FirebaseConfigWarning />
+            <Dashboard 
+              stats={dashboardStats} 
+              chartData={chartData}
+              chartView={chartView}
+              onChartViewChange={setChartView} 
+              onExportInvoices={exportInvoicesToXlsx} 
+              onExportInventory={exportInventoryToXlsx}
+              totalInvoices={invoices.length} 
+              totalRevenue={totalRevenue}
+              totalProfit={totalProfit}
+              totalGst={totalGst}
+              isLoading={isDataLoading}
+              onClearAllInvoices={clearAllInvoices}
+              onResetInvoiceCounter={handleResetInvoiceCounter}
+              userRole={userRole}
+              savedFilesCount={savedFiles.length}
+              onUploadFile={handleUploadFile}
+              onViewFiles={() => setIsViewFilesOpen(true)}
+            />
+            <ScanningSession
+              scannedProducts={scannedProducts}
+              onClear={() => setScannedProducts([])}
+              onOpenInvoiceDialog={handleOpenInvoiceDialog}
+              onOpenBulkEditDialog={handleOpenBulkEditDialog}
+              onBulkRemove={bulkRemoveProducts}
+              onGenerateTags={handleGenerateTags}
+            />
+            <InventoryTable
+              products={products}
+              removeProduct={removeProduct}
+              bulkRemoveProducts={bulkRemoveProducts}
+              updateProduct={updateProduct}
+              filter={filter}
+              onFilterChange={setFilter}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+              onCreateInvoice={handleOpenInvoiceDialog}
+              isLoading={isDataLoading}
+              userRole={userRole}
+              onScan={handleScanAndAdd}
+              onOpenBulkEditDialog={handleOpenBulkEditDialog}
+              onGenerateTags={handleGenerateTags}
+            />
+        </main>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full bg-background">
       <HummingbirdAnimation />
-      <Header addProduct={addProduct} onImportInventory={handleImportInventory} userRole={userRole} />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
-        <FirebaseConfigWarning />
-        <Dashboard 
-          stats={dashboardStats} 
-          chartData={chartData}
-          chartView={chartView}
-          onChartViewChange={setChartView} 
-          onExportInvoices={exportInvoicesToXlsx} 
-          onExportInventory={exportInventoryToXlsx}
-          totalInvoices={invoices.length} 
-          totalRevenue={totalRevenue}
-          totalProfit={totalProfit}
-          totalGst={totalGst}
-          isLoading={isLoading}
-          onClearAllInvoices={clearAllInvoices}
-          onResetInvoiceCounter={handleResetInvoiceCounter}
-          userRole={userRole}
-          savedFilesCount={savedFiles.length}
-          onUploadFile={handleUploadFile}
-          onViewFiles={() => setIsViewFilesOpen(true)}
-        />
-        <ScanningSession
-          scannedProducts={scannedProducts}
-          onClear={() => setScannedProducts([])}
-          onOpenInvoiceDialog={handleOpenInvoiceDialog}
-          onOpenBulkEditDialog={handleOpenBulkEditDialog}
-          onBulkRemove={bulkRemoveProducts}
-          onGenerateTags={handleGenerateTags}
-        />
-        <InventoryTable
-          products={products}
-          removeProduct={removeProduct}
-          bulkRemoveProducts={bulkRemoveProducts}
-          updateProduct={updateProduct}
-          filter={filter}
-          onFilterChange={setFilter}
-          selectedRows={selectedRows}
-          setSelectedRows={setSelectedRows}
-          onCreateInvoice={handleOpenInvoiceDialog}
-          isLoading={isLoading}
-          userRole={userRole}
-          onScan={handleScanAndAdd}
-          onOpenBulkEditDialog={handleOpenBulkEditDialog}
-          onGenerateTags={handleGenerateTags}
-        />
-      </main>
+      <Header 
+        addProduct={addProduct}
+        onImportInventory={handleImportInventory}
+        userRole={userRole}
+        events={events}
+        activeEvent={activeEvent}
+        onSwitchEvent={handleSwitchEvent}
+        onCreateEvent={handleCreateEvent}
+      />
+      {renderContent()}
       <ViewFilesDialog 
         files={savedFiles}
         isOpen={isViewFilesOpen}

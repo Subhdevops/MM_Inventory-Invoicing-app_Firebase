@@ -3,14 +3,13 @@
 
 import AddProductDialog from './add-product-dialog';
 import ImportInventoryDialog from './import-inventory-dialog';
-import type { Product, UserProfile } from '@/lib/types';
+import type { Product, UserProfile, Event } from '@/lib/types';
 import { Button } from './ui/button';
 import { auth, db } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut, User as UserIcon } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import RoopkothaLogo from './icons/roopkotha-logo';
 import { ThemeToggle } from './theme-toggle';
 import {
   DropdownMenu,
@@ -22,14 +21,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { doc, updateDoc } from 'firebase/firestore';
+import { EventSwitcher } from './event-switcher';
 
 type HeaderProps = {
   addProduct: (product: Omit<Product, 'id'>) => void;
   onImportInventory: (products: Omit<Product, 'id'>[]) => Promise<void>;
   userRole: UserProfile['role'] | null;
+  events: Event[];
+  activeEvent: Event | undefined;
+  onSwitchEvent: (eventId: string) => void;
+  onCreateEvent: (name: string) => Promise<Event>;
 };
 
-export default function Header({ addProduct, onImportInventory, userRole }: HeaderProps) {
+export default function Header({ addProduct, onImportInventory, userRole, events, activeEvent, onSwitchEvent, onCreateEvent }: HeaderProps) {
   const [user] = useAuthState(auth);
   const { toast } = useToast();
 
@@ -64,13 +68,19 @@ export default function Header({ addProduct, onImportInventory, userRole }: Head
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <RoopkothaLogo showTagline={false} width={150} height={36} />
+             <EventSwitcher 
+                events={events}
+                activeEvent={activeEvent}
+                onSwitchEvent={onSwitchEvent}
+                onCreateEvent={onCreateEvent}
+                disabled={!user || userRole !== 'admin'}
+            />
           </div>
           <div className="flex items-center gap-4">
              <ThemeToggle />
             {user && (
               <>
-                {userRole === 'admin' && (
+                {userRole === 'admin' && !!activeEvent && (
                   <>
                     <ImportInventoryDialog onImport={onImportInventory} />
                     <AddProductDialog addProduct={addProduct} />

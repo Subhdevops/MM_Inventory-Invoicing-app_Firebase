@@ -1,4 +1,10 @@
 
+export type Event = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -39,6 +45,7 @@ export type UserProfile = {
   uid: string;
   email: string | null;
   role: 'admin' | 'user';
+  activeEventId?: string | null;
   lastSignOutTimestamp?: number;
 };
 

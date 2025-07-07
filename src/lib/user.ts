@@ -1,8 +1,9 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '@/lib/firebase';
+import type { UserProfile } from './types';
 
-export const checkAndCreateUserProfile = async (user: User) => {
+export const checkAndCreateUserProfile = async (user: User): Promise<Pick<UserProfile, 'role' | 'activeEventId'>> => {
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
 
@@ -15,14 +16,15 @@ export const checkAndCreateUserProfile = async (user: User) => {
         uid: user.uid,
         email: user.email,
         role: role,
+        activeEventId: null,
       });
-      return role;
+      return { role, activeEventId: null };
     } catch (error) {
        console.error("Error creating user profile:", error);
        throw error;
     }
   }
   
-  // If profile exists, just return their role.
-  return userSnap.data().role;
+  const data = userSnap.data();
+  return { role: data.role, activeEventId: data.activeEventId || null };
 };
