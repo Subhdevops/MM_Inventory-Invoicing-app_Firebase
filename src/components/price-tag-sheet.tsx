@@ -8,7 +8,6 @@ import { QRCodeCanvas } from 'qrcode.react';
 
 const PriceTag = ({ product }: { product: Product }) => {
   const onSale = product.salePercentage && product.salePercentage > 0;
-  const salePrice = onSale ? product.price * (1 - product.salePercentage! / 100) : 0;
 
   return (
     <div style={{
@@ -57,13 +56,8 @@ const PriceTag = ({ product }: { product: Product }) => {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
-        {onSale && (
-          <p style={{ fontSize: '10pt', textDecoration: 'line-through', color: '#888', margin: 0 }}>
-            ₹{product.price.toFixed(2)}
-          </p>
-        )}
         <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
-          ₹{onSale ? salePrice.toFixed(2) : product.price.toFixed(2)}
+          ₹{product.price.toFixed(2)}
         </p>
       </div>
       
