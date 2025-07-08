@@ -62,7 +62,7 @@ const PriceTag = ({ product }: { product: Product }) => {
             <p style={{ fontSize: '10pt', textDecoration: 'line-through', color: '#888', margin: 0 }}>
               ₹{product.price.toFixed(2)}
             </p>
-            <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0, color: '#d9534f' }}>
+            <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
               ₹{salePrice.toFixed(2)}
             </p>
           </>
@@ -95,6 +95,9 @@ const PriceTag = ({ product }: { product: Product }) => {
             fontSize: '9pt',
             fontWeight: 'bold',
             boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
             {product.salePercentage}% OFF
           </div>
