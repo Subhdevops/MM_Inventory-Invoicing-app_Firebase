@@ -41,6 +41,9 @@ const bulkEditSchema = z.object({
   possibleDiscount: z.string()
     .transform(val => val === '' ? undefined : val)
     .pipe(z.coerce.number({invalid_type_error: "Discount must be a number."}).min(0).optional()),
+  salePercentage: z.string()
+    .transform(val => val === '' ? undefined : val)
+    .pipe(z.coerce.number({invalid_type_error: "Sale % must be a number."}).min(0).max(100).optional()),
 });
 
 
@@ -60,6 +63,7 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
       cost: '',
       quantity: '',
       possibleDiscount: '',
+      salePercentage: '',
     },
   });
 
@@ -77,6 +81,9 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
     }
     if (values.possibleDiscount !== undefined) {
       updateData.possibleDiscount = values.possibleDiscount;
+    }
+    if (values.salePercentage !== undefined) {
+        updateData.salePercentage = values.salePercentage;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -150,6 +157,19 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormField
+                control={form.control}
+                name="salePercentage"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Sale Discount (%)</FormLabel>
+                    <FormControl>
+                    <Input type="number" step="1" placeholder="e.g. 25" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
             />
             <FormField
               control={form.control}

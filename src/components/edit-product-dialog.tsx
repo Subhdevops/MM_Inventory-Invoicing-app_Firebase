@@ -35,6 +35,7 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
   possibleDiscount: z.coerce.number().min(0, { message: "Discount must be a positive number." }).optional(),
+  salePercentage: z.coerce.number().min(0).max(100, { message: "Sale percentage must be between 0 and 100." }).optional(),
 });
 
 type EditProductDialogProps = {
@@ -55,6 +56,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
       price: product.price,
       cost: product.cost,
       possibleDiscount: product.possibleDiscount,
+      salePercentage: product.salePercentage,
     },
   });
 
@@ -68,6 +70,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
         price: product.price,
         cost: product.cost,
         possibleDiscount: product.possibleDiscount || 0,
+        salePercentage: product.salePercentage || 0,
       });
     }
   }, [product, form]);
@@ -148,19 +151,6 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="possibleDiscount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Possible Discount (₹)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g. 500.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
@@ -172,6 +162,34 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="possibleDiscount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Possible Discount (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="e.g. 500.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="salePercentage"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Sale Discount (%)</FormLabel>
+                        <FormControl>
+                        <Input type="number" step="1" placeholder="e.g. 25" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
              <div className="grid grid-cols-1 gap-4">
                  <FormField

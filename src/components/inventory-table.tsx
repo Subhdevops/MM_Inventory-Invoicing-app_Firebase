@@ -178,6 +178,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           <span className="text-muted-foreground">-</span>
         )}
       </TableCell>
+      <TableCell className="text-center">
+        {product.salePercentage && product.salePercentage > 0 ? (
+            <span className="font-bold text-destructive">
+            {product.salePercentage}%
+            </span>
+        ) : (
+            <span className="text-muted-foreground">-</span>
+        )}
+      </TableCell>
       <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
       {isAdmin && (
         <TableCell className="text-right">
@@ -310,6 +319,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
               <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
               <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
+              <TableHead className="w-[120px] text-center"><SortableHeader tKey="salePercentage" title="Sale %" /></TableHead>
               <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
               {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
             </TableRow>
@@ -336,6 +346,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                   <TableCell className="text-right">
                     <Skeleton className="h-5 w-20 ml-auto" />
                   </TableCell>
+                  <TableCell className="text-center">
+                    <Skeleton className="h-5 w-8 mx-auto" />
+                  </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <Skeleton className="h-5 w-full" />
                   </TableCell>
@@ -348,7 +361,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 displayedProducts.map(renderProductRow)
             ) : (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 8 : 7} className="h-24 text-center">
+                <TableCell colSpan={isAdmin ? 9 : 8} className="h-24 text-center">
                   No products found.
                 </TableCell>
               </TableRow>

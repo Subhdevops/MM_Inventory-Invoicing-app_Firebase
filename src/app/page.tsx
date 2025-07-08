@@ -443,6 +443,7 @@ export default function Home() {
             description: product?.description || '',
             barcode: product?.barcode || '',
             possibleDiscount: product?.possibleDiscount || 0,
+            salePercentage: product?.salePercentage || 0,
         };
     });
 
@@ -542,7 +543,7 @@ export default function Home() {
     }
 
     const heading = [
-      ["Barcode", "Name", "Description", "Quantity", "Price", "Cost", "Possible Discount"],
+      ["Barcode", "Name", "Description", "Quantity", "Price", "Cost", "Possible Discount", "Sale Percentage"],
     ];
 
     const dataToExport = products.map(p => [
@@ -553,6 +554,7 @@ export default function Home() {
       p.price,
       p.cost,
       p.possibleDiscount || 0,
+      p.salePercentage || 0,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([...heading, ...dataToExport]);
@@ -568,6 +570,7 @@ export default function Home() {
         { wch: 15 }, // Price
         { wch: 15 }, // Cost
         { wch: 20 }, // Possible Discount
+        { wch: 20 }, // Sale Percentage
     ];
 
     XLSX.writeFile(workbook, "inventory.xlsx");

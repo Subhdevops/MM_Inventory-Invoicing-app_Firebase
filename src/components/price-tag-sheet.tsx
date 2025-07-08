@@ -6,55 +6,100 @@ import type { Product } from '@/lib/types';
 import RoopkothaLogo from './icons/roopkotha-logo';
 import { QRCodeCanvas } from 'qrcode.react';
 
-const PriceTag = ({ product }: { product: Product }) => (
-  <div style={{
-    border: '1px solid #ccc',
-    padding: '4px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center',
-    height: '100%',
-    width: '100%',
-    boxSizing: 'border-box',
-    fontFamily: 'Inter, sans-serif',
-    overflow: 'hidden',
-    backgroundColor: 'white',
-    lineHeight: '1.2',
-  }}>
-    <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-      <RoopkothaLogo showTagline={true} width={150} height={36} />
-    </div>
+const PriceTag = ({ product }: { product: Product }) => {
+  const onSale = product.salePercentage && product.salePercentage > 0;
+  const salePrice = onSale ? product.price * (1 - product.salePercentage! / 100) : 0;
 
-    <div style={{ marginTop: '0' }}>
-      <QRCodeCanvas
-        value={product.barcode}
-        size={36}
-        bgColor={"#ffffff"}
-        fgColor={"#000000"}
-        level={"H"}
-        includeMargin={false}
-      />
-    </div>
+  return (
+    <div style={{
+      border: '1px solid #ccc',
+      padding: '4px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      textAlign: 'center',
+      height: '100%',
+      width: '100%',
+      boxSizing: 'border-box',
+      fontFamily: 'Inter, sans-serif',
+      overflow: 'hidden',
+      backgroundColor: 'white',
+      lineHeight: '1.2',
+      position: 'relative',
+    }}>
+      <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
+        <RoopkothaLogo showTagline={true} width={150} height={36} />
+      </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0', width: '100%' }}>
-      <p style={{ fontSize: '9pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
-        {product.name}
-      </p>
-      {product.description && (
-        <p style={{ fontSize: '6pt', color: '#555', margin: '1px 0', wordBreak: 'break-word', fontStyle: 'italic' }}>
-          {product.description}
+      <div style={{ marginTop: '0' }}>
+        <QRCodeCanvas
+          value={product.barcode}
+          size={36}
+          bgColor={"#ffffff"}
+          fgColor={"#000000"}
+          level={"H"}
+          includeMargin={false}
+        />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0', width: '100%' }}>
+        <p style={{ fontSize: '9pt', fontWeight: '600', margin: '0', wordBreak: 'break-word' }}>
+          {product.name}
         </p>
+        {product.description && (
+          <p style={{ fontSize: '6pt', color: '#555', margin: '1px 0', wordBreak: 'break-word', fontStyle: 'italic' }}>
+            {product.description}
+          </p>
+        )}
+        <p style={{ fontSize: '6pt', color: '#333', marginTop: '1px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+          {product.barcode}
+        </p>
+      </div>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
+        {onSale ? (
+          <>
+            <p style={{ fontSize: '10pt', textDecoration: 'line-through', color: '#888', margin: 0 }}>
+              ₹{product.price.toFixed(2)}
+            </p>
+            <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0, color: '#d9534f' }}>
+              ₹{salePrice.toFixed(2)}
+            </p>
+          </>
+        ) : (
+          <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
+            ₹{product.price.toFixed(2)}
+          </p>
+        )}
+      </div>
+      
+      {onSale && (
+        <div style={{
+          position: 'absolute',
+          top: '5px',
+          right: '5px',
+          backgroundColor: '#d9534f',
+          color: 'white',
+          borderRadius: '50%',
+          width: '30px',
+          height: '30px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '9pt',
+          fontWeight: 'bold',
+          lineHeight: '1',
+          transform: 'rotate(15deg)',
+          boxShadow: '1px 1px 3px rgba(0,0,0,0.3)',
+        }}>
+          <div>{product.salePercentage}%</div>
+          <div style={{fontSize: '6pt'}}>OFF</div>
+        </div>
       )}
-      <p style={{ fontSize: '6pt', color: '#333', marginTop: '1px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-        {product.barcode}
-      </p>
     </div>
-    <p style={{ fontSize: '12pt', fontWeight: 'bold', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
-      ₹{product.price.toFixed(2)}
-    </p>
-  </div>
-);
+  );
+};
 
 
 export const PriceTagSheet = ({ products }: { products: Product[] }) => {

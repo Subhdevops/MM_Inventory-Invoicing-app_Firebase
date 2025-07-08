@@ -14,6 +14,7 @@ export type Product = {
   price: number;
   cost: number;
   possibleDiscount?: number;
+  salePercentage?: number;
 };
 
 export type SoldProduct = {
@@ -25,6 +26,7 @@ export type SoldProduct = {
   cost: number;
   barcode: string;
   possibleDiscount?: number;
+  salePercentage?: number;
 }
 
 export type Invoice = {

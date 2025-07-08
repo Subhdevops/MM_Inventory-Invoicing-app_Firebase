@@ -28,6 +28,7 @@ const productSchema = z.object({
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
   description: z.string().optional().default(''),
   possibleDiscount: z.coerce.number().min(0).optional().default(0),
+  salePercentage: z.coerce.number().min(0).max(100).optional().default(0),
 });
 
 type ImportInventoryDialogProps = {
@@ -89,10 +90,14 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
                 const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '');
                 newRow[normalizedKey] = row[key];
             }
-            // Specifically correct the "possibleDiscount" key to match the schema's camelCase format
+            // Specifically correct keys to match the schema's camelCase format
             if (newRow.hasOwnProperty('possiblediscount')) {
                 newRow.possibleDiscount = newRow.possiblediscount;
                 delete newRow.possiblediscount;
+            }
+            if (newRow.hasOwnProperty('salepercentage')) {
+                newRow.salePercentage = newRow.salepercentage;
+                delete newRow.salepercentage;
             }
             return newRow;
         });
@@ -166,7 +171,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from Excel</DialogTitle>
           <DialogDescription>
-            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional columns: 'description', 'possibleDiscount'.
+            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional columns: 'description', 'possibleDiscount', 'salePercentage'.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
