@@ -82,15 +82,17 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
             return;
         }
         
-        // Normalize headers to lowercase and trimmed, and handle different casing
         const normalizedJsonData = jsonData.map(row => {
             const newRow: {[key: string]: any} = {};
             for (const key in row) {
-                let normalizedKey = key.trim().toLowerCase();
-                if (normalizedKey === 'possible discount') { // Handle specific case
-                    normalizedKey = 'possiblediscount';
-                }
-                newRow[normalizedKey.replace(/\s+/g, '')] = row[key];
+                // This converts headers like "Product Name" or "Possible Discount" to "productname" or "possiblediscount"
+                const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '');
+                newRow[normalizedKey] = row[key];
+            }
+            // Specifically correct the "possibleDiscount" key to match the schema's camelCase format
+            if (newRow.hasOwnProperty('possiblediscount')) {
+                newRow.possibleDiscount = newRow.possiblediscount;
+                delete newRow.possiblediscount;
             }
             return newRow;
         });
