@@ -57,20 +57,14 @@ const PriceTag = ({ product }: { product: Product }) => {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
-        {onSale ? (
-          <>
-            <p style={{ fontSize: '10pt', textDecoration: 'line-through', color: '#888', margin: 0 }}>
-              ₹{product.price.toFixed(2)}
-            </p>
-            <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
-              ₹{salePrice.toFixed(2)}
-            </p>
-          </>
-        ) : (
-          <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
+        {onSale && (
+          <p style={{ fontSize: '10pt', textDecoration: 'line-through', color: '#888', margin: 0 }}>
             ₹{product.price.toFixed(2)}
           </p>
         )}
+        <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
+          ₹{onSale ? salePrice.toFixed(2) : product.price.toFixed(2)}
+        </p>
       </div>
       
       {onSale && (
@@ -86,7 +80,7 @@ const PriceTag = ({ product }: { product: Product }) => {
             position: 'absolute',
             top: '18px',
             right: '-20px',
-            width: '100px',
+            width: '120px',
             padding: '4px 0',
             backgroundColor: '#d9534f',
             color: 'white',
@@ -98,7 +92,7 @@ const PriceTag = ({ product }: { product: Product }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            lineHeight: 1,
+            lineHeight: 1.2,
           }}>
             {product.salePercentage}% OFF
           </div>
