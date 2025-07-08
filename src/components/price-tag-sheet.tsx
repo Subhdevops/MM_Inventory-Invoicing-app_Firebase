@@ -76,25 +76,28 @@ const PriceTag = ({ product }: { product: Product }) => {
       {onSale && (
         <div style={{
           position: 'absolute',
-          top: '5px',
-          right: '5px',
-          backgroundColor: '#d9534f',
-          color: 'white',
-          borderRadius: '50%',
-          width: '30px',
-          height: '30px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '9pt',
-          fontWeight: 'bold',
-          lineHeight: '1',
-          transform: 'rotate(15deg)',
-          boxShadow: '1px 1px 3px rgba(0,0,0,0.3)',
+          top: '0',
+          right: '0',
+          width: '75px',
+          height: '75px',
+          overflow: 'hidden',
         }}>
-          <div>{product.salePercentage}%</div>
-          <div style={{fontSize: '6pt'}}>OFF</div>
+          <div style={{
+            position: 'absolute',
+            top: '18px',
+            right: '-20px',
+            width: '100px',
+            padding: '2px 0',
+            backgroundColor: '#d9534f',
+            color: 'white',
+            transform: 'rotate(45deg)',
+            textAlign: 'center',
+            fontSize: '9pt',
+            fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          }}>
+            {product.salePercentage}% OFF
+          </div>
         </div>
       )}
     </div>
