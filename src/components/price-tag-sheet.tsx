@@ -87,7 +87,7 @@ const PriceTag = ({ product }: { product: Product }) => {
             top: '18px',
             right: '-20px',
             width: '100px',
-            padding: '2px 0',
+            padding: '4px 0',
             backgroundColor: '#d9534f',
             color: 'white',
             transform: 'rotate(45deg)',
@@ -98,6 +98,7 @@ const PriceTag = ({ product }: { product: Product }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            lineHeight: 1,
           }}>
             {product.salePercentage}% OFF
           </div>
