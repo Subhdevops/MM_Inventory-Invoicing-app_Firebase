@@ -70,7 +70,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.setFillColor(41, 128, 185);
         docInstance.rect(0, pageHeight - 15, docInstance.internal.pageSize.width, 15, 'F');
         docInstance.setTextColor(255);
-        docInstance.text('Thank you for your business!', 15, pageHeight - 8);
+        docInstance.text('Thank you for shopping with us!', 15, pageHeight - 8);
 
         const pageText = `Page ${docInstance.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`;
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
