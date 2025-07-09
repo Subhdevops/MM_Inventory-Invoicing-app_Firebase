@@ -46,6 +46,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [grandTotalInput, setGrandTotalInput] = useState('');
+  const [discountAmountInput, setDiscountAmountInput] = useState('');
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -283,6 +284,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       setCustomerPhone('');
       setDiscountPercentage(0);
       setGrandTotalInput('');
+      setDiscountAmountInput('');
       setIsProcessing(false);
       setShowSuccessScreen(false);
 
@@ -316,10 +318,11 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     return { subtotal, discountAmount, gstAmount, grandTotal };
   }, [subtotal, discountPercentage]);
   
-  // Effect to update grand total input when other values change
+  // Effect to update grand total and discount amount inputs when other values change
   useEffect(() => {
       setGrandTotalInput(invoiceDetails.grandTotal > 0 ? invoiceDetails.grandTotal.toFixed(2) : '');
-  }, [invoiceDetails.grandTotal]);
+      setDiscountAmountInput(invoiceDetails.discountAmount > 0 ? invoiceDetails.discountAmount.toFixed(2) : '');
+  }, [invoiceDetails.grandTotal, invoiceDetails.discountAmount]);
 
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
@@ -350,6 +353,22 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     // GT = (S - S * D%) * (1 + G) => D% = 1 - (GT / (S * (1+G)))
     const newDiscountPercent = (1 - (customGrandTotal / (subtotal * (1 + GST_RATE)))) * 100;
     
+    // Clamp the discount between 0 and 100
+    const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
+    setDiscountPercentage(clampedDiscount);
+  };
+  
+  const handleDiscountAmountChange = (value: string) => {
+    setDiscountAmountInput(value);
+    const customDiscountAmount = parseFloat(value);
+
+    if (isNaN(customDiscountAmount) || customDiscountAmount < 0 || subtotal === 0) {
+        return;
+    }
+
+    // Recalculate discount percentage from the amount
+    const newDiscountPercent = (customDiscountAmount / subtotal) * 100;
+
     // Clamp the discount between 0 and 100
     const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
     setDiscountPercentage(clampedDiscount);
@@ -435,6 +454,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               handleDiscountChange={handleDiscountChange}
               grandTotalInput={grandTotalInput}
               handleGrandTotalChange={handleGrandTotalChange}
+              discountAmountInput={discountAmountInput}
+              handleDiscountAmountChange={handleDiscountAmountChange}
               items={items}
               handleQuantityChange={handleQuantityChange}
               invoiceDetails={invoiceDetails}

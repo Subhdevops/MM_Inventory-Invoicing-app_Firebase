@@ -22,6 +22,8 @@ interface InvoiceFormProps {
   handleDiscountChange: (value: string) => void;
   grandTotalInput: string;
   handleGrandTotalChange: (value: string) => void;
+  discountAmountInput: string;
+  handleDiscountAmountChange: (value: string) => void;
   items: InvoiceItem[];
   handleQuantityChange: (id: string, quantity: number) => void;
   invoiceDetails: {
@@ -42,6 +44,7 @@ export function InvoiceForm({
   customerPhone, setCustomerPhone,
   discountPercentage, handleDiscountChange,
   grandTotalInput, handleGrandTotalChange,
+  discountAmountInput, handleDiscountAmountChange,
   items, handleQuantityChange,
   invoiceDetails,
   onOpenChange,
@@ -87,13 +90,13 @@ export function InvoiceForm({
                         <TableCell className="text-right font-medium">₹{invoiceDetails.subtotal.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow>
-                       <TableCell colSpan={2} className="text-right">
+                       <TableCell colSpan={2} className="py-1">
                          {totalPossibleDiscount > 0 && (
-                           <p className="text-xs text-muted-foreground">Max suggested discount: <span className="font-bold text-destructive">₹{totalPossibleDiscount.toFixed(2)}</span></p>
+                           <p className="text-xs text-muted-foreground text-right">Max suggested discount: <span className="font-bold text-destructive">₹{totalPossibleDiscount.toFixed(2)}</span></p>
                          )}
                        </TableCell>
-                       <TableCell className="text-right font-medium">Discount</TableCell>
-                       <TableCell className="text-right font-medium">
+                       <TableCell className="text-right font-medium py-1">Discount</TableCell>
+                       <TableCell className="text-right font-medium py-1">
                           <div className="relative">
                              <Input
                                   type="number"
@@ -108,12 +111,22 @@ export function InvoiceForm({
                           </div>
                        </TableCell>
                     </TableRow>
-                    {invoiceDetails.discountAmount > 0 && (
-                      <TableRow>
-                          <TableCell colSpan={3} className="text-right font-medium">Discount Amount</TableCell>
-                          <TableCell className="text-right font-medium text-destructive">-₹{invoiceDetails.discountAmount.toFixed(2)}</TableCell>
-                      </TableRow>
-                    )}
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-right font-medium py-1">Discount Amount</TableCell>
+                        <TableCell className="text-right font-medium text-destructive py-1">
+                             <div className="relative">
+                               <IndianRupee className="absolute left-1 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                               <Input
+                                  type="number"
+                                  className="w-32 ml-auto text-right h-8 font-medium text-destructive pl-6"
+                                  value={discountAmountInput}
+                                  onChange={(e) => handleDiscountAmountChange(e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  placeholder="0.00"
+                               />
+                             </div>
+                        </TableCell>
+                    </TableRow>
                     <TableRow>
                         <TableCell colSpan={3} className="text-right font-medium">GST ({GST_RATE * 100}%)</TableCell>
                         <TableCell className="text-right font-medium">₹{invoiceDetails.gstAmount.toFixed(2)}</TableCell>
