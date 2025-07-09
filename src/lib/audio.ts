@@ -35,3 +35,32 @@ export const playBeep = () => {
     }
   }
 };
+
+// This function creates a short, lower-pitched "error" sound.
+export const playErrorBeep = () => {
+  if (typeof window !== 'undefined' && window.AudioContext) {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      gainNode.gain.value = 0.15; // Slightly louder to grab attention
+      oscillator.frequency.value = 440; // A lower 'A' note
+      oscillator.type = 'sawtooth'; // A harsher, more "buzzy" sound
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.15);
+
+      setTimeout(() => {
+        if (audioContext.state !== 'closed') {
+          audioContext.close();
+        }
+      }, 250);
+    } catch (error) {
+      console.error("Could not play error beep sound:", error);
+    }
+  }
+};
