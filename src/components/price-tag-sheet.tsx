@@ -7,7 +7,7 @@ import RoopkothaLogo from './icons/roopkotha-logo';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const PriceTag = ({ product }: { product: Product }) => {
-  const onSale = product.salePercentage && product.salePercentage > 0;
+  const onSale = !!(product.salePercentage && product.salePercentage > 0);
 
   return (
     <div style={{
