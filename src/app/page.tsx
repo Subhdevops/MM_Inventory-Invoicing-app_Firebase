@@ -25,6 +25,7 @@ import { ScanningSession } from '@/components/scanning-session';
 import InvoiceDialog from '@/components/invoice-dialog';
 import BulkEditDialog from '@/components/bulk-edit-dialog';
 import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
+import { playBeep } from '@/lib/audio';
 
 
 export default function Home() {
@@ -51,6 +52,7 @@ export default function Home() {
   const handleScanAndAdd = (barcode: string) => {
     const product = products.find(p => p.barcode === barcode);
     if (product) {
+      playBeep();
       const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
 
       if (alreadyScannedCount >= product.quantity) {
