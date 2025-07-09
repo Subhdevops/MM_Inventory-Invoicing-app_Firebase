@@ -39,10 +39,13 @@ type InvoiceDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+const GST_RATE = 0.05;
+
 export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpenChange }: InvoiceDialogProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [grandTotalInput, setGrandTotalInput] = useState('');
   const { toast } = useToast();
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -206,7 +209,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     
     if (invoice.discountAmount > 0) {
         totalsData.push([
-            { content: `Discount (${invoice.discountPercentage}%)`, styles: { textColor: [255, 0, 0] } },
+            { content: `Discount (${invoice.discountPercentage.toFixed(2)}%)`, styles: { textColor: [255, 0, 0] } },
             { content: `- ${formatCurrency(invoice.discountAmount)}`, styles: { textColor: [255, 0, 0] } }
         ]);
     }
@@ -270,11 +273,16 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     }
   };
 
+  const subtotal = useMemo(() => {
+    return items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
+  }, [items]);
+
   useEffect(() => {
     if (isOpen) {
       setCustomerName('');
       setCustomerPhone('');
       setDiscountPercentage(0);
+      setGrandTotalInput('');
       setIsProcessing(false);
       setShowSuccessScreen(false);
 
@@ -299,6 +307,20 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       })));
     }
   }, [products, isOpen]);
+  
+  const invoiceDetails = useMemo(() => {
+    const discountAmount = subtotal * (discountPercentage / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const gstAmount = subtotalAfterDiscount * GST_RATE;
+    const grandTotal = subtotalAfterDiscount + gstAmount;
+    return { subtotal, discountAmount, gstAmount, grandTotal };
+  }, [subtotal, discountPercentage]);
+  
+  // Effect to update grand total input when other values change
+  useEffect(() => {
+      setGrandTotalInput(invoiceDetails.grandTotal > 0 ? invoiceDetails.grandTotal.toFixed(2) : '');
+  }, [invoiceDetails.grandTotal]);
+
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     setItems(currentItems => currentItems.map(item => {
@@ -309,24 +331,30 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       return item;
     }));
   };
-
+  
   const handleDiscountChange = (value: string) => {
     const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue < 0) {
-      setDiscountPercentage(0);
-    } else {
-      setDiscountPercentage(Math.min(numValue, 100));
-    }
+    const newDiscount = isNaN(numValue) || numValue < 0 ? 0 : Math.min(numValue, 100);
+    setDiscountPercentage(newDiscount);
   };
 
-  const invoiceDetails = useMemo(() => {
-    const subtotal = items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
-    const discountAmount = subtotal * (discountPercentage / 100);
-    const subtotalAfterDiscount = subtotal - discountAmount;
-    const gstAmount = subtotalAfterDiscount * 0.05;
-    const grandTotal = subtotalAfterDiscount + gstAmount;
-    return { subtotal, discountAmount, gstAmount, grandTotal };
-  }, [items, discountPercentage]);
+  const handleGrandTotalChange = (value: string) => {
+    setGrandTotalInput(value);
+    const customGrandTotal = parseFloat(value);
+    
+    if (isNaN(customGrandTotal) || customGrandTotal < 0 || subtotal === 0) {
+      return;
+    }
+
+    // Recalculate discount from custom grand total
+    // GT = (S - S * D%) * (1 + G) => D% = 1 - (GT / (S * (1+G)))
+    const newDiscountPercent = (1 - (customGrandTotal / (subtotal * (1 + GST_RATE)))) * 100;
+    
+    // Clamp the discount between 0 and 100
+    const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
+    setDiscountPercentage(clampedDiscount);
+  };
+
 
   const totalPossibleDiscount = useMemo(() => {
     return items.reduce((acc, item) => acc + (item.possibleDiscount || 0) * item.quantity, 0);
@@ -405,6 +433,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               setCustomerPhone={setCustomerPhone}
               discountPercentage={discountPercentage}
               handleDiscountChange={handleDiscountChange}
+              grandTotalInput={grandTotalInput}
+              handleGrandTotalChange={handleGrandTotalChange}
               items={items}
               handleQuantityChange={handleQuantityChange}
               invoiceDetails={invoiceDetails}
@@ -420,3 +450,5 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     </Dialog>
   );
 }
+
+    

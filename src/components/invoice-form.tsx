@@ -8,7 +8,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Loader2, Percent } from 'lucide-react';
+import { FileText, Loader2, Percent, IndianRupee } from 'lucide-react';
 import RoopkothaLogo from './icons/roopkotha-logo';
 
 const GST_RATE = 0.05; // 5%
@@ -20,6 +20,8 @@ interface InvoiceFormProps {
   setCustomerPhone: (value: string) => void;
   discountPercentage: number;
   handleDiscountChange: (value: string) => void;
+  grandTotalInput: string;
+  handleGrandTotalChange: (value: string) => void;
   items: InvoiceItem[];
   handleQuantityChange: (id: string, quantity: number) => void;
   invoiceDetails: {
@@ -39,6 +41,7 @@ export function InvoiceForm({
   customerName, setCustomerName,
   customerPhone, setCustomerPhone,
   discountPercentage, handleDiscountChange,
+  grandTotalInput, handleGrandTotalChange,
   items, handleQuantityChange,
   invoiceDetails,
   onOpenChange,
@@ -95,8 +98,9 @@ export function InvoiceForm({
                              <Input
                                   type="number"
                                   className="w-24 ml-auto text-right h-8 pr-7"
-                                  value={discountPercentage}
+                                  value={discountPercentage.toFixed(2)}
                                   onChange={(e) => handleDiscountChange(e.target.value)}
+                                  onFocus={(e) => e.target.select()}
                                   min="0"
                                   max="100"
                               />
@@ -116,7 +120,19 @@ export function InvoiceForm({
                     </TableRow>
                     <TableRow className="bg-primary/10 font-bold">
                         <TableCell colSpan={3} className="text-right text-primary text-base">Grand Total</TableCell>
-                        <TableCell className="text-right text-primary text-base">₹{invoiceDetails.grandTotal.toFixed(2)}</TableCell>
+                        <TableCell className="text-right text-primary text-base">
+                             <div className="relative">
+                               <IndianRupee className="absolute left-1 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                               <Input
+                                  type="number"
+                                  className="w-32 ml-auto text-right h-8 font-bold text-base pl-6"
+                                  value={grandTotalInput}
+                                  onChange={(e) => handleGrandTotalChange(e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  placeholder="0.00"
+                               />
+                             </div>
+                        </TableCell>
                     </TableRow>
                   </TableFooter>
                 </Table>
@@ -178,3 +194,5 @@ export function InvoiceForm({
     </>
   );
 }
+
+    
