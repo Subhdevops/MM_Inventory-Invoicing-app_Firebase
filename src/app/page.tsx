@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import * as XLSX from 'xlsx';
 import { db, auth, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
@@ -49,7 +49,98 @@ export default function Home() {
   const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 
-  const handleScanAndAdd = (barcode: string) => {
+  // All hooks must be called unconditionally at the top level
+  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
+  useMultiDeviceLogoutListener(user);
+  
+  const dashboardStats = useMemo(() => {
+    const totalProducts = products.length;
+    const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
+    const productsOutOfStock = products.filter(p => p.quantity === 0).length;
+    return { totalProducts, totalItems, productsOutOfStock };
+  }, [products]);
+
+  const totalRevenue = useMemo(() => {
+    return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
+  }, [invoices]);
+
+  const totalProfit = useMemo(() => {
+    return invoices.reduce((totalProfit, inv) => {
+        const invoiceCost = inv.items.reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
+        const invoiceProfit = (inv.subtotal - inv.discountAmount) - invoiceCost;
+        return totalProfit + invoiceProfit;
+    }, 0);
+  }, [invoices]);
+
+  const totalGst = useMemo(() => {
+    return invoices.reduce((acc, inv) => acc + inv.gstAmount, 0);
+  }, [invoices]);
+
+  const topStockedData = useMemo(() => {
+    return [...products]
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5)
+      .map(p => ({ name: p.name, value: p.quantity }));
+  }, [products]);
+
+  const lowestStockData = useMemo(() => {
+    return [...products]
+      .filter(p => p.quantity > 0 && p.quantity <= 10)
+      .sort((a, b) => a.quantity - b.quantity)
+      .slice(0, 5)
+      .map(p => ({ name: p.name, value: p.quantity }));
+  }, [products]);
+
+  const bestSellersData = useMemo(() => {
+    const salesCount: { [productId: string]: { name: string, quantity: number } } = {};
+    invoices.forEach(invoice => {
+        invoice.items.forEach(item => {
+            if (salesCount[item.id]) {
+                salesCount[item.id].quantity += item.quantity;
+            } else {
+                const product = products.find(p => p.id === item.id);
+                salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
+            }
+        });
+    });
+
+    return Object.values(salesCount)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5)
+        .map(p => ({ name: p.name, value: p.quantity }));
+  }, [invoices, products]);
+
+  const mostProfitableData = useMemo(() => {
+    const profitData: { [productId: string]: { name: string, profit: number } } = {};
+    invoices.forEach(invoice => {
+        invoice.items.forEach(item => {
+            const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
+            if (profitData[item.id]) {
+                profitData[item.id].profit += itemProfit;
+            } else {
+                const product = products.find(p => p.id === item.id);
+                profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
+            }
+        });
+    });
+
+    return Object.values(profitData)
+        .sort((a, b) => b.profit - a.profit)
+        .slice(0, 5)
+        .map(p => ({ name: p.name, value: Math.round(p.profit) }));
+  }, [invoices, products]);
+
+  const chartData = {
+    'top-stocked': topStockedData,
+    'lowest-stocked': lowestStockData,
+    'best-sellers': bestSellersData,
+    'most-profitable': mostProfitableData,
+  };
+  
+  const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
+
+  const handleScanAndAdd = async (barcode: string) => {
+    if (!activeEventId) return;
     const product = products.find(p => p.barcode === barcode);
     if (product) {
       const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
@@ -63,7 +154,10 @@ export default function Home() {
         });
       } else {
         playBeep();
-        setScannedProducts(prev => [...prev, product]);
+        const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
+        await updateDoc(sessionRef, {
+            productIds: arrayUnion(product.id)
+        });
         toast({
           title: "Item Added",
           description: `${product.name} added to the scanning session.`,
@@ -78,9 +172,7 @@ export default function Home() {
       });
     }
   };
-
-  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
-  useMultiDeviceLogoutListener(user);
+  
   useBarcodeScanner(handleScanAndAdd);
 
   // Effect to fetch user profile, including their last active event
@@ -127,6 +219,39 @@ export default function Home() {
     });
     return () => unsubscribe();
   }, [user, toast]);
+  
+  const clearScanningSession = async () => {
+    if (!activeEventId) return;
+    const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
+    await updateDoc(sessionRef, { productIds: [] });
+  };
+  
+  // Effect to sync scanning session
+  useEffect(() => {
+    if (!activeEventId || products.length === 0) {
+        setScannedProducts([]);
+        return;
+    }
+
+    const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
+
+    const unsubscribe = onSnapshot(sessionRef, async (docSnap) => {
+        if (!docSnap.exists()) {
+             await setDoc(sessionRef, { productIds: [] }); // Initialize if doesn't exist
+             setScannedProducts([]);
+        } else {
+            const data = docSnap.data();
+            const productIds = data?.productIds || [];
+            
+            // Map product IDs back to full product objects
+            const productMap = new Map(products.map(p => [p.id, p]));
+            const sessionProducts = productIds.map((id: string) => productMap.get(id)).filter(Boolean) as Product[];
+            setScannedProducts(sessionProducts);
+        }
+    });
+
+    return () => unsubscribe();
+  }, [activeEventId, products]);
 
   // Effect to fetch data scoped to the active event
   useEffect(() => {
@@ -273,7 +398,7 @@ export default function Home() {
       await batch.commit();
 
       setSelectedRows([]);
-      setScannedProducts([]);
+      await clearScanningSession();
       toast({
         title: "Products Removed",
         description: `${productIds.length} items have been removed.`,
@@ -316,7 +441,7 @@ export default function Home() {
         description: `${productIds.length} products have been updated.`,
         });
         setSelectedRows([]); // Clear selection after bulk action
-        setScannedProducts([]);
+        await clearScanningSession();
     } catch (error) {
         console.error("Error bulk updating products: ", error);
         toast({ title: "Error", description: "Failed to update selected products.", variant: "destructive" });
@@ -489,7 +614,7 @@ export default function Home() {
       
       await batch.commit();
       setSelectedRows([]);
-      setScannedProducts([]);
+      await clearScanningSession();
       toast({ title: "Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
       return newInvoice;
 
@@ -697,92 +822,7 @@ export default function Home() {
     }
     generatePriceTagsPDF(products, toast);
   };
-
-  const dashboardStats = useMemo(() => {
-    const totalProducts = products.length;
-    const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
-    const productsOutOfStock = products.filter(p => p.quantity === 0).length;
-    return { totalProducts, totalItems, productsOutOfStock };
-  }, [products]);
-
-  const totalRevenue = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
-  }, [invoices]);
-
-  const totalProfit = useMemo(() => {
-    return invoices.reduce((totalProfit, inv) => {
-        const invoiceCost = inv.items.reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
-        const invoiceProfit = (inv.subtotal - inv.discountAmount) - invoiceCost;
-        return totalProfit + invoiceProfit;
-    }, 0);
-  }, [invoices]);
-
-  const totalGst = useMemo(() => {
-    return invoices.reduce((acc, inv) => acc + inv.gstAmount, 0);
-  }, [invoices]);
-
-  const topStockedData = useMemo(() => {
-    return [...products]
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5)
-      .map(p => ({ name: p.name, value: p.quantity }));
-  }, [products]);
-
-  const lowestStockData = useMemo(() => {
-    return [...products]
-      .filter(p => p.quantity > 0 && p.quantity <= 10)
-      .sort((a, b) => a.quantity - b.quantity)
-      .slice(0, 5)
-      .map(p => ({ name: p.name, value: p.quantity }));
-  }, [products]);
-
-  const bestSellersData = useMemo(() => {
-    const salesCount: { [productId: string]: { name: string, quantity: number } } = {};
-    invoices.forEach(invoice => {
-        invoice.items.forEach(item => {
-            if (salesCount[item.id]) {
-                salesCount[item.id].quantity += item.quantity;
-            } else {
-                const product = products.find(p => p.id === item.id);
-                salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
-            }
-        });
-    });
-
-    return Object.values(salesCount)
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, 5)
-        .map(p => ({ name: p.name, value: p.quantity }));
-  }, [invoices, products]);
-
-  const mostProfitableData = useMemo(() => {
-    const profitData: { [productId: string]: { name: string, profit: number } } = {};
-    invoices.forEach(invoice => {
-        invoice.items.forEach(item => {
-            const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
-            if (profitData[item.id]) {
-                profitData[item.id].profit += itemProfit;
-            } else {
-                const product = products.find(p => p.id === item.id);
-                profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
-            }
-        });
-    });
-
-    return Object.values(profitData)
-        .sort((a, b) => b.profit - a.profit)
-        .slice(0, 5)
-        .map(p => ({ name: p.name, value: Math.round(p.profit) }));
-  }, [invoices, products]);
-
-  const chartData = {
-    'top-stocked': topStockedData,
-    'lowest-stocked': lowestStockData,
-    'best-sellers': bestSellersData,
-    'most-profitable': mostProfitableData,
-  };
   
-  const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
   const isLoading = authLoading || isRoleLoading;
 
   if (isLoading || !user) {
@@ -834,7 +874,7 @@ export default function Home() {
             />
             <ScanningSession
               scannedProducts={scannedProducts}
-              onClear={() => setScannedProducts([])}
+              onClear={clearScanningSession}
               onOpenInvoiceDialog={handleOpenInvoiceDialog}
               onOpenBulkEditDialog={handleOpenBulkEditDialog}
               onBulkRemove={bulkRemoveProducts}
