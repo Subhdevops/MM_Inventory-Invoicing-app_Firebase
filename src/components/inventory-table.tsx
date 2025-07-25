@@ -307,7 +307,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </div>
         )}
       </div>
-      <div className="rounded-md border bg-card shadow-sm">
+      <div className="rounded-md border bg-card shadow-sm overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
