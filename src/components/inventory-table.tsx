@@ -236,6 +236,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               onChange={(e) => onFilterChange(e.target.value)}
               className="pl-10 w-full"
             />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hidden md:inline-flex"
+              onClick={() => setIsScannerOpen(true)}
+              aria-label="Scan barcode with camera"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
           </div>
           <div className="flex items-center gap-1 p-1 bg-muted rounded-md shrink-0">
             <Button
