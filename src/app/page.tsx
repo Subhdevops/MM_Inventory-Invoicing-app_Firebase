@@ -50,9 +50,6 @@ export default function Home() {
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
 
   // All hooks must be called unconditionally at the top level
-  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
-  useMultiDeviceLogoutListener(user);
-  
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -129,15 +126,11 @@ export default function Home() {
         .slice(0, 5)
         .map(p => ({ name: p.name, value: Math.round(p.profit) }));
   }, [invoices, products]);
-
-  const chartData = {
-    'top-stocked': topStockedData,
-    'lowest-stocked': lowestStockData,
-    'best-sellers': bestSellersData,
-    'most-profitable': mostProfitableData,
-  };
   
   const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
+
+  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
+  useMultiDeviceLogoutListener(user);
 
   const handleScanAndAdd = async (barcode: string) => {
     if (!activeEventId) return;
@@ -642,17 +635,17 @@ export default function Home() {
                 "Product Name": item.name,
                 "Product Description": item.description,
                 "Quantity": item.quantity,
-                "Price": item.price,
-                "Cost": item.cost || 0,
+                "Price": parseFloat(item.price.toFixed(2)),
+                "Cost": parseFloat((item.cost || 0).toFixed(2)),
             };
 
             // Add invoice totals only to the first item row of an invoice
             if (index === 0) {
-                row["Subtotal"] = inv.subtotal;
-                row["Discount %"] = inv.discountPercentage;
-                row["Discount Amount"] = inv.discountAmount;
-                row["GST"] = inv.gstAmount;
-                row["Grand Total"] = inv.grandTotal;
+                row["Subtotal"] = parseFloat(inv.subtotal.toFixed(2));
+                row["Discount %"] = parseFloat(inv.discountPercentage.toFixed(2));
+                row["Discount Amount"] = parseFloat(inv.discountAmount.toFixed(2));
+                row["GST"] = parseFloat(inv.gstAmount.toFixed(2));
+                row["Grand Total"] = parseFloat(inv.grandTotal.toFixed(2));
             } else {
                 row["Subtotal"] = "";
                 row["Discount %"] = "";
@@ -835,6 +828,13 @@ export default function Home() {
     generatePriceTagsPDF(products, toast);
   };
   
+  const chartData = {
+    'top-stocked': topStockedData,
+    'lowest-stocked': lowestStockData,
+    'best-sellers': bestSellersData,
+    'most-profitable': mostProfitableData,
+  };
+  
   const isLoading = authLoading || isRoleLoading;
 
   if (isLoading || !user) {
@@ -946,3 +946,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
