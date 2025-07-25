@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import * as XLSX from 'xlsx';
 import { db, auth, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
@@ -216,7 +216,10 @@ export default function Home() {
   const clearScanningSession = async () => {
     if (!activeEventId) return;
     const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
-    await updateDoc(sessionRef, { productIds: [] });
+    const docSnap = await getDoc(sessionRef);
+    if(docSnap.exists()){
+        await updateDoc(sessionRef, { productIds: [] });
+    }
   };
   
   // Effect to sync scanning session
@@ -241,6 +244,8 @@ export default function Home() {
             const sessionProducts = productIds.map((id: string) => productMap.get(id)).filter(Boolean) as Product[];
             setScannedProducts(sessionProducts);
         }
+    }, (error) => {
+        console.error("Error syncing scanning session:", error);
     });
 
     return () => unsubscribe();
@@ -837,7 +842,7 @@ export default function Home() {
   
   const isLoading = authLoading || isRoleLoading;
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -848,7 +853,7 @@ export default function Home() {
   const renderContent = () => {
     if (!activeEventId) {
         return (
-            <main className="flex-1 flex items-center justify-center">
+            <main className="flex-1 flex items-center justify-center p-4">
                 <div className="text-center space-y-4">
                     <Activity className="mx-auto h-12 w-12 text-primary" />
                     <h2 className="text-2xl font-bold tracking-tight">Welcome to Roopkotha</h2>
@@ -946,5 +951,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

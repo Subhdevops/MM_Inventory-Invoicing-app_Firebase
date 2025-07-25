@@ -36,6 +36,7 @@ import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, File
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
+import { cn } from '@/lib/utils';
 
 
 type InventoryTableProps = {
@@ -225,31 +226,23 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   return (
     <section className="space-y-6">
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventory</h2>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative w-full sm:max-w-xs">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
+          <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name or barcode..."
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
-              className="pl-10 pr-10"
+              className="pl-10 w-full"
             />
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                onClick={() => setIsScannerOpen(true)}
-                aria-label="Scan barcode with camera"
-            >
-                <Camera className="h-4 w-4" />
-            </Button>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-muted rounded-md">
+          <div className="flex items-center gap-1 p-1 bg-muted rounded-md shrink-0">
             <Button
               variant={view === 'available' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setView('available')}
+              className="flex-1"
             >
               Available ({availableCount})
             </Button>
@@ -257,16 +250,18 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               variant={view === 'sold-out' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setView('sold-out')}
+              className="flex-1"
             >
               Sold Out ({soldOutCount})
             </Button>
           </div>
         </div>
         {isAdmin && selectedRows.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap justify-start">
+          <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end shrink-0">
              <Button 
               onClick={() => onGenerateTags(selectedProducts)}
               variant="outline"
+              size="sm"
             >
                 <Tags className="mr-2 h-4 w-4" />
                 Generate Tags ({selectedRows.length})
@@ -274,13 +269,14 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             <Button 
               onClick={() => onCreateInvoice(selectedProducts)} 
               disabled={selectedProducts.length === 0 || selectedProducts.every(p => p.quantity === 0)}
+              size="sm"
             >
               <FileText className="mr-2 h-4 w-4" />
               Create Invoice ({selectedRows.length})
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" size="sm">
                   Bulk Actions ({selectedRows.length})
                 </Button>
               </DropdownMenuTrigger>
@@ -369,6 +365,19 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </TableBody>
         </Table>
       </div>
+
+       <Button 
+        variant="default" 
+        size="lg"
+        className={cn(
+          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-20 animate-pulse-primary",
+          "md:hidden"
+        )}
+        onClick={() => setIsScannerOpen(true)}
+        aria-label="Scan barcode with camera"
+      >
+        <Camera className="h-6 w-6" />
+      </Button>
 
       <CameraScannerDialog
         isOpen={isScannerOpen}

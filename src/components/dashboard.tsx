@@ -113,18 +113,18 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
 
   return (
     <section className="space-y-6">
-       <div className="flex justify-between items-center">
+       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
-         <div className="flex items-center gap-2">
+         <div className="flex items-center gap-2 flex-wrap">
             {isAdmin && (
               <>
-                <Button onClick={onExportInventory} variant="outline" size="icon" className="sm:w-auto sm:px-4" disabled={isLoading}>
-                  <PackageSearch className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Export Inventory (Excel)</span>
+                <Button onClick={onExportInventory} variant="outline" size="sm" disabled={isLoading}>
+                  <PackageSearch className="mr-2 h-4 w-4" />
+                  <span>Export Inventory</span>
                 </Button>
-                <Button onClick={onExportInvoices} variant="outline" size="icon" className="sm:w-auto sm:px-4" disabled={isLoading}>
-                  <Download className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Export Invoices (Excel)</span>
+                <Button onClick={onExportInvoices} variant="outline" size="sm" disabled={isLoading}>
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>Export Invoices</span>
                 </Button>
               </>
             )}
@@ -225,10 +225,10 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="md:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between pb-2 gap-2">
             <CardTitle>{currentChartMeta.title}</CardTitle>
             <Select value={chartView} onValueChange={(value) => onChartViewChange(value as ChartView)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Select a view" />
               </SelectTrigger>
               <SelectContent>
