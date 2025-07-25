@@ -626,31 +626,43 @@ export default function Home() {
   };
 
   const exportInvoicesToXlsx = () => {
-    const productsMap = new Map(products.map(p => [p.id, p.barcode]));
-    const dataToExport = invoices.flatMap(inv => 
-        inv.items.map(item => ({
-            "Invoice Number": inv.invoiceNumber || inv.id,
-            "Date": new Date(inv.date).toLocaleString('en-IN'),
-            "Customer Name": inv.customerName,
-            "Customer Phone": inv.customerPhone,
-            "Product Barcode": item.barcode || productsMap.get(item.id) || item.id,
-            "Product Name": item.name,
-            "Product Description": item.description,
-            "Quantity": item.quantity,
-            "Price": item.price,
-            "Cost": item.cost || 0,
-            "Subtotal": inv.subtotal,
-            "Discount %": inv.discountPercentage,
-            "Discount Amount": inv.discountAmount,
-            "GST": inv.gstAmount,
-            "Grand Total": inv.grandTotal,
-        }))
-    );
-
-    if (dataToExport.length === 0) {
+    if (invoices.length === 0) {
         toast({ title: "No invoices to export", variant: "destructive", description: "Create an invoice first." });
         return;
     }
+
+    const dataToExport = invoices.flatMap(inv => 
+        inv.items.map((item, index) => {
+            const row: any = {
+                "Invoice Number": inv.invoiceNumber || inv.id,
+                "Date": new Date(inv.date).toLocaleString('en-IN'),
+                "Customer Name": inv.customerName,
+                "Customer Phone": inv.customerPhone,
+                "Product Barcode": item.barcode || item.id,
+                "Product Name": item.name,
+                "Product Description": item.description,
+                "Quantity": item.quantity,
+                "Price": item.price,
+                "Cost": item.cost || 0,
+            };
+
+            // Add invoice totals only to the first item row of an invoice
+            if (index === 0) {
+                row["Subtotal"] = inv.subtotal;
+                row["Discount %"] = inv.discountPercentage;
+                row["Discount Amount"] = inv.discountAmount;
+                row["GST"] = inv.gstAmount;
+                row["Grand Total"] = inv.grandTotal;
+            } else {
+                row["Subtotal"] = "";
+                row["Discount %"] = "";
+                row["Discount Amount"] = "";
+                row["GST"] = "";
+                row["Grand Total"] = "";
+            }
+            return row;
+        })
+    );
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
