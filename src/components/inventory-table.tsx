@@ -307,72 +307,74 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           </div>
         )}
       </div>
-      <div className="rounded-md border bg-card shadow-sm overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={!isLoading && displayedProducts.length > 0 && selectedRows.length === displayedProducts.length}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all"
-                  disabled={isLoading || displayedProducts.length === 0 || !isAdmin}
-                />
-              </TableHead>
-              <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
-              <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
-              <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
-              <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
-              <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
-              <TableHead className="w-[120px] text-center"><SortableHeader tKey="salePercentage" title="Sale %" /></TableHead>
-              <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
-              {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index} className="hover:bg-transparent">
-                  <TableCell className="w-[50px]">
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-3/4" />
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Skeleton className="h-5 w-full" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-5 w-16 ml-auto" />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Skeleton className="h-5 w-8 mx-auto" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-5 w-20 ml-auto" />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Skeleton className="h-5 w-8 mx-auto" />
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <Skeleton className="h-5 w-full" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-8 w-8 ml-auto" />
-                  </TableCell>
+      <div className="rounded-md border bg-card shadow-sm">
+        <div className="relative w-full overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={!isLoading && displayedProducts.length > 0 && selectedRows.length === displayedProducts.length}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                      disabled={isLoading || displayedProducts.length === 0 || !isAdmin}
+                    />
+                  </TableHead>
+                  <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
+                  <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
+                  <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
+                  <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
+                  <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
+                  <TableHead className="w-[120px] text-center"><SortableHeader tKey="salePercentage" title="Sale %" /></TableHead>
+                  <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
+                  {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
                 </TableRow>
-              ))
-            ) : displayedProducts.length > 0 ? (
-                displayedProducts.map(renderProductRow)
-            ) : (
-              <TableRow>
-                <TableCell colSpan={isAdmin ? 9 : 8} className="h-24 text-center">
-                  No products found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index} className="hover:bg-transparent">
+                      <TableCell className="w-[50px]">
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-3/4" />
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="h-5 w-16 ml-auto" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Skeleton className="h-5 w-8 mx-auto" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="h-5 w-20 ml-auto" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Skeleton className="h-5 w-8 mx-auto" />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="h-8 w-8 ml-auto" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : displayedProducts.length > 0 ? (
+                    displayedProducts.map(renderProductRow)
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={isAdmin ? 9 : 8} className="h-24 text-center">
+                      No products found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+        </div>
       </div>
 
        <Button 
