@@ -381,8 +381,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
         variant="default" 
         size="lg"
         className={cn(
-          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-20 animate-pulse-primary",
-          "md:hidden"
+          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-20 animate-pulse-primary md:hidden"
         )}
         onClick={() => setIsScannerOpen(true)}
         aria-label="Scan barcode with camera"
