@@ -632,10 +632,6 @@ export default function Home() {
     const dataToExport = invoices.flatMap(inv => 
         inv.items.map((item, index) => {
             const row: any = {
-                "Invoice Number": inv.invoiceNumber || inv.id,
-                "Date": new Date(inv.date).toLocaleString('en-IN'),
-                "Customer Name": inv.customerName,
-                "Customer Phone": inv.customerPhone,
                 "Product Barcode": item.barcode || item.id,
                 "Product Name": item.name,
                 "Product Description": item.description,
@@ -644,14 +640,22 @@ export default function Home() {
                 "Cost": parseFloat((item.cost || 0).toFixed(2)),
             };
 
-            // Add invoice totals only to the first item row of an invoice
+            // Add invoice-level details only to the first item row of an invoice
             if (index === 0) {
+                row["Invoice Number"] = inv.invoiceNumber || inv.id;
+                row["Date"] = new Date(inv.date).toLocaleString('en-IN');
+                row["Customer Name"] = inv.customerName;
+                row["Customer Phone"] = inv.customerPhone;
                 row["Subtotal"] = parseFloat(inv.subtotal.toFixed(2));
                 row["Discount %"] = parseFloat(inv.discountPercentage.toFixed(2));
                 row["Discount Amount"] = parseFloat(inv.discountAmount.toFixed(2));
                 row["GST"] = parseFloat(inv.gstAmount.toFixed(2));
                 row["Grand Total"] = parseFloat(inv.grandTotal.toFixed(2));
             } else {
+                row["Invoice Number"] = "";
+                row["Date"] = "";
+                row["Customer Name"] = "";
+                row["Customer Phone"] = "";
                 row["Subtotal"] = "";
                 row["Discount %"] = "";
                 row["Discount Amount"] = "";
@@ -661,8 +665,24 @@ export default function Home() {
             return row;
         })
     );
+    
+    // Ensure consistent column order
+    const orderedHeaders = [
+        "Invoice Number", "Date", "Customer Name", "Customer Phone",
+        "Product Barcode", "Product Name", "Product Description", "Quantity",
+        "Price", "Cost", "Subtotal", "Discount %", "Discount Amount", "GST", "Grand Total"
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    // Reorder the data to match the headers
+    const orderedDataToExport = dataToExport.map(row => {
+        const newRow: any = {};
+        for(const header of orderedHeaders) {
+            newRow[header] = row[header] ?? "";
+        }
+        return newRow;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(orderedDataToExport, { header: orderedHeaders });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
 
