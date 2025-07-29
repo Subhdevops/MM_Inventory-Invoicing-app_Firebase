@@ -66,8 +66,8 @@ export default function Header({ addProduct, onImportInventory, userRole, events
   return (
     <header className="flex-shrink-0 bg-card border-b shadow-sm sticky top-0 z-10">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+        <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center min-w-0">
              <EventSwitcher 
                 events={events}
                 activeEvent={activeEvent}
@@ -76,16 +76,18 @@ export default function Header({ addProduct, onImportInventory, userRole, events
                 disabled={!user || userRole !== 'admin'}
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
              <ThemeToggle />
             {user && (
               <>
-                {userRole === 'admin' && !!activeEvent && (
-                  <>
-                    <ImportInventoryDialog onImport={onImportInventory} />
-                    <AddProductDialog addProduct={addProduct} />
-                  </>
-                )}
+                <div className="hidden sm:flex items-center gap-2">
+                    {userRole === 'admin' && !!activeEvent && (
+                    <>
+                        <ImportInventoryDialog onImport={onImportInventory} />
+                        <AddProductDialog addProduct={addProduct} />
+                    </>
+                    )}
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -112,6 +114,17 @@ export default function Header({ addProduct, onImportInventory, userRole, events
                     <div className="px-2 py-1.5 text-xs text-muted-foreground">
                       Role: <span className="font-semibold capitalize text-foreground">{userRole}</span>
                     </div>
+                    {userRole === 'admin' && !!activeEvent && (
+                        <div className="sm:hidden">
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <ImportInventoryDialog onImport={onImportInventory} />
+                             </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <AddProductDialog addProduct={addProduct} />
+                             </DropdownMenuItem>
+                        </div>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />

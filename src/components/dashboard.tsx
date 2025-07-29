@@ -228,7 +228,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between pb-2 gap-2">
             <CardTitle>{currentChartMeta.title}</CardTitle>
             <Select value={chartView} onValueChange={(value) => onChartViewChange(value as ChartView)}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-auto">
                 <SelectValue placeholder="Select a view" />
               </SelectTrigger>
               <SelectContent>

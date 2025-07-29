@@ -851,6 +851,10 @@ export default function Home() {
   }
 
   const renderContent = () => {
+    if (!user) {
+        return null; // Redirect logic is handled in useEffect
+    }
+
     if (!activeEventId) {
         return (
             <main className="flex-1 flex items-center justify-center p-4">

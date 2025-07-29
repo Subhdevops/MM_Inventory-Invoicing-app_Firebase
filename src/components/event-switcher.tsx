@@ -46,10 +46,12 @@ export function EventSwitcher({
               variant="outline"
               role="combobox"
               aria-label="Select an event"
-              className="w-[220px] justify-between"
+              className="w-full sm:w-[220px] justify-between"
               disabled={disabled && events.length === 0}
             >
-              {activeEvent ? activeEvent.name : 'Select Event'}
+              <span className="truncate">
+                {activeEvent ? activeEvent.name : 'Select Event'}
+              </span>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
