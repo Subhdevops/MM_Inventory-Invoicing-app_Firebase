@@ -29,18 +29,27 @@ export type SoldProduct = {
   salePercentage?: number;
 }
 
+export type CustomLineItem = {
+  id: string; // Can be a UUID for the line item itself
+  description: string;
+  quantity: number;
+  price: number;
+}
+
 export type Invoice = {
   id: string;
   invoiceNumber: number;
   date: string;
   customerName: string;
   customerPhone: string;
-  items: SoldProduct[];
+  items: SoldProduct[] | CustomLineItem[];
   subtotal: number;
   discountPercentage: number;
   discountAmount: number;
   gstAmount: number;
   grandTotal: number;
+  type: 'standard' | 'custom';
+  title?: string;
 };
 
 export type UserProfile = {

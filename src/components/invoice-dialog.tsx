@@ -98,10 +98,11 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               docInstance.text('Where fashion meets fairytale', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
               docInstance.setFont('helvetica', 'normal'); // Reset font style
           }
-
+          
+          const title = invoice.title || "INVOICE";
           docInstance.setFontSize(18);
           docInstance.setTextColor(41, 128, 185);
-          docInstance.text("INVOICE", pageWidth - 15, 20, { align: 'right' });
+          docInstance.text(title, pageWidth - 15, 20, { align: 'right' });
 
           docInstance.setFontSize(9);
           docInstance.setTextColor(100);
@@ -111,11 +112,11 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     };
 
     const tableBody = invoice.items.map((item, index) => {
-        let productName = item.name;
-        if (item.description) {
-            productName += ` (${item.description})`;
+        let productName = 'barcode' in item ? item.name : item.description;
+        if ('description' in item && item.description && 'barcode' in item) {
+             productName += ` (${item.description})`;
         }
-
+        
         return [
             index + 1,
             productName,
@@ -186,7 +187,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         halign: 'center',
         valign: 'middle',
       },
-      head: [['#', 'Product', 'Qty', 'Price (pre-GST)', 'Total (pre-GST)']],
+      head: [['#', 'Item/Description', 'Qty', 'Price (pre-GST)', 'Total (pre-GST)']],
       body: tableBody,
       columnStyles: {
         0: { halign: 'center' },
@@ -471,5 +472,3 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     </Dialog>
   );
 }
-
-    

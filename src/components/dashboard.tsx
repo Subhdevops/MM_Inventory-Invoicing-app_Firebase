@@ -28,7 +28,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/lib/types";
@@ -64,6 +64,7 @@ type DashboardProps = {
   savedFilesCount: number;
   onUploadFile: (file: File) => Promise<void>;
   onViewFiles: () => void;
+  onOpenCustomInvoice: () => void;
 };
 
 const chartMeta: Record<ChartView, {
@@ -98,7 +99,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, onUploadFile, onViewFiles }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, onUploadFile, onViewFiles, onOpenCustomInvoice }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -118,6 +119,10 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
          <div className="flex items-center gap-2 flex-wrap">
             {isAdmin && (
               <>
+                <Button onClick={onOpenCustomInvoice} variant="outline" size="sm" disabled={isLoading}>
+                  <FileSignature className="mr-2 h-4 w-4" />
+                  <span>Custom Invoice</span>
+                </Button>
                 <Button onClick={onExportInventory} variant="outline" size="sm" disabled={isLoading}>
                   <PackageSearch className="mr-2 h-4 w-4" />
                   <span>Export Inventory</span>

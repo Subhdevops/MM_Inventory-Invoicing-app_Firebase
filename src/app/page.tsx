@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event, CustomLineItem } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -26,6 +26,7 @@ import InvoiceDialog from '@/components/invoice-dialog';
 import BulkEditDialog from '@/components/bulk-edit-dialog';
 import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
 import { playBeep, playErrorBeep } from '@/lib/audio';
+import { CustomInvoiceDialog } from '@/components/custom-invoice-dialog';
 
 
 export default function Home() {
@@ -48,6 +49,7 @@ export default function Home() {
   const [productsForDialog, setProductsForDialog] = useState<Product[]>([]);
   const [isBulkInvoiceDialogOpen, setIsBulkInvoiceDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
+  const [isCustomInvoiceDialogOpen, setIsCustomInvoiceDialogOpen] = useState(false);
 
   // All hooks must be called unconditionally at the top level
   const dashboardStats = useMemo(() => {
@@ -63,7 +65,10 @@ export default function Home() {
 
   const totalProfit = useMemo(() => {
     return invoices.reduce((totalProfit, inv) => {
-        const invoiceCost = inv.items.reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
+        if (inv.type === 'custom') {
+            return totalProfit + (inv.subtotal - inv.discountAmount);
+        }
+        const invoiceCost = (inv.items as SoldProduct[]).reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
         const invoiceProfit = (inv.subtotal - inv.discountAmount) - invoiceCost;
         return totalProfit + invoiceProfit;
     }, 0);
@@ -91,14 +96,16 @@ export default function Home() {
   const bestSellersData = useMemo(() => {
     const salesCount: { [productId: string]: { name: string, quantity: number } } = {};
     invoices.forEach(invoice => {
-        invoice.items.forEach(item => {
-            if (salesCount[item.id]) {
-                salesCount[item.id].quantity += item.quantity;
-            } else {
-                const product = products.find(p => p.id === item.id);
-                salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
-            }
-        });
+        if (invoice.type === 'standard') {
+            (invoice.items as SoldProduct[]).forEach(item => {
+                if (salesCount[item.id]) {
+                    salesCount[item.id].quantity += item.quantity;
+                } else {
+                    const product = products.find(p => p.id === item.id);
+                    salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
+                }
+            });
+        }
     });
 
     return Object.values(salesCount)
@@ -110,15 +117,17 @@ export default function Home() {
   const mostProfitableData = useMemo(() => {
     const profitData: { [productId: string]: { name: string, profit: number } } = {};
     invoices.forEach(invoice => {
-        invoice.items.forEach(item => {
-            const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
-            if (profitData[item.id]) {
-                profitData[item.id].profit += itemProfit;
-            } else {
-                const product = products.find(p => p.id === item.id);
-                profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
-            }
-        });
+        if(invoice.type === 'standard') {
+            (invoice.items as SoldProduct[]).forEach(item => {
+                const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
+                if (profitData[item.id]) {
+                    profitData[item.id].profit += itemProfit;
+                } else {
+                    const product = products.find(p => p.id === item.id);
+                    profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
+                }
+            });
+        }
     });
 
     return Object.values(profitData)
@@ -595,6 +604,7 @@ export default function Home() {
       discountAmount,
       gstAmount,
       grandTotal,
+      type: 'standard',
     };
 
     try {
@@ -623,6 +633,65 @@ export default function Home() {
     }
   };
 
+  const handleCreateCustomInvoice = async (invoiceData: { title: string, customerName: string; customerPhone: string; items: Omit<CustomLineItem, 'id'>[]; discountPercentage: number; }): Promise<Invoice> => {
+    if (!activeEventId) throw new Error("No active event selected.");
+    const eventRef = doc(db, "events", activeEventId);
+    const invoiceCounterRef = doc(eventRef, 'counters', 'invoices');
+    
+    const newInvoiceNumber = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(invoiceCounterRef);
+        if (!counterDoc.exists()) {
+            transaction.set(invoiceCounterRef, { currentNumber: 20250600001 });
+            return 20250600001;
+        }
+        const newNumber = counterDoc.data().currentNumber + 1;
+        transaction.update(invoiceCounterRef, { currentNumber: newNumber });
+        return newNumber;
+    });
+
+    const itemsWithIds: CustomLineItem[] = invoiceData.items.map(item => ({
+        ...item,
+        id: crypto.randomUUID(), // Assign a random unique ID to each line item
+    }));
+
+    const subtotal = itemsWithIds.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const discountAmount = subtotal * (invoiceData.discountPercentage / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const GST_RATE = 0.05;
+    const gstAmount = subtotalAfterDiscount * GST_RATE;
+    const grandTotal = subtotalAfterDiscount + gstAmount;
+    
+    const invoiceRef = doc(collection(eventRef, "invoices"));
+
+    const newInvoice: Invoice = {
+      id: invoiceRef.id,
+      invoiceNumber: newInvoiceNumber,
+      date: new Date().toISOString(),
+      title: invoiceData.title,
+      customerName: invoiceData.customerName,
+      customerPhone: invoiceData.customerPhone,
+      items: itemsWithIds,
+      subtotal,
+      discountPercentage: invoiceData.discountPercentage,
+      discountAmount,
+      gstAmount,
+      grandTotal,
+      type: 'custom',
+    };
+
+    try {
+      await setDoc(invoiceRef, newInvoice);
+      toast({ title: "Custom Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
+      return newInvoice;
+
+    } catch (error) {
+      console.error("Error creating custom invoice: ", error);
+      toast({ title: "Error", description: "Failed to create custom invoice.", variant: "destructive" });
+      throw error;
+    }
+  };
+
+
   const exportInvoicesToXlsx = () => {
     if (invoices.length === 0) {
         toast({ title: "No invoices to export", variant: "destructive", description: "Create an invoice first." });
@@ -630,19 +699,21 @@ export default function Home() {
     }
 
     const dataToExport = invoices.flatMap(inv => 
-        inv.items.map((item, index) => {
+        (inv.items as Array<SoldProduct | CustomLineItem>).map((item, index) => {
+            const isStandard = 'barcode' in item;
             const row: any = {
-                "Product Barcode": item.barcode || item.id,
-                "Product Name": item.name,
-                "Product Description": item.description,
+                "Product Barcode": isStandard ? (item as SoldProduct).barcode : 'N/A',
+                "Product Name": isStandard ? item.name : (item as CustomLineItem).description,
+                "Product Description": isStandard ? item.description : '',
                 "Quantity": item.quantity,
                 "Price": parseFloat(item.price.toFixed(2)),
-                "Cost": parseFloat((item.cost || 0).toFixed(2)),
+                "Cost": isStandard ? parseFloat(((item as SoldProduct).cost || 0).toFixed(2)) : 'N/A',
             };
 
             // Add invoice-level details only to the first item row of an invoice
             if (index === 0) {
                 row["Invoice Number"] = inv.invoiceNumber || inv.id;
+                row["Invoice Title"] = inv.title || 'Standard Invoice';
                 row["Date"] = new Date(inv.date).toLocaleString('en-IN');
                 row["Customer Name"] = inv.customerName;
                 row["Customer Phone"] = inv.customerPhone;
@@ -653,6 +724,7 @@ export default function Home() {
                 row["Grand Total"] = parseFloat(inv.grandTotal.toFixed(2));
             } else {
                 row["Invoice Number"] = "";
+                row["Invoice Title"] = "";
                 row["Date"] = "";
                 row["Customer Name"] = "";
                 row["Customer Phone"] = "";
@@ -668,7 +740,7 @@ export default function Home() {
     
     // Ensure consistent column order
     const orderedHeaders = [
-        "Invoice Number", "Date", "Customer Name", "Customer Phone",
+        "Invoice Number", "Invoice Title", "Date", "Customer Name", "Customer Phone",
         "Product Barcode", "Product Name", "Product Description", "Quantity",
         "Price", "Cost", "Subtotal", "Discount %", "Discount Amount", "GST", "Grand Total"
     ];
@@ -687,7 +759,7 @@ export default function Home() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
 
     worksheet['!cols'] = [
-        { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
+        { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
         { wch: 40 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
         { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
     ];
@@ -912,6 +984,7 @@ export default function Home() {
               savedFilesCount={savedFiles.length}
               onUploadFile={handleUploadFile}
               onViewFiles={() => setIsViewFilesOpen(true)}
+              onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
             />
             <ScanningSession
               scannedProducts={scannedProducts}
@@ -965,6 +1038,11 @@ export default function Home() {
         onCreateInvoice={handleCreateInvoice}
         isOpen={isBulkInvoiceDialogOpen}
         onOpenChange={setIsBulkInvoiceDialogOpen}
+      />
+      <CustomInvoiceDialog
+        isOpen={isCustomInvoiceDialogOpen}
+        onOpenChange={setIsCustomInvoiceDialogOpen}
+        onCreateInvoice={handleCreateCustomInvoice}
       />
       <BulkEditDialog
         isOpen={isBulkEditDialogOpen}
