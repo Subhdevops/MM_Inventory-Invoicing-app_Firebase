@@ -52,6 +52,43 @@ export default function Home() {
   const [isCustomInvoiceDialogOpen, setIsCustomInvoiceDialogOpen] = useState(false);
 
   // All hooks must be called unconditionally at the top level
+  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
+  useMultiDeviceLogoutListener(user);
+  
+  useBarcodeScanner(async (barcode: string) => {
+    if (!activeEventId) return;
+    const product = products.find(p => p.barcode === barcode);
+    if (product) {
+      const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
+
+      if (alreadyScannedCount >= product.quantity) {
+        playErrorBeep();
+        toast({
+          title: "Stock Limit Reached",
+          description: `All available units of ${product.name} have been added.`,
+          variant: "destructive",
+        });
+      } else {
+        playBeep();
+        const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
+        await updateDoc(sessionRef, {
+            productIds: arrayUnion(product.id)
+        });
+        toast({
+          title: "Item Added",
+          description: `${product.name} added to the scanning session.`,
+        });
+      }
+    } else {
+      playErrorBeep();
+      toast({
+        title: "Product Not Found",
+        description: `No product with barcode "${barcode}" exists in the inventory.`,
+        variant: "destructive",
+      });
+    }
+  });
+
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
     const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
@@ -137,45 +174,6 @@ export default function Home() {
   }, [invoices, products]);
   
   const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
-
-  useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
-  useMultiDeviceLogoutListener(user);
-
-  const handleScanAndAdd = async (barcode: string) => {
-    if (!activeEventId) return;
-    const product = products.find(p => p.barcode === barcode);
-    if (product) {
-      const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
-
-      if (alreadyScannedCount >= product.quantity) {
-        playErrorBeep();
-        toast({
-          title: "Stock Limit Reached",
-          description: `All available units of ${product.name} have been added.`,
-          variant: "destructive",
-        });
-      } else {
-        playBeep();
-        const sessionRef = doc(db, "events", activeEventId, "sessions", "active_session");
-        await updateDoc(sessionRef, {
-            productIds: arrayUnion(product.id)
-        });
-        toast({
-          title: "Item Added",
-          description: `${product.name} added to the scanning session.`,
-        });
-      }
-    } else {
-      playErrorBeep();
-      toast({
-        title: "Product Not Found",
-        description: `No product with barcode "${barcode}" exists in the inventory.`,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  useBarcodeScanner(handleScanAndAdd);
 
   // Effect to fetch user profile, including their last active event
   useEffect(() => {
@@ -854,10 +852,12 @@ export default function Home() {
     });
 
     try {
-      await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
-      
+      // First, delete the file from Storage to prevent orphaned files
       const storageRef = ref(storage, fileUrl);
       await deleteObject(storageRef);
+
+      // Then, delete the document from Firestore
+      await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
       
       toast({
         id: toastId,
@@ -868,22 +868,23 @@ export default function Home() {
     } catch (error: any) {
       console.error("Error deleting file:", error);
       if (error.code === 'storage/object-not-found') {
+         // If file doesn't exist in storage, we can still remove the DB record.
          await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
          toast({
            id: toastId,
            title: "Deletion Successful",
-           description: "The file record was removed.",
+           description: "The file record was removed (file not found in storage).",
            variant: "destructive"
          });
       } else {
         toast({
           id: toastId,
           title: "Deletion Failed",
-          description: "Could not remove the file. Please try again.",
+          description: "Could not remove the file. Please check permissions and try again.",
           variant: "destructive",
         });
+        throw error;
       }
-      throw error;
     }
   };
 
@@ -1006,7 +1007,6 @@ export default function Home() {
               onCreateInvoice={handleOpenInvoiceDialog}
               isLoading={isDataLoading}
               userRole={userRole}
-              onScan={handleScanAndAdd}
               onOpenBulkEditDialog={handleOpenBulkEditDialog}
               onGenerateTags={handleGenerateTags}
             />
