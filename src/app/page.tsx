@@ -12,7 +12,7 @@ import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import * as XLSX from 'xlsx';
 import { db, auth, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
 import { Activity, Loader2 } from 'lucide-react';
@@ -55,8 +55,16 @@ export default function Home() {
   useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
   useMultiDeviceLogoutListener(user);
   
-  useBarcodeScanner(async (barcode: string) => {
+  const handleBarcodeScan = async (barcode: string) => {
+    // If the inventory table filter is active, this scan is for searching.
+    if(filter) {
+      onFilterChange(barcode);
+      return;
+    }
+    
+    // Otherwise, it's for the scanning session.
     if (!activeEventId) return;
+
     const product = products.find(p => p.barcode === barcode);
     if (product) {
       const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
@@ -87,7 +95,9 @@ export default function Home() {
         variant: "destructive",
       });
     }
-  });
+  };
+  
+  useBarcodeScanner(handleBarcodeScan);
 
   const dashboardStats = useMemo(() => {
     const totalProducts = products.length;
@@ -805,43 +815,6 @@ export default function Home() {
     XLSX.writeFile(workbook, "inventory.xlsx");
   };
 
-  const handleUploadFile = async (file: File) => {
-    if (!file || !activeEventId) return;
-
-    const toastId = "upload-toast";
-    toast({
-      id: toastId,
-      title: "Uploading File...",
-      description: "Please wait while the file is being uploaded.",
-    });
-
-    const storageRef = ref(storage, `events/${activeEventId}/savedFiles/${Date.now()}_${file.name}`);
-    try {
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      await addDoc(collection(db, "events", activeEventId, "savedFiles"), {
-        name: file.name,
-        url: downloadURL,
-        createdAt: new Date().toISOString(),
-        fileType: file.type || 'application/octet-stream',
-      });
-      toast({
-        id: toastId,
-        title: "Upload Successful",
-        description: `${file.name} has been saved.`,
-      });
-    } catch (error) {
-      console.error("Error uploading file: ", error);
-      toast({
-        id: toastId,
-        title: "Upload Failed",
-        description: "Please check your Firebase Storage setup and security rules.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
   const handleDeleteFile = async (fileId: string, fileUrl: string) => {
     if (!activeEventId) return;
     const toastId = "delete-toast";
@@ -867,8 +840,8 @@ export default function Home() {
       });
     } catch (error: any) {
       console.error("Error deleting file:", error);
+      // If file doesn't exist in storage, we can still remove the DB record.
       if (error.code === 'storage/object-not-found') {
-         // If file doesn't exist in storage, we can still remove the DB record.
          await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
          toast({
            id: toastId,
@@ -926,6 +899,10 @@ export default function Home() {
     generatePriceTagsPDF(products, toast);
   };
   
+  const onFilterChange = (value: string) => {
+    setFilter(value);
+  }
+
   const chartData = {
     'top-stocked': topStockedData,
     'lowest-stocked': lowestStockData,
@@ -983,7 +960,7 @@ export default function Home() {
               onResetInvoiceCounter={handleResetInvoiceCounter}
               userRole={userRole}
               savedFilesCount={savedFiles.length}
-              onUploadFile={handleUploadFile}
+              activeEventId={activeEventId}
               onViewFiles={() => setIsViewFilesOpen(true)}
               onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
             />
@@ -1001,12 +978,13 @@ export default function Home() {
               bulkRemoveProducts={bulkRemoveProducts}
               updateProduct={updateProduct}
               filter={filter}
-              onFilterChange={setFilter}
+              onFilterChange={onFilterChange}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
               onCreateInvoice={handleOpenInvoiceDialog}
               isLoading={isDataLoading}
               userRole={userRole}
+              onScan={handleBarcodeScan}
               onOpenBulkEditDialog={handleOpenBulkEditDialog}
               onGenerateTags={handleGenerateTags}
             />

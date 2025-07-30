@@ -14,24 +14,40 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { UploadCloud, File as FileIcon, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { UploadCloud, File as FileIcon, Loader2, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import { storage, db } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { addDoc, collection } from 'firebase/firestore';
 
 type UploadFileDialogProps = {
-  onUpload: (file: File) => Promise<void>;
+  activeEventId: string | null;
   disabled: boolean;
 };
 
-export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) {
+export function UploadFileDialog({ activeEventId, disabled }: UploadFileDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const resetState = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setIsSuccess(false);
+    if(fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    resetState(); // Reset if a new file is chosen
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
@@ -44,29 +60,115 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !activeEventId) return;
+
     setIsUploading(true);
-    try {
-      await onUpload(file);
-      setOpen(false); // Close dialog on success
-    } catch (error) {
-      // Error is caught and handled by the parent component's toast.
-      // The dialog will remain open for the user to retry or cancel.
-      console.error("Upload failed in dialog component.");
-    } finally {
-      setIsUploading(false); // Always stop loading indicator
-    }
+    setIsSuccess(false);
+    setUploadProgress(0);
+
+    const storageRef = ref(storage, `events/${activeEventId}/savedFiles/${Date.now()}_${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        toast({
+          title: "Upload Failed",
+          description: "Please check your Firebase Storage setup and security rules.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          await addDoc(collection(db, "events", activeEventId, "savedFiles"), {
+            name: file.name,
+            url: downloadURL,
+            createdAt: new Date().toISOString(),
+            fileType: file.type || 'application/octet-stream',
+          });
+          
+          toast({
+            title: "Upload Successful",
+            description: `${file.name} has been saved.`,
+          });
+          
+          setIsSuccess(true);
+          setIsUploading(false);
+
+          // Close the dialog after a short delay to show success state
+          setTimeout(() => {
+            setOpen(false);
+          }, 1500);
+
+        } catch (dbError) {
+          console.error("Error saving file record to Firestore:", dbError);
+          toast({
+            title: "Upload Failed",
+            description: "File uploaded, but failed to save record to database.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+        }
+      }
+    );
   };
   
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-        // Reset state when closing
-        setFile(null);
-        setPreviewUrl(null);
-        if(fileInputRef.current) fileInputRef.current.value = "";
+      resetState();
     }
     setOpen(isOpen);
   }
+
+  const renderContent = () => {
+    if (isUploading) {
+      return (
+        <div className="text-center text-muted-foreground flex flex-col items-center justify-center h-full">
+            <Loader2 className="h-12 w-12 animate-spin mb-4" />
+            <p className="font-semibold mb-2">Uploading {file?.name}...</p>
+            <Progress value={uploadProgress} className="w-full" />
+            <p className="text-sm mt-2">{Math.round(uploadProgress)}%</p>
+        </div>
+      );
+    }
+    
+    if (isSuccess) {
+       return (
+        <div className="text-center text-green-500 flex flex-col items-center justify-center h-full">
+            <CheckCircle className="h-12 w-12 mb-4" />
+            <p className="font-semibold">Upload Complete!</p>
+        </div>
+       );
+    }
+
+    return (
+      <label htmlFor="file-upload" className="flex items-center justify-center w-full h-64 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+        {previewUrl ? (
+          <div className="w-full h-full relative">
+              <Image src={previewUrl} alt="Preview" fill style={{ objectFit: 'contain' }} />
+          </div>
+        ) : file ? (
+          <div className="text-center text-muted-foreground">
+            <FileIcon className="mx-auto h-12 w-12" />
+            <p className="mt-2 font-semibold">{file.name}</p>
+            <p className="text-xs">Click to choose a different file</p>
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground">
+              <UploadCloud className="mx-auto h-12 w-12" />
+              <p className="mt-2">Click to select a file</p>
+              <p className="text-xs">Images, PDF, DOC, TXT supported.</p>
+          </div>
+        )}
+      </label>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -83,25 +185,7 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <label htmlFor="file-upload" className="flex items-center justify-center w-full h-64 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
-            {previewUrl ? (
-              <div className="w-full h-full relative">
-                 <Image src={previewUrl} alt="Preview" fill style={{ objectFit: 'contain' }} />
-              </div>
-            ) : file ? (
-              <div className="text-center text-muted-foreground">
-                <FileIcon className="mx-auto h-12 w-12" />
-                <p className="mt-2 font-semibold">{file.name}</p>
-                <p className="text-xs">Click to choose a different file</p>
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground">
-                  <UploadCloud className="mx-auto h-12 w-12" />
-                  <p className="mt-2">Click to select a file</p>
-                  <p className="text-xs">Images, PDF, DOC, TXT supported.</p>
-              </div>
-            )}
-          </label>
+          {renderContent()}
           <Input 
             id="file-upload" 
             type="file" 
@@ -109,15 +193,16 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
             onChange={handleFileChange} 
             ref={fileInputRef}
             className="hidden"
+            disabled={isUploading || isSuccess}
           />
         </div>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={isUploading}>Cancel</Button>
           </DialogClose>
-          <Button onClick={handleUpload} disabled={!file || isUploading}>
-            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-            {isUploading ? "Uploading..." : "Upload and Save"}
+          <Button onClick={handleUpload} disabled={!file || isUploading || isSuccess}>
+            <UploadCloud className="mr-2 h-4 w-4" />
+            Upload and Save
           </Button>
         </DialogFooter>
       </DialogContent>

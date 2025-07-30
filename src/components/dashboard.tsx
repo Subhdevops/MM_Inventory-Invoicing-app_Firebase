@@ -62,7 +62,7 @@ type DashboardProps = {
   onResetInvoiceCounter: (newStartNumber?: number) => Promise<void>;
   userRole: UserProfile['role'] | null;
   savedFilesCount: number;
-  onUploadFile: (file: File) => Promise<void>;
+  activeEventId: string | null;
   onViewFiles: () => void;
   onOpenCustomInvoice: () => void;
 };
@@ -99,7 +99,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, onUploadFile, onViewFiles, onOpenCustomInvoice }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -179,7 +179,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
               <Button variant="outline" size="sm" onClick={onViewFiles} disabled={isLoading || savedFilesCount === 0}>
                 <Eye className="h-4 w-4" />
               </Button>
-              <UploadFileDialog onUpload={onUploadFile} disabled={isLoading || !isAdmin} />
+              <UploadFileDialog activeEventId={activeEventId} disabled={isLoading || !isAdmin} />
             </div>
           </CardHeader>
           <CardContent>
