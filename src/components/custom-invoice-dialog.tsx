@@ -22,6 +22,7 @@ import { Label } from './ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from './ui/table';
 import { X, Plus, Loader2, FileText, IndianRupee, Percent } from 'lucide-react';
 import RoopkothaLogo from './icons/roopkotha-logo';
+import { ScrollArea } from './ui/scroll-area';
 
 const GST_RATE = 0.05;
 
@@ -373,38 +374,31 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                     </div>
                     
                     <div className="border rounded-lg overflow-hidden flex flex-col">
-                        <div className="overflow-y-auto flex-1 min-h-0">
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead className="w-[80px] text-center">Qty</TableHead>
-                                        <TableHead className="w-[120px] text-right">Price</TableHead>
-                                        <TableHead className="w-[50px] text-right"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {items.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <Input value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} placeholder="e.g., Advance for Lehenga" className="h-8" />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="h-8 w-20 text-center" min="1" />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input type="number" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', e.target.value)} className="h-8 w-28 text-right" placeholder="0.00" />
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} disabled={items.length <= 1} className="h-8 w-8">
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <ScrollArea className="flex-1 min-h-0">
+                             <div className="p-2 space-y-2">
+                                {items.map((item, index) => (
+                                    <div key={item.id} className="p-3 rounded-md border bg-muted/50 space-y-2 relative">
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                            <div className="col-span-2">
+                                                <Label htmlFor={`desc-${index}`}>Description</Label>
+                                                <Input id={`desc-${index}`} value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} placeholder="e.g., Advance for Lehenga" className="h-9" />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor={`qty-${index}`}>Quantity</Label>
+                                                <Input id={`qty-${index}`} type="number" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="h-9 w-full" min="1" />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor={`price-${index}`}>Price (₹)</Label>
+                                                <Input id={`price-${index}`} type="number" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', e.target.value)} className="h-9 w-full" placeholder="0.00" />
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} disabled={items.length <= 1} className="absolute top-1 right-1 h-7 w-7">
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
                         <div className="p-2 border-t">
                             <Button variant="outline" size="sm" onClick={addItem} className="w-full">
                                 <Plus className="mr-2 h-4 w-4" /> Add Line Item
@@ -431,3 +425,4 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
         </Dialog>
     );
 }
+
