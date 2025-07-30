@@ -34,14 +34,6 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-       if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({
-          title: "File Too Large",
-          description: "Please select a file smaller than 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
       setFile(selectedFile);
       if (selectedFile.type.startsWith('image/')) {
         setPreviewUrl(URL.createObjectURL(selectedFile));
@@ -87,7 +79,7 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
         <DialogHeader>
           <DialogTitle>Upload a File</DialogTitle>
           <DialogDescription>
-            Save a design, document, or reference file. It will be stored securely. Max file size: 5MB.
+            Save a design, document, or reference file. It will be stored securely.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -106,7 +98,7 @@ export function UploadFileDialog({ onUpload, disabled }: UploadFileDialogProps) 
               <div className="text-center text-muted-foreground">
                   <UploadCloud className="mx-auto h-12 w-12" />
                   <p className="mt-2">Click to select a file</p>
-                  <p className="text-xs">Images, PDF, DOC, TXT up to 5MB</p>
+                  <p className="text-xs">Images, PDF, DOC, TXT supported.</p>
               </div>
             )}
           </label>
