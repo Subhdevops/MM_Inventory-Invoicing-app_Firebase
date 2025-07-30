@@ -48,7 +48,6 @@ export function UploadFileDialog({ activeEventId, disabled, onUploadComplete }: 
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    resetState(); // Reset if a new file is chosen
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
