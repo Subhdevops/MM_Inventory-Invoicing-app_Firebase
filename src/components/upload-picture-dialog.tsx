@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,16 +17,17 @@ import { Progress } from '@/components/ui/progress';
 import { UploadCloud, File as FileIcon, Loader2, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { storage, db } from '@/lib/firebase';
+import { storage } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { addDoc, collection } from 'firebase/firestore';
+import type { SavedFile } from '@/lib/types';
 
 type UploadFileDialogProps = {
   activeEventId: string | null;
   disabled: boolean;
+  onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
 };
 
-export function UploadFileDialog({ activeEventId, disabled }: UploadFileDialogProps) {
+export function UploadFileDialog({ activeEventId, disabled, onUploadComplete }: UploadFileDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -86,33 +86,22 @@ export function UploadFileDialog({ activeEventId, disabled }: UploadFileDialogPr
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await addDoc(collection(db, "events", activeEventId, "savedFiles"), {
+          await onUploadComplete({
             name: file.name,
             url: downloadURL,
             createdAt: new Date().toISOString(),
             fileType: file.type || 'application/octet-stream',
           });
           
-          toast({
-            title: "Upload Successful",
-            description: `${file.name} has been saved.`,
-          });
-          
           setIsSuccess(true);
           setIsUploading(false);
 
-          // Close the dialog after a short delay to show success state
           setTimeout(() => {
             setOpen(false);
           }, 1500);
 
         } catch (dbError) {
-          console.error("Error saving file record to Firestore:", dbError);
-          toast({
-            title: "Upload Failed",
-            description: "File uploaded, but failed to save record to database.",
-            variant: "destructive",
-          });
+          // Toast is handled by the parent page function
           setIsUploading(false);
         }
       }

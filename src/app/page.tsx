@@ -815,6 +815,26 @@ export default function Home() {
     XLSX.writeFile(workbook, "inventory.xlsx");
   };
 
+  const addSavedFile = async (fileData: Omit<SavedFile, 'id'>) => {
+    if (!activeEventId) return;
+    try {
+        await addDoc(collection(db, 'events', activeEventId, 'savedFiles'), fileData);
+        toast({
+            title: "Upload Successful",
+            description: `${fileData.name} has been saved.`,
+        });
+    } catch (error) {
+        console.error("Error saving file record to Firestore:", error);
+        toast({
+            title: "Upload Failed",
+            description: "File uploaded, but failed to save record to database.",
+            variant: "destructive",
+        });
+        // Note: The actual file might need manual cleanup in Firebase Storage
+        throw error;
+    }
+  };
+
   const handleDeleteFile = async (fileId: string, fileUrl: string) => {
     if (!activeEventId) return;
     const toastId = "delete-toast";
@@ -963,6 +983,7 @@ export default function Home() {
               activeEventId={activeEventId}
               onViewFiles={() => setIsViewFilesOpen(true)}
               onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
+              onUploadComplete={addSavedFile}
             />
             <ScanningSession
               scannedProducts={scannedProducts}

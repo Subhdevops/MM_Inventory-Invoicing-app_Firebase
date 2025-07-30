@@ -31,7 +31,7 @@ import {
 import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile, SavedFile } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 import { UploadFileDialog } from "./upload-picture-dialog";
 
@@ -65,6 +65,7 @@ type DashboardProps = {
   activeEventId: string | null;
   onViewFiles: () => void;
   onOpenCustomInvoice: () => void;
+  onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
 };
 
 const chartMeta: Record<ChartView, {
@@ -99,7 +100,7 @@ const chartMeta: Record<ChartView, {
   },
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -179,7 +180,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
               <Button variant="outline" size="sm" onClick={onViewFiles} disabled={isLoading || savedFilesCount === 0}>
                 <Eye className="h-4 w-4" />
               </Button>
-              <UploadFileDialog activeEventId={activeEventId} disabled={isLoading || !isAdmin} />
+              <UploadFileDialog activeEventId={activeEventId} disabled={isLoading || !isAdmin} onUploadComplete={onUploadComplete} />
             </div>
           </CardHeader>
           <CardContent>
