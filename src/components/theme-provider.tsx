@@ -20,12 +20,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme") as Theme | null
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
     
     if (storedTheme) {
         setThemeState(storedTheme)
     } else {
-        setThemeState(systemPrefersDark ? "dark" : "light")
+        setThemeState("light")
     }
   }, [])
 
