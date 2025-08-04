@@ -64,3 +64,5 @@ export const useMultiDeviceLogoutListener = (user: User | null | undefined) => {
         };
     }, [user, toast]);
 };
+
+    
