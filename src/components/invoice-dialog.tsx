@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Product, Invoice, InvoiceItem } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
@@ -84,9 +84,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       if (isFirstPage) {
           const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
           if (logoElement && logoElement.naturalWidth > 0) {
-              const logoWidth = 30; 
+              const logoWidth = 40; 
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
-              const logoHeight = 30;
+              const logoHeight = logoWidth * logoAspectRatio;
               const yPosition = 15;
               docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
               
