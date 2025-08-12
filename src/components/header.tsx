@@ -24,8 +24,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { EventSwitcher } from './event-switcher';
 
 type HeaderProps = {
-  addProduct: (product: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => Promise<void>;
-  onImportInventory: (products: (Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'> & { quantity: number })[]) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onImportInventory: (products: Omit<Product, 'id' | 'isSold'>[]) => Promise<void>;
   userRole: UserProfile['role'] | null;
   events: Event[];
   activeEvent: Event | undefined;

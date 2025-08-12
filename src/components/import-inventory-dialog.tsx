@@ -20,10 +20,9 @@ import { Upload, FileCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-// This schema expects each row to have a quantity, which will be used to generate unique items.
 const importSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
-  quantity: z.coerce.number().int().min(1, { message: "Quantity must be a positive integer." }),
+  uniqueProductCode: z.string().min(1, { message: "Unique Product Code cannot be empty." }).transform(val => String(val)),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }).transform(val => String(val)),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
@@ -32,7 +31,7 @@ const importSchema = z.object({
   salePercentage: z.coerce.number().min(0).max(100).optional().default(0),
 });
 
-type ImportProduct = z.infer<typeof importSchema>;
+type ImportProduct = Omit<Product, 'id' | 'isSold'>;
 
 type ImportInventoryDialogProps = {
   onImport: (products: ImportProduct[]) => Promise<void>;
@@ -81,7 +80,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         const normalizedJsonData = jsonData.map(row => {
             const newRow: {[key: string]: any} = {};
             for (const key in row) {
-                const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '');
+                const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, "");
                 newRow[normalizedKey] = row[key];
             }
             if (newRow.hasOwnProperty('possiblediscount')) {
@@ -92,10 +91,14 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
                 newRow.salePercentage = newRow.salepercentage;
                 delete newRow.salepercentage;
             }
+            if (newRow.hasOwnProperty('uniqueproductcode')) {
+                newRow.uniqueProductCode = newRow.uniqueproductcode;
+                delete newRow.uniqueproductcode;
+            }
             return newRow;
         });
-
-        const requiredHeaders = ["barcode", "name", "price", "cost", "quantity"];
+        
+        const requiredHeaders = ["barcode", "name", "price", "cost", "uniqueProductCode"];
         const actualHeaders = Object.keys(normalizedJsonData[0] || {});
         const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
 
@@ -151,7 +154,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from Excel</DialogTitle>
           <DialogDescription>
-            Select a .xlsx file. Required columns: 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional: 'description', 'possibleDiscount', 'salePercentage'.
+            Select a .xlsx file. Required columns: 'uniqueProductCode', 'barcode', 'name', 'price', and 'cost'. Optional: 'description', 'possibleDiscount', 'salePercentage'.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -172,7 +175,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Each row in the Excel file will be added as new items based on its quantity. This does not update existing items.
+            Each row in the Excel file will be added as a unique product item. This does not update existing items.
           </p>
         </div>
         <DialogFooter>

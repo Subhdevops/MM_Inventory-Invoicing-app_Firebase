@@ -14,8 +14,8 @@ export type Product = {
   cost: number;
   possibleDiscount?: number;
   salePercentage?: number;
-  uniqueProductCode: string; // New field for individual identification
-  isSold: boolean; // To track if the specific item is sold
+  uniqueProductCode: string; // User-defined unique ID
+  isSold: boolean;
 };
 
 export type SoldProduct = {

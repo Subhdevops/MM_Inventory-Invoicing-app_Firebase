@@ -34,7 +34,7 @@ import { ScrollArea } from './ui/scroll-area';
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
   description: z.string().optional(),
-  quantity: z.coerce.number().int().min(1, { message: "Quantity must be at least 1." }),
+  uniqueProductCode: z.string().min(1, { message: "Unique Product Code cannot be empty." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
@@ -43,7 +43,7 @@ const productSchema = z.object({
 });
 
 type AddProductDialogProps = {
-  addProduct: (product: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
 };
 
 export default function AddProductDialog({ addProduct }: AddProductDialogProps) {
@@ -53,7 +53,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
     defaultValues: {
       name: "",
       description: "",
-      quantity: 1,
+      uniqueProductCode: "",
       barcode: "",
       price: 0,
       cost: 0,
@@ -64,19 +64,21 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
 
   useBarcodeScanner(
     (barcode) => {
-      form.setValue('barcode', barcode, { shouldValidate: true });
+      if (!form.getValues('uniqueProductCode')) {
+        form.setValue('uniqueProductCode', barcode, { shouldValidate: true });
+      } else {
+        form.setValue('barcode', barcode, { shouldValidate: true });
+      }
     },
     { enabled: open }
   );
 
   const onSubmit = async (values: z.infer<typeof productSchema>) => {
-    const { quantity, ...productData } = values;
     await addProduct(
       {
-        ...productData,
+        ...values,
         description: values.description || '',
-      },
-      quantity
+      }
     );
     form.reset();
     setOpen(false);
@@ -93,7 +95,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
           <DialogDescription>
-            Enter product details. A unique ID will be created for each quantity.
+            Enter the details for a single unique product item.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-4">
@@ -159,19 +161,6 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 15" {...field} min="1" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="possibleDiscount"
                 render={({ field }) => (
                   <FormItem>
@@ -183,21 +172,37 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   </FormItem>
                 )}
               />
+               <FormField
+                  control={form.control}
+                  name="salePercentage"
+                  render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Sale Discount (%)</FormLabel>
+                      <FormControl>
+                      <Input type="number" step="1" placeholder="e.g. 25" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+                  )}
+              />
             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="salePercentage"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sale Discount (%)</FormLabel>
-                        <FormControl>
-                        <Input type="number" step="1" placeholder="e.g. 25" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+             <div className="grid grid-cols-1 gap-4">
+               <FormField
+                control={form.control}
+                name="uniqueProductCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unique Product Code</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                         <Input placeholder="Scan or enter unique code" {...field} />
+                         <QrCode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
              <div className="grid grid-cols-1 gap-4">
                <FormField
@@ -205,10 +210,10 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 name="barcode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Barcode</FormLabel>
+                    <FormLabel>Barcode (Group)</FormLabel>
                     <FormControl>
                       <div className="relative">
-                         <Input placeholder="Scan or enter barcode" {...field} />
+                         <Input placeholder="Scan or enter group barcode" {...field} />
                          <QrCode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       </div>
                     </FormControl>
@@ -221,7 +226,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit">Add Product(s)</Button>
+              <Button type="submit">Add Product</Button>
             </DialogFooter>
           </form>
         </Form>

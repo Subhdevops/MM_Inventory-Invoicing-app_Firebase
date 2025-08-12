@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, Fragment } from 'react';
 import type { Product, UserProfile } from '@/lib/types';
 import {
   Table,
@@ -32,13 +32,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera, ChevronDown, ChevronRight } from 'lucide-react';
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 
+type GroupedProduct = {
+  barcode: string;
+  name: string;
+  description: string;
+  price: number;
+  items: Product[];
+  availableCount: number;
+};
 
 type InventoryTableProps = {
   products: Product[];
@@ -57,7 +65,7 @@ type InventoryTableProps = {
   onGenerateTags: (products: Product[]) => void;
 };
 
-type SortKey = keyof Product | null;
+type SortKey = keyof GroupedProduct | 'price' | null;
 type View = 'available' | 'sold-out';
 
 export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole, onScan, onOpenBulkEditDialog, onGenerateTags }: InventoryTableProps) {
@@ -67,6 +75,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [view, setView] = useState<View>('available');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
   const isAdmin = userRole === 'admin';
 
@@ -82,6 +91,18 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     onFilterChange('');
     setIsScannerOpen(false);
   }, [onScan, onFilterChange]);
+  
+  const toggleRowExpansion = (barcode: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(barcode)) {
+        newSet.delete(barcode);
+      } else {
+        newSet.add(barcode);
+      }
+      return newSet;
+    });
+  };
 
   const requestSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -91,142 +112,110 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     setSortConfig({ key, direction });
   };
 
-  const displayedProducts = useMemo(() => {
-    let filtered = products;
+  const displayedProductGroups = useMemo(() => {
+    const groups: { [barcode: string]: GroupedProduct } = {};
+
+    products.forEach(p => {
+      if (!groups[p.barcode]) {
+        groups[p.barcode] = {
+          barcode: p.barcode,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          items: [],
+          availableCount: 0,
+        };
+      }
+      groups[p.barcode].items.push(p);
+      if (!p.isSold) {
+        groups[p.barcode].availableCount++;
+      }
+    });
+    
+    let filteredGroups = Object.values(groups);
 
     if (filter) {
-        filtered = filtered.filter(p =>
-          p.name.toLowerCase().includes(filter.toLowerCase()) ||
-          p.barcode.toLowerCase().includes(filter.toLowerCase()) ||
-          p.uniqueProductCode.toLowerCase().includes(filter.toLowerCase())
-        );
+      const lowercasedFilter = filter.toLowerCase();
+      filteredGroups = filteredGroups.filter(g =>
+        g.name.toLowerCase().includes(lowercasedFilter) ||
+        g.barcode.toLowerCase().includes(lowercasedFilter) ||
+        g.items.some(p => p.uniqueProductCode.toLowerCase().includes(lowercasedFilter))
+      );
     }
     
     if (view === 'available') {
-        filtered = filtered.filter(p => !p.isSold);
+        filteredGroups = filteredGroups.filter(g => g.items.some(p => !p.isSold));
     } else {
-        filtered = filtered.filter(p => p.isSold);
-    }
-    
-    const sortableProducts = [...filtered];
-    if (sortConfig.key) {
-      sortableProducts.sort((a, b) => {
-        const valA = a[sortConfig.key!] ?? 0;
-        const valB = b[sortConfig.key!] ?? 0;
-        if (valA < valB) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (valA > valB) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
+        filteredGroups = filteredGroups.filter(g => g.items.every(p => p.isSold));
     }
 
-    return sortableProducts;
+    if (sortConfig.key) {
+        filteredGroups.sort((a, b) => {
+            const key = sortConfig.key as keyof GroupedProduct;
+            const valA = a[key] ?? 0;
+            const valB = b[key] ?? 0;
+            if (valA < valB) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+
+    return filteredGroups;
   }, [products, filter, sortConfig, view]);
   
-  const handleSelectRow = (id: string) => {
+  const handleSelectGroup = (group: GroupedProduct, isChecked: boolean) => {
     if (!isAdmin) return;
+    const availableItemIds = group.items.filter(p => !p.isSold).map(p => p.id);
+    const newSelection = new Set(selectedRows);
+    if(isChecked) {
+        availableItemIds.forEach(id => newSelection.add(id));
+    } else {
+        availableItemIds.forEach(id => newSelection.delete(id));
+    }
+    setSelectedRows(Array.from(newSelection));
+  };
+  
+  const handleSelectAll = () => {
+    if (!isAdmin) return;
+    
+    const allVisibleAvailableItemIds = displayedProductGroups
+        .flatMap(g => g.items)
+        .filter(p => !p.isSold)
+        .map(p => p.id);
+    
+    const allSelected = allVisibleAvailableItemIds.length > 0 && allVisibleAvailableItemIds.every(id => selectedRows.includes(id));
+    
+    if (allSelected) {
+        setSelectedRows([]);
+    } else {
+        setSelectedRows(allVisibleAvailableItemIds);
+    }
+  };
+
+
+  const selectedProducts = useMemo(() => {
+    return products.filter(p => selectedRows.includes(p.id));
+  }, [products, selectedRows]);
+  
+  const SortableHeader = ({ tKey, title }: { tKey: SortKey, title: string }) => (
+    <Button variant="ghost" onClick={() => requestSort(tKey)}>
+      {title}
+      <ArrowUpDown className="ml-2 h-4 w-4" />
+    </Button>
+  );
+  
+  const handleSelectRow = (id: string, isSold: boolean) => {
+    if (!isAdmin || isSold) return;
     const newSelection = selectedRows.includes(id)
       ? selectedRows.filter(rowId => rowId !== id)
       : [...selectedRows, id];
     setSelectedRows(newSelection);
   };
 
-  const handleSelectAll = () => {
-    if (!isAdmin) return;
-    if (selectedRows.length === displayedProducts.length && displayedProducts.length > 0) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(displayedProducts.map(p => p.id));
-    }
-  };
-
-  const selectedProducts = useMemo(() => {
-    return products.filter(p => selectedRows.includes(p.id));
-  }, [products, selectedRows]);
-  
-  const SortableHeader = ({ tKey, title }: { tKey: keyof Product, title: string }) => (
-    <Button variant="ghost" onClick={() => requestSort(tKey)}>
-      {title}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
-    </Button>
-  );
-
-  const renderProductRow = (product: Product) => (
-    <TableRow
-      key={product.id}
-      data-state={selectedRows.includes(product.id) && "selected"}
-      className={product.isSold ? "opacity-50 bg-muted/30" : ""}
-    >
-      <TableCell>
-        <Checkbox
-          checked={selectedRows.includes(product.id)}
-          onCheckedChange={() => handleSelectRow(product.id)}
-          aria-label={`Select ${product.name}`}
-          disabled={!isAdmin || product.isSold}
-        />
-      </TableCell>
-      <TableCell className="font-medium">{product.name}</TableCell>
-      <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
-      <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-      <TableCell className="text-right">
-        {product.possibleDiscount && product.possibleDiscount > 0 ? (
-          <span className="text-destructive font-semibold">
-            ₹{product.possibleDiscount.toFixed(2)}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
-      </TableCell>
-      <TableCell className="text-center">
-        {product.salePercentage && product.salePercentage > 0 ? (
-            <span className="font-bold text-destructive">
-            {product.salePercentage}%
-            </span>
-        ) : (
-            <span className="text-muted-foreground">-</span>
-        )}
-      </TableCell>
-      <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
-      <TableCell className="hidden font-mono lg:table-cell">{product.uniqueProductCode}</TableCell>
-      <TableCell>
-        {product.isSold ? <Badge variant="destructive">Sold</Badge> : <Badge variant="secondary">Available</Badge>}
-      </TableCell>
-      {isAdmin && (
-        <TableCell className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setProductToEdit(product)} disabled={product.isSold}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => onCreateInvoice([product])}
-                disabled={product.isSold}
-              >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Sell This Item
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </TableCell>
-      )}
-    </TableRow>
-  );
 
   return (
     <section className="space-y-6">
@@ -319,20 +308,17 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={!isLoading && displayedProducts.length > 0 && selectedRows.length === displayedProducts.length}
+                      checked={!isLoading && displayedProductGroups.flatMap(g => g.items).filter(p => !p.isSold).length > 0 && displayedProductGroups.flatMap(g => g.items).filter(p => !p.isSold).every(p => selectedRows.includes(p.id))}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
-                      disabled={isLoading || displayedProducts.length === 0 || !isAdmin || view === 'sold-out'}
+                      disabled={isLoading || displayedProductGroups.length === 0 || !isAdmin || view === 'sold-out'}
                     />
                   </TableHead>
                   <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
+                  <TableHead className="w-[120px]">Stock</TableHead>
                   <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
                   <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
-                  <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
-                  <TableHead className="w-[120px] text-center"><SortableHeader tKey="salePercentage" title="Sale %" /></TableHead>
                   <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
-                  <TableHead className="hidden lg:table-cell"><SortableHeader tKey="uniqueProductCode" title="Unique Code" /></TableHead>
-                  <TableHead>Status</TableHead>
                   {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -342,21 +328,149 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                     <TableRow key={index} className="hover:bg-transparent">
                       <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : displayedProducts.length > 0 ? (
-                    displayedProducts.map(renderProductRow)
+                ) : displayedProductGroups.length > 0 ? (
+                    displayedProductGroups.map(group => {
+                        const isGroupSelected = group.availableCount > 0 && group.items.filter(p => !p.isSold).every(p => selectedRows.includes(p.id));
+                        const isGroupIndeterminate = !isGroupSelected && group.items.filter(p => !p.isSold).some(p => selectedRows.includes(p.id));
+
+                        return(
+                        <Fragment key={group.barcode}>
+                            <TableRow className="font-bold bg-muted/30">
+                                <TableCell>
+                                    <Checkbox
+                                        checked={isGroupSelected}
+                                        onCheckedChange={(isChecked) => handleSelectGroup(group, !!isChecked)}
+                                        aria-label={`Select all ${group.name}`}
+                                        disabled={!isAdmin || group.availableCount === 0}
+                                        data-state={isGroupIndeterminate ? 'indeterminate' : (isGroupSelected ? 'checked' : 'unchecked')}
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    <Button variant="ghost" onClick={() => toggleRowExpansion(group.barcode)} className="px-2 py-1 h-auto">
+                                        {expandedRows.has(group.barcode) ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+                                        {group.name}
+                                    </Button>
+                                </TableCell>
+                                <TableCell>{group.availableCount} / {group.items.length}</TableCell>
+                                <TableCell className="hidden md:table-cell truncate max-w-xs">{group.description}</TableCell>
+                                <TableCell className="text-right">₹{group.price.toFixed(2)}</TableCell>
+                                <TableCell className="hidden font-mono lg:table-cell">{group.barcode}</TableCell>
+                                {isAdmin && (
+                                    <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Open menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Group Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => onOpenBulkEditDialog(group.items.filter(p => !p.isSold))} disabled={group.availableCount === 0}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Bulk Edit Available
+                                            </DropdownMenuItem>
+                                             <DropdownMenuItem onClick={() => onCreateInvoice(group.items.filter(p => !p.isSold))} disabled={group.availableCount === 0}>
+                                                <ShoppingCart className="mr-2 h-4 w-4" /> Sell All Available
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    </TableCell>
+                                )}
+                            </TableRow>
+                            {expandedRows.has(group.barcode) && (
+                                <TableRow>
+                                    <TableCell colSpan={isAdmin ? 7 : 6} className="p-0">
+                                        <div className="bg-background p-2">
+                                        <Table>
+                                             <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[50px]"></TableHead>
+                                                    <TableHead>Unique Code</TableHead>
+                                                    <TableHead>Status</TableHead>
+                                                    <TableHead className="w-[160px] text-right">Possible Discount</TableHead>
+                                                    <TableHead className="w-[120px] text-center">Sale %</TableHead>
+                                                    {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                            {group.items.map(product => (
+                                                <TableRow key={product.id} data-state={selectedRows.includes(product.id) && "selected"} className={cn(product.isSold && "opacity-50", "hover:bg-muted/50")}>
+                                                    <TableCell>
+                                                        <Checkbox
+                                                            checked={selectedRows.includes(product.id)}
+                                                            onCheckedChange={() => handleSelectRow(product.id, product.isSold)}
+                                                            aria-label={`Select ${product.uniqueProductCode}`}
+                                                            disabled={!isAdmin || product.isSold}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="font-mono">{product.uniqueProductCode}</TableCell>
+                                                    <TableCell>{product.isSold ? <Badge variant="destructive">Sold</Badge> : <Badge variant="secondary">Available</Badge>}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        {product.possibleDiscount && product.possibleDiscount > 0 ? (
+                                                        <span className="text-destructive font-semibold">
+                                                            ₹{product.possibleDiscount.toFixed(2)}
+                                                        </span>
+                                                        ) : (
+                                                        <span className="text-muted-foreground">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {product.salePercentage && product.salePercentage > 0 ? (
+                                                            <span className="font-bold text-destructive">
+                                                            {product.salePercentage}%
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    {isAdmin && (
+                                                        <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Open menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => setProductToEdit(product)} disabled={product.isSold}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => onCreateInvoice([product])} disabled={product.isSold}>
+                                                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                                                Sell This Item
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Remove
+                                                            </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            ))}
+                                            </TableBody>
+                                        </Table>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </Fragment>
+                    )})
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 10 : 9} className="h-24 text-center">
+                    <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center">
                       No products found.
                     </TableCell>
                   </TableRow>

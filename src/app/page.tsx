@@ -337,43 +337,48 @@ export default function Home() {
       return newEvent;
   };
 
-  const addProduct = async (productData: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => {
+  const addProduct = async (productData: Omit<Product, 'id' | 'isSold'>) => {
     if (!activeEventId) return;
 
     // Check if barcode already exists
-    const q = query(collection(db, "events", activeEventId, "products"), where("barcode", "==", productData.barcode));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty && querySnapshot.docs.some(doc => doc.data().name !== productData.name)) {
+    const qBarcode = query(collection(db, "events", activeEventId, "products"), where("barcode", "==", productData.barcode));
+    const barcodeSnapshot = await getDocs(qBarcode);
+    if (!barcodeSnapshot.empty && barcodeSnapshot.docs.some(doc => doc.data().name !== productData.name)) {
         toast({
             title: "Barcode Conflict",
-            description: `Barcode "${productData.barcode}" is already used for a different product.`,
+            description: `Barcode "${productData.barcode}" is already used for a different product name.`,
+            variant: "destructive",
+        });
+        return;
+    }
+    
+    // Check if unique product code already exists
+    const qUniqueCode = query(collection(db, "events", activeEventId, "products"), where("uniqueProductCode", "==", productData.uniqueProductCode));
+    const uniqueCodeSnapshot = await getDocs(qUniqueCode);
+    if (!uniqueCodeSnapshot.empty) {
+        toast({
+            title: "Unique Code Exists",
+            description: `Unique Product Code "${productData.uniqueProductCode}" is already in use.`,
             variant: "destructive",
         });
         return;
     }
 
     try {
-      const batch = writeBatch(db);
-      const uniqueCodePrefix = `${productData.barcode.slice(-4)}-${Date.now().toString().slice(-4)}`;
-
-      for (let i = 0; i < quantity; i++) {
-          const productRef = doc(collection(db, "events", activeEventId, "products"));
-          const newProduct: Omit<Product, 'id'> = {
-              ...productData,
-              uniqueProductCode: `${uniqueCodePrefix}-${i + 1}`,
-              isSold: false
-          };
-          batch.set(productRef, newProduct);
-      }
+      const productRef = doc(collection(db, "events", activeEventId, "products"));
+      const newProduct: Omit<Product, 'id'> = {
+          ...productData,
+          isSold: false
+      };
+      await setDoc(productRef, newProduct);
       
-      await batch.commit();
       toast({
-        title: "Products Added",
-        description: `${quantity} unit(s) of ${productData.name} have been added.`,
+        title: "Product Added",
+        description: `${productData.name} has been added to the inventory.`,
       });
     } catch (error) {
       console.error("Error adding product: ", error);
-      toast({ title: "Error", description: "Failed to add products.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to add product.", variant: "destructive" });
     }
   };
 
@@ -449,32 +454,25 @@ export default function Home() {
     }
   };
   
-  const handleImportInventory = async (newProducts: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'> & { quantity: number }[]) => {
+  const handleImportInventory = async (newProducts: Omit<Product, 'id' | 'isSold'>[]) => {
     if (!activeEventId) return;
     
     const batch = writeBatch(db);
-    let totalAdded = 0;
-
+    
     for (const p of newProducts) {
-      const { quantity, ...productData } = p;
-      const uniqueCodePrefix = `${productData.barcode.slice(-4)}-${Date.now().toString().slice(-4)}`;
-      for (let i = 0; i < quantity; i++) {
-        const productRef = doc(collection(db, "events", activeEventId, "products"));
-        const newProduct: Omit<Product, 'id'> = {
-            ...productData,
-            uniqueProductCode: `${uniqueCodePrefix}-${i + 1}`,
-            isSold: false
-        };
-        batch.set(productRef, newProduct);
-      }
-      totalAdded += quantity;
+      const productRef = doc(collection(db, "events", activeEventId, "products"));
+      const newProduct: Omit<Product, 'id'> = {
+          ...p,
+          isSold: false
+      };
+      batch.set(productRef, newProduct);
     }
 
     try {
       await batch.commit();
       toast({
         title: "Inventory Imported",
-        description: `${totalAdded} total items have been added.`
+        description: `${newProducts.length} total items have been added.`
       });
     } catch (error) {
       console.error("Error importing inventory:", error);
