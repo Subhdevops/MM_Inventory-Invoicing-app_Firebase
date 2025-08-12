@@ -27,13 +27,13 @@ const PriceTag = ({ product }: { product: Product }) => {
       position: 'relative',
     }}>
       <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-        <MinimalMischiefLogo showTagline={true} width={30} height={30} />
+        <MinimalMischiefLogo showTagline={true} width={60} height={60} />
       </div>
 
       <div style={{ marginTop: '0' }}>
         <QRCodeCanvas
           value={product.barcode}
-          size={36}
+          size={40}
           bgColor={"#ffffff"}
           fgColor={"#000000"}
           level={"H"}
@@ -55,7 +55,7 @@ const PriceTag = ({ product }: { product: Product }) => {
         </p>
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '4px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '6px' }}>
         <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
           ₹{product.price.toFixed(2)}
         </p>
