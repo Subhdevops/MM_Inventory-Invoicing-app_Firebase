@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
   title: 'Minimal Mischief',
-  description: 'Manage your boutique inventory of exquisite items.',
+  description: 'Simple by Nature, Mischief by Choice',
 };
 
 export default function RootLayout({
