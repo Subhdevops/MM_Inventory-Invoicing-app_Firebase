@@ -27,7 +27,7 @@ const PriceTag = ({ product }: { product: Product }) => {
       position: 'relative',
     }}>
       <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-        <MinimalMischiefLogo showTagline={true} width={150} height={36} />
+        <MinimalMischiefLogo showTagline={true} width={30} height={30} />
       </div>
 
       <div style={{ marginTop: '0' }}>
