@@ -23,7 +23,7 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                 {/* Header with more bottom padding */}
                 <header className="flex justify-between items-start pb-6 border-b border-gray-200">
                     <div>
-                        <MinimalMischiefLogo showTagline={true} width={200} height={48} />
+                        <MinimalMischiefLogo showTagline={true} width={150} height={48} />
                     </div>
                     <div className="text-right">
                         <h1 className="text-3xl font-bold text-primary mb-1">INVOICE</h1>
