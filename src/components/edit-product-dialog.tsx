@@ -27,10 +27,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from '@/lib/types';
 
+// This schema doesn't include quantity, as each product is now a unique item.
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
   description: z.string().optional(),
-  quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
@@ -40,7 +40,7 @@ const productSchema = z.object({
 
 type EditProductDialogProps = {
   product: Product;
-  updateProduct: (productId: string, data: Partial<Omit<Product, 'id'>>) => void;
+  updateProduct: (productId: string, data: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>>) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -51,7 +51,6 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
     defaultValues: {
       name: product.name,
       description: product.description,
-      quantity: product.quantity,
       barcode: product.barcode,
       price: product.price,
       cost: product.cost,
@@ -65,7 +64,6 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
       form.reset({
         name: product.name,
         description: product.description,
-        quantity: product.quantity,
         barcode: product.barcode,
         price: product.price,
         cost: product.cost,
@@ -89,7 +87,7 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>
-            Make changes to your product here. Click save when you're done.
+            Make changes to your product. This will not affect other items with the same barcode.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -151,19 +149,6 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 15" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="possibleDiscount"
                 render={({ field }) => (
                   <FormItem>
@@ -175,21 +160,19 @@ export default function EditProductDialog({ product, updateProduct, isOpen, onOp
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="salePercentage"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Sale Discount (%)</FormLabel>
-                        <FormControl>
-                        <Input type="number" step="1" placeholder="e.g. 25" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+              <FormField
+                  control={form.control}
+                  name="salePercentage"
+                  render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Sale Discount (%)</FormLabel>
+                      <FormControl>
+                      <Input type="number" step="1" placeholder="e.g. 25" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+                  )}
+              />
             </div>
              <div className="grid grid-cols-1 gap-4">
                  <FormField

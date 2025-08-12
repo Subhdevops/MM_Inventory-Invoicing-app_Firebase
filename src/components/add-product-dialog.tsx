@@ -29,11 +29,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, QrCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
+import { ScrollArea } from './ui/scroll-area';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
   description: z.string().optional(),
-  quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
+  quantity: z.coerce.number().int().min(1, { message: "Quantity must be at least 1." }),
   barcode: z.string().min(1, { message: "Barcode cannot be empty." }),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
@@ -42,7 +43,7 @@ const productSchema = z.object({
 });
 
 type AddProductDialogProps = {
-  addProduct: (product: Omit<Product, 'id'>) => void;
+  addProduct: (product: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => Promise<void>;
 };
 
 export default function AddProductDialog({ addProduct }: AddProductDialogProps) {
@@ -52,7 +53,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
     defaultValues: {
       name: "",
       description: "",
-      quantity: 0,
+      quantity: 1,
       barcode: "",
       price: 0,
       cost: 0,
@@ -68,11 +69,15 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
     { enabled: open }
   );
 
-  const onSubmit = (values: z.infer<typeof productSchema>) => {
-    addProduct({
-      ...values,
-      description: values.description || '',
-    });
+  const onSubmit = async (values: z.infer<typeof productSchema>) => {
+    const { quantity, ...productData } = values;
+    await addProduct(
+      {
+        ...productData,
+        description: values.description || '',
+      },
+      quantity
+    );
     form.reset();
     setOpen(false);
   };
@@ -88,11 +93,12 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
           <DialogDescription>
-            Enter product details or scan a barcode to auto-fill the field.
+            Enter product details. A unique ID will be created for each quantity.
           </DialogDescription>
         </DialogHeader>
+        <ScrollArea className="max-h-[70vh] p-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -158,7 +164,7 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                   <FormItem>
                     <FormLabel>Quantity</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g. 15" {...field} />
+                      <Input type="number" placeholder="e.g. 15" {...field} min="1" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -211,14 +217,15 @@ export default function AddProductDialog({ addProduct }: AddProductDialogProps) 
                 )}
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="sticky bottom-0 bg-background pt-4">
                <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit">Add Product</Button>
+              <Button type="submit">Add Product(s)</Button>
             </DialogFooter>
           </form>
         </Form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

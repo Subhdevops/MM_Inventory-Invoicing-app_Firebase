@@ -9,12 +9,13 @@ export type Product = {
   id: string;
   name: string;
   description: string;
-  quantity: number;
   barcode: string;
   price: number;
   cost: number;
   possibleDiscount?: number;
   salePercentage?: number;
+  uniqueProductCode: string; // New field for individual identification
+  isSold: boolean; // To track if the specific item is sold
 };
 
 export type SoldProduct = {
@@ -22,11 +23,11 @@ export type SoldProduct = {
   name: string;
   description: string;
   price: number;
-  quantity: number;
   cost: number;
   barcode: string;
   possibleDiscount?: number;
   salePercentage?: number;
+  uniqueProductCode: string;
 }
 
 export type CustomLineItem = {
@@ -60,14 +61,15 @@ export type UserProfile = {
   lastSignOutTimestamp?: number;
 };
 
+// This type is adjusted. An "InvoiceItem" is a representation of a product
+// selected for invoicing. Since we sell unique items, quantity is always 1.
 export type InvoiceItem = {
     id: string;
     name: string;
     description: string;
     price: number;
     cost: number;
-    stock: number;
-    quantity: number;
+    uniqueProductCode: string;
     possibleDiscount?: number;
 };
 
@@ -78,5 +80,3 @@ export type SavedFile = {
   createdAt: string;
   fileType: string;
 };
-
-    

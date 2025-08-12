@@ -37,13 +37,14 @@ import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 
 type InventoryTableProps = {
   products: Product[];
   removeProduct: (productId: string) => void;
   bulkRemoveProducts: (productIds: string[]) => void;
-  updateProduct: (productId: string, data: Partial<Omit<Product, 'id'>>) => void;
+  updateProduct: (productId: string, data: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>>) => void;
   filter: string;
   onFilterChange: (filter: string) => void;
   selectedRows: string[];
@@ -71,14 +72,14 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
 
   const { availableCount, soldOutCount } = useMemo(() => {
     return {
-      availableCount: products.filter(p => p.quantity > 0).length,
-      soldOutCount: products.filter(p => p.quantity === 0).length
+      availableCount: products.filter(p => !p.isSold).length,
+      soldOutCount: products.filter(p => p.isSold).length
     };
   }, [products]);
 
   const handleScan = useCallback((barcode: string) => {
     onScan(barcode);
-    onFilterChange(''); // Clear search input for better UX
+    onFilterChange('');
     setIsScannerOpen(false);
   }, [onScan, onFilterChange]);
 
@@ -96,14 +97,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     if (filter) {
         filtered = filtered.filter(p =>
           p.name.toLowerCase().includes(filter.toLowerCase()) ||
-          p.barcode.toLowerCase().includes(filter.toLowerCase())
+          p.barcode.toLowerCase().includes(filter.toLowerCase()) ||
+          p.uniqueProductCode.toLowerCase().includes(filter.toLowerCase())
         );
     }
     
     if (view === 'available') {
-        filtered = filtered.filter(p => p.quantity > 0);
-    } else { // 'sold-out'
-        filtered = filtered.filter(p => p.quantity === 0);
+        filtered = filtered.filter(p => !p.isSold);
+    } else {
+        filtered = filtered.filter(p => p.isSold);
     }
     
     const sortableProducts = [...filtered];
@@ -156,23 +158,22 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     <TableRow
       key={product.id}
       data-state={selectedRows.includes(product.id) && "selected"}
-      className={product.quantity === 0 ? "opacity-60" : ""}
+      className={product.isSold ? "opacity-50 bg-muted/30" : ""}
     >
       <TableCell>
         <Checkbox
           checked={selectedRows.includes(product.id)}
           onCheckedChange={() => handleSelectRow(product.id)}
           aria-label={`Select ${product.name}`}
-          disabled={!isAdmin}
+          disabled={!isAdmin || product.isSold}
         />
       </TableCell>
       <TableCell className="font-medium">{product.name}</TableCell>
       <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-xs">{product.description}</TableCell>
       <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-      <TableCell className="text-center">{product.quantity}</TableCell>
       <TableCell className="text-right">
         {product.possibleDiscount && product.possibleDiscount > 0 ? (
-          <span className="text-destructive font-semibold animate-pulse-red">
+          <span className="text-destructive font-semibold">
             ₹{product.possibleDiscount.toFixed(2)}
           </span>
         ) : (
@@ -189,6 +190,10 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
         )}
       </TableCell>
       <TableCell className="hidden font-mono lg:table-cell">{product.barcode}</TableCell>
+      <TableCell className="hidden font-mono lg:table-cell">{product.uniqueProductCode}</TableCell>
+      <TableCell>
+        {product.isSold ? <Badge variant="destructive">Sold</Badge> : <Badge variant="secondary">Available</Badge>}
+      </TableCell>
       {isAdmin && (
         <TableCell className="text-right">
           <DropdownMenu>
@@ -200,16 +205,16 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setProductToEdit(product)}>
+              <DropdownMenuItem onClick={() => setProductToEdit(product)} disabled={product.isSold}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onCreateInvoice([product])}
-                disabled={product.quantity === 0}
+                disabled={product.isSold}
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
-                Sell One
+                Sell This Item
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
@@ -231,7 +236,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or barcode..."
+              placeholder="Search name or any code..."
               value={filter}
               onChange={(e) => onFilterChange(e.target.value)}
               className="pl-10 w-full"
@@ -277,7 +282,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             </Button>
             <Button 
               onClick={() => onCreateInvoice(selectedProducts)} 
-              disabled={selectedProducts.length === 0 || selectedProducts.every(p => p.quantity === 0)}
+              disabled={selectedProducts.some(p => p.isSold)}
               size="sm"
             >
               <FileText className="mr-2 h-4 w-4" />
@@ -290,7 +295,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onOpenBulkEditDialog(selectedProducts)}>
+                <DropdownMenuItem onClick={() => onOpenBulkEditDialog(selectedProducts)} disabled={selectedProducts.some(p => p.isSold)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Selected
                 </DropdownMenuItem>
@@ -317,16 +322,17 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                       checked={!isLoading && displayedProducts.length > 0 && selectedRows.length === displayedProducts.length}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
-                      disabled={isLoading || displayedProducts.length === 0 || !isAdmin}
+                      disabled={isLoading || displayedProducts.length === 0 || !isAdmin || view === 'sold-out'}
                     />
                   </TableHead>
                   <TableHead><SortableHeader tKey="name" title="Product Name" /></TableHead>
                   <TableHead className="hidden md:table-cell"><SortableHeader tKey="description" title="Description" /></TableHead>
                   <TableHead className="w-[120px] text-right"><SortableHeader tKey="price" title="Price" /></TableHead>
-                  <TableHead className="w-[120px] text-center"><SortableHeader tKey="quantity" title="Quantity" /></TableHead>
                   <TableHead className="w-[160px] text-right"><SortableHeader tKey="possibleDiscount" title="Possible Discount" /></TableHead>
                   <TableHead className="w-[120px] text-center"><SortableHeader tKey="salePercentage" title="Sale %" /></TableHead>
                   <TableHead className="hidden lg:table-cell"><SortableHeader tKey="barcode" title="Barcode" /></TableHead>
+                  <TableHead className="hidden lg:table-cell"><SortableHeader tKey="uniqueProductCode" title="Unique Code" /></TableHead>
+                  <TableHead>Status</TableHead>
                   {isAdmin && <TableHead className="text-right w-[100px]">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -334,40 +340,23 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, index) => (
                     <TableRow key={index} className="hover:bg-transparent">
-                      <TableCell className="w-[50px]">
-                        <Skeleton className="h-4 w-4" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-3/4" />
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Skeleton className="h-5 w-full" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="h-5 w-16 ml-auto" />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Skeleton className="h-5 w-8 mx-auto" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="h-5 w-20 ml-auto" />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Skeleton className="h-5 w-8 mx-auto" />
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <Skeleton className="h-5 w-full" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="h-8 w-8 ml-auto" />
-                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : displayedProducts.length > 0 ? (
                     displayedProducts.map(renderProductRow)
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 9 : 8} className="h-24 text-center">
+                    <TableCell colSpan={isAdmin ? 10 : 9} className="h-24 text-center">
                       No products found.
                     </TableCell>
                   </TableRow>
@@ -431,7 +420,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently remove {selectedRows.length} selected product(s) from your inventory.
+              This action cannot be undone. This will permanently remove {selectedRows.length} selected product(s).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

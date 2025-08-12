@@ -20,10 +20,11 @@ import { Upload, FileCode } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 
-const productSchema = z.object({
+// This schema expects each row to have a quantity, which will be used to generate unique items.
+const importSchema = z.object({
   name: z.string().min(2, { message: "Product name must be at least 2 characters." }),
-  quantity: z.coerce.number().int().min(0, { message: "Quantity must be a positive number." }),
-  barcode: z.string().min(1, { message: "Barcode cannot be empty." }).transform(val => String(val)), // Ensure barcode is a string
+  quantity: z.coerce.number().int().min(1, { message: "Quantity must be a positive integer." }),
+  barcode: z.string().min(1, { message: "Barcode cannot be empty." }).transform(val => String(val)),
   price: z.coerce.number().min(0, { message: "Price must be a positive number." }),
   cost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
   description: z.string().optional().default(''),
@@ -31,8 +32,10 @@ const productSchema = z.object({
   salePercentage: z.coerce.number().min(0).max(100).optional().default(0),
 });
 
+type ImportProduct = z.infer<typeof importSchema>;
+
 type ImportInventoryDialogProps = {
-  onImport: (products: Omit<Product, 'id'>[]) => Promise<void>;
+  onImport: (products: ImportProduct[]) => Promise<void>;
 };
 
 export default function ImportInventoryDialog({ onImport }: ImportInventoryDialogProps) {
@@ -54,11 +57,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
   const handleImport = async () => {
     const file = fileInputRef.current?.files?.[0];
     if (!file) {
-      toast({
-        title: "No file selected",
-        description: "Please select an Excel file (.xlsx) to import.",
-        variant: "destructive",
-      });
+      toast({ title: "No file selected", variant: "destructive" });
       return;
     }
 
@@ -74,11 +73,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
         if (jsonData.length === 0) {
-            toast({
-                title: "Empty File",
-                description: "The selected Excel file is empty or has no data.",
-                variant: "destructive",
-            });
+            toast({ title: "Empty File", variant: "destructive" });
             setIsImporting(false);
             return;
         }
@@ -86,11 +81,9 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         const normalizedJsonData = jsonData.map(row => {
             const newRow: {[key: string]: any} = {};
             for (const key in row) {
-                // This converts headers like "Product Name" or "Possible Discount" to "productname" or "possiblediscount"
                 const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '');
                 newRow[normalizedKey] = row[key];
             }
-            // Specifically correct keys to match the schema's camelCase format
             if (newRow.hasOwnProperty('possiblediscount')) {
                 newRow.possibleDiscount = newRow.possiblediscount;
                 delete newRow.possiblediscount;
@@ -109,26 +102,21 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         if (missingHeaders.length > 0) {
           toast({
             title: "Invalid Excel Format",
-            description: `Your file is missing required columns: ${missingHeaders.join(', ')}.`,
+            description: `Missing columns: ${missingHeaders.join(', ')}.`,
             variant: "destructive",
           });
           setIsImporting(false);
           return;
         }
 
-        const validation = z.array(productSchema).safeParse(normalizedJsonData);
+        const validation = z.array(importSchema).safeParse(normalizedJsonData);
         if (!validation.success) {
           const firstError = validation.error.errors[0];
           const errorRow = (firstError.path[0] as number) + 2; 
           const field = firstError.path[1] as string;
-          const description = `Error in row ${errorRow}, column '${field}': ${firstError.message}. Please check your Excel data.`;
+          const description = `Error in row ${errorRow}, column '${field}': ${firstError.message}.`;
           
-          console.error(validation.error.errors);
-          toast({
-            title: "Invalid Data in Excel File",
-            description: description,
-            variant: "destructive",
-          });
+          toast({ title: "Invalid Data in Excel File", description, variant: "destructive" });
           setIsImporting(false);
           return;
         }
@@ -139,21 +127,13 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         if (fileInputRef.current) fileInputRef.current.value = "";
         setOpen(false);
       } catch (error) {
-        toast({
-          title: "Parsing Error",
-          description: `Failed to parse Excel file. Ensure it is a valid .xlsx file.`,
-          variant: "destructive",
-        });
+        toast({ title: "Parsing Error", variant: "destructive" });
         setIsImporting(false);
       }
     };
     
     reader.onerror = () => {
-       toast({
-          title: "File Read Error",
-          description: "Could not read the selected file.",
-          variant: "destructive",
-        });
+       toast({ title: "File Read Error", variant: "destructive" });
         setIsImporting(false);
     }
 
@@ -171,7 +151,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
         <DialogHeader>
           <DialogTitle>Import Inventory from Excel</DialogTitle>
           <DialogDescription>
-            Select an Excel (.xlsx) file to add or update products. It must have columns for 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional columns: 'description', 'possibleDiscount', 'salePercentage'.
+            Select a .xlsx file. Required columns: 'barcode', 'name', 'price', 'cost', and 'quantity'. Optional: 'description', 'possibleDiscount', 'salePercentage'.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -192,7 +172,7 @@ export default function ImportInventoryDialog({ onImport }: ImportInventoryDialo
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Products with existing barcodes will be updated. New barcodes will be added as new products.
+            Each row in the Excel file will be added as new items based on its quantity. This does not update existing items.
           </p>
         </div>
         <DialogFooter>

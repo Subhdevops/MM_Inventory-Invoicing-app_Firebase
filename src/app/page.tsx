@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import * as XLSX from 'xlsx';
 import { db, auth, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, writeBatch, query, orderBy, getDocs, setDoc, runTransaction, arrayUnion, getDoc, where } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import FirebaseConfigWarning from '@/components/firebase-config-warning';
@@ -50,29 +50,27 @@ export default function Home() {
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
   const [isCustomInvoiceDialogOpen, setIsCustomInvoiceDialogOpen] = useState(false);
 
-  // All hooks must be called unconditionally at the top level
   useIdleTimeout(600000, user?.uid || null); // 10 minutes in milliseconds
   useMultiDeviceLogoutListener(user);
   
   const handleBarcodeScan = async (barcode: string) => {
-    // If the inventory table filter is active, this scan is for searching.
     if(filter) {
       onFilterChange(barcode);
       return;
     }
     
-    // Otherwise, it's for the scanning session.
     if (!activeEventId) return;
 
-    const product = products.find(p => p.barcode === barcode);
+    // The barcode could be a standard barcode or our unique product code
+    const availableProducts = products.filter(p => !p.isSold);
+    const product = availableProducts.find(p => p.barcode === barcode || p.uniqueProductCode === barcode);
+    
     if (product) {
-      const alreadyScannedCount = scannedProducts.filter(p => p.id === product.id).length;
-
-      if (alreadyScannedCount >= product.quantity) {
+      if (scannedProducts.some(p => p.id === product.id)) {
         playErrorBeep();
         toast({
-          title: "Stock Limit Reached",
-          description: `All available units of ${product.name} have been added.`,
+          title: "Item Already Added",
+          description: `${product.name} (${product.uniqueProductCode}) is already in the scanning session.`,
           variant: "destructive",
         });
       } else {
@@ -89,8 +87,8 @@ export default function Home() {
     } else {
       playErrorBeep();
       toast({
-        title: "Product Not Found",
-        description: `No product with barcode "${barcode}" exists in the inventory.`,
+        title: "Product Not Found or Sold",
+        description: `No available product with code "${barcode}" exists in the inventory.`,
         variant: "destructive",
       });
     }
@@ -99,11 +97,23 @@ export default function Home() {
   useBarcodeScanner(handleBarcodeScan);
 
   const dashboardStats = useMemo(() => {
-    const totalProducts = products.length;
-    const totalItems = products.reduce((acc, p) => acc + p.quantity, 0);
-    const productsOutOfStock = products.filter(p => p.quantity === 0).length;
-    return { totalProducts, totalItems, productsOutOfStock };
+    const availableProducts = products.filter(p => !p.isSold);
+    const totalProducts = new Set(products.map(p => p.barcode)).size;
+    const totalItems = availableProducts.length;
+    const productsOutOfStock = products.filter(p => p.isSold).length === products.length && products.length > 0;
+    
+    const stockCounts = products.reduce((acc, p) => {
+        if (!p.isSold) {
+            acc[p.barcode] = (acc[p.barcode] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    const outOfStockCount = totalProducts - Object.keys(stockCounts).length;
+
+    return { totalProducts, totalItems, productsOutOfStock: outOfStockCount };
   }, [products]);
+
 
   const totalRevenue = useMemo(() => {
     return invoices.reduce((acc, inv) => acc + inv.grandTotal, 0);
@@ -114,7 +124,7 @@ export default function Home() {
         if (inv.type === 'custom') {
             return totalProfit + (inv.subtotal - inv.discountAmount);
         }
-        const invoiceCost = (inv.items as SoldProduct[]).reduce((acc, item) => acc + (item.cost || 0) * item.quantity, 0);
+        const invoiceCost = (inv.items as SoldProduct[]).reduce((acc, item) => acc + (item.cost || 0), 0);
         const invoiceProfit = (inv.subtotal - inv.discountAmount) - invoiceCost;
         return totalProfit + invoiceProfit;
     }, 0);
@@ -125,66 +135,69 @@ export default function Home() {
   }, [invoices]);
 
   const topStockedData = useMemo(() => {
-    return [...products]
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5)
-      .map(p => ({ name: p.name, value: p.quantity }));
+    const stockCounts: { [name: string]: number } = {};
+    products.forEach(p => {
+        if (!p.isSold) {
+            stockCounts[p.name] = (stockCounts[p.name] || 0) + 1;
+        }
+    });
+
+    return Object.entries(stockCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([name, value]) => ({ name, value }));
   }, [products]);
 
   const lowestStockData = useMemo(() => {
-    return [...products]
-      .filter(p => p.quantity > 0 && p.quantity <= 10)
-      .sort((a, b) => a.quantity - b.quantity)
-      .slice(0, 5)
-      .map(p => ({ name: p.name, value: p.quantity }));
+    const stockCounts: { [name: string]: number } = {};
+    products.forEach(p => {
+        if (!p.isSold) {
+            stockCounts[p.name] = (stockCounts[p.name] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(stockCounts)
+        .filter(([, value]) => value > 0 && value <= 10)
+        .sort(([, a], [, b]) => a - b)
+        .slice(0, 5)
+        .map(([name, value]) => ({ name, value }));
   }, [products]);
 
   const bestSellersData = useMemo(() => {
-    const salesCount: { [productId: string]: { name: string, quantity: number } } = {};
+    const salesCount: { [name: string]: number } = {};
     invoices.forEach(invoice => {
         if (invoice.type === 'standard') {
             (invoice.items as SoldProduct[]).forEach(item => {
-                if (salesCount[item.id]) {
-                    salesCount[item.id].quantity += item.quantity;
-                } else {
-                    const product = products.find(p => p.id === item.id);
-                    salesCount[item.id] = { name: product?.name || item.name, quantity: item.quantity };
-                }
+                salesCount[item.name] = (salesCount[item.name] || 0) + 1;
             });
         }
     });
 
-    return Object.values(salesCount)
-        .sort((a, b) => b.quantity - a.quantity)
+    return Object.entries(salesCount)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
-        .map(p => ({ name: p.name, value: p.quantity }));
-  }, [invoices, products]);
+        .map(([name, value]) => ({ name, value }));
+  }, [invoices]);
 
   const mostProfitableData = useMemo(() => {
-    const profitData: { [productId: string]: { name: string, profit: number } } = {};
+    const profitData: { [name: string]: number } = {};
     invoices.forEach(invoice => {
         if(invoice.type === 'standard') {
             (invoice.items as SoldProduct[]).forEach(item => {
-                const itemProfit = (item.price - (item.cost || 0)) * item.quantity;
-                if (profitData[item.id]) {
-                    profitData[item.id].profit += itemProfit;
-                } else {
-                    const product = products.find(p => p.id === item.id);
-                    profitData[item.id] = { name: product?.name || item.name, profit: itemProfit };
-                }
+                const itemProfit = (item.price - (item.cost || 0));
+                profitData[item.name] = (profitData[item.name] || 0) + itemProfit;
             });
         }
     });
 
-    return Object.values(profitData)
-        .sort((a, b) => b.profit - a.profit)
+    return Object.entries(profitData)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
-        .map(p => ({ name: p.name, value: Math.round(p.profit) }));
-  }, [invoices, products]);
+        .map(([name, value]) => ({ name, value: Math.round(value) }));
+  }, [invoices]);
   
   const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
 
-  // Effect to fetch user profile, including their last active event
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -197,37 +210,24 @@ export default function Home() {
           setActiveEventId(profile.activeEventId || null);
         } catch (error) {
           console.error("Failed to check or create user profile:", error);
-          setUserRole('user'); // Default to restricted access on error
-          toast({
-            title: "Error fetching user profile",
-            description: "There was a problem verifying your account permissions. Please try logging in again.",
-            variant: "destructive",
-          });
+          setUserRole('user');
         } finally {
           setIsRoleLoading(false);
         }
       };
       fetchUserRole();
     }
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, router]);
 
-  // Effect to fetch the list of all available events
   useEffect(() => {
     if (!user) return;
     const eventsQuery = query(collection(db, "events"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(eventsQuery, (snapshot) => {
         const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
         setEvents(eventsData);
-    }, (error) => {
-        console.error("Error fetching events:", error);
-        toast({
-            title: "Error fetching events",
-            description: "Could not retrieve the list of events.",
-            variant: "destructive",
-        });
     });
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user]);
   
   const clearScanningSession = async () => {
     if (!activeEventId) return;
@@ -238,7 +238,6 @@ export default function Home() {
     }
   };
   
-  // Effect to sync scanning session
   useEffect(() => {
     if (!activeEventId || products.length === 0) {
         setScannedProducts([]);
@@ -249,25 +248,21 @@ export default function Home() {
 
     const unsubscribe = onSnapshot(sessionRef, async (docSnap) => {
         if (!docSnap.exists()) {
-             await setDoc(sessionRef, { productIds: [] }); // Initialize if doesn't exist
+             await setDoc(sessionRef, { productIds: [] });
              setScannedProducts([]);
         } else {
             const data = docSnap.data();
             const productIds = data?.productIds || [];
             
-            // Map product IDs back to full product objects
             const productMap = new Map(products.map(p => [p.id, p]));
             const sessionProducts = productIds.map((id: string) => productMap.get(id)).filter(Boolean) as Product[];
             setScannedProducts(sessionProducts);
         }
-    }, (error) => {
-        console.error("Error syncing scanning session:", error);
     });
 
     return () => unsubscribe();
   }, [activeEventId, products]);
 
-  // Effect to fetch data scoped to the active event
   useEffect(() => {
     if (!user || !activeEventId) {
       setProducts([]);
@@ -293,14 +288,6 @@ export default function Home() {
       } as Product));
       setProducts(productsData);
       setIsDataLoading(false);
-    }, (error) => {
-      console.error("Error fetching products:", error);
-      toast({
-        title: "Database Connection Error",
-        description: "Could not fetch products. Please ensure your Firebase config is correct and your Firestore security rules allow reads.",
-        variant: "destructive",
-      });
-      setIsDataLoading(false);
     });
 
     const invoicesQuery = query(collection(eventRef, "invoices"), orderBy("date", "desc"));
@@ -310,8 +297,6 @@ export default function Home() {
         ...doc.data()
       } as Invoice));
       setInvoices(invoicesData);
-    }, (error) => {
-      console.error("Error fetching invoices:", error);
     });
 
     const savedFilesQuery = query(collection(eventRef, "savedFiles"), orderBy("createdAt", "desc"));
@@ -328,62 +313,70 @@ export default function Home() {
       unsubscribeInvoices();
       unsubscribeSavedFiles();
     };
-  }, [toast, user, activeEventId]);
+  }, [user, activeEventId]);
 
   const handleSwitchEvent = async (eventId: string) => {
     if (!user) return;
-    try {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { activeEventId: eventId });
-        setActiveEventId(eventId);
-        toast({ title: 'Event Switched', description: 'Loading data for the selected event.' });
-    } catch (error) {
-        console.error("Error switching event:", error);
-        toast({ title: "Error", description: "Failed to switch event.", variant: "destructive" });
-    }
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, { activeEventId: eventId });
+    setActiveEventId(eventId);
+    toast({ title: 'Event Switched' });
   };
 
   const handleCreateEvent = async (name: string): Promise<Event> => {
       if (!user) throw new Error("User not authenticated");
-      try {
-          const newEventRef = doc(collection(db, "events"));
-          const newEvent: Event = {
-              id: newEventRef.id,
-              name,
-              createdAt: new Date().toISOString(),
-          };
-          await setDoc(newEventRef, newEvent);
-          await handleSwitchEvent(newEvent.id);
-          toast({ title: 'Event Created', description: `Successfully created and switched to "${name}".` });
-          return newEvent;
-      } catch (error) {
-          console.error("Error creating event:", error);
-          toast({ title: "Error", description: "Failed to create new event.", variant: "destructive" });
-          throw error;
-      }
+      const newEventRef = doc(collection(db, "events"));
+      const newEvent: Event = {
+          id: newEventRef.id,
+          name,
+          createdAt: new Date().toISOString(),
+      };
+      await setDoc(newEventRef, newEvent);
+      await handleSwitchEvent(newEvent.id);
+      toast({ title: 'Event Created' });
+      return newEvent;
   };
 
-  const addProduct = async (product: Omit<Product, 'id'>) => {
+  const addProduct = async (productData: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => {
     if (!activeEventId) return;
-    if (products.some(p => p.barcode === product.barcode)) {
-      toast({
-        title: "Duplicate Barcode",
-        description: `A product with the barcode "${product.barcode}" already exists in this event.`,
-        variant: "destructive",
-      });
-      return;
+
+    // Check if barcode already exists
+    const q = query(collection(db, "events", activeEventId, "products"), where("barcode", "==", productData.barcode));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty && querySnapshot.docs.some(doc => doc.data().name !== productData.name)) {
+        toast({
+            title: "Barcode Conflict",
+            description: `Barcode "${productData.barcode}" is already used for a different product.`,
+            variant: "destructive",
+        });
+        return;
     }
+
     try {
-      await addDoc(collection(db, "events", activeEventId, "products"), product);
+      const batch = writeBatch(db);
+      const uniqueCodePrefix = `${productData.barcode.slice(-4)}-${Date.now().toString().slice(-4)}`;
+
+      for (let i = 0; i < quantity; i++) {
+          const productRef = doc(collection(db, "events", activeEventId, "products"));
+          const newProduct: Omit<Product, 'id'> = {
+              ...productData,
+              uniqueProductCode: `${uniqueCodePrefix}-${i + 1}`,
+              isSold: false
+          };
+          batch.set(productRef, newProduct);
+      }
+      
+      await batch.commit();
       toast({
-        title: "Product Added",
-        description: `${product.name} has been added to the inventory.`,
+        title: "Products Added",
+        description: `${quantity} unit(s) of ${productData.name} have been added.`,
       });
     } catch (error) {
       console.error("Error adding product: ", error);
-      toast({ title: "Error", description: "Failed to add product.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to add products.", variant: "destructive" });
     }
   };
+
 
   const removeProduct = async (productId: string) => {
     if (!activeEventId) return;
@@ -397,7 +390,7 @@ export default function Home() {
       });
     } catch (error) {
       console.error("Error removing product: ", error);
-      toast({ title: "Error", description: "Failed to remove product.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     }
   };
 
@@ -420,26 +413,23 @@ export default function Home() {
       });
     } catch (error) {
       console.error("Error bulk removing products: ", error);
-      toast({ title: "Error", description: "Failed to remove selected products.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     }
   };
 
-  const updateProduct = async (productId: string, data: Partial<Omit<Product, 'id'>>) => {
+  const updateProduct = async (productId: string, data: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>>) => {
     if (!activeEventId) return;
     const productRef = doc(db, "events", activeEventId, "products", productId);
     try {
       await updateDoc(productRef, data);
-      toast({
-        title: "Product Updated",
-        description: `Your product has been updated successfully.`,
-      });
-    } catch (error)      {
+      toast({ title: "Product Updated" });
+    } catch (error) {
         console.error("Error updating product: ", error);
-        toast({ title: "Error", description: "Failed to update product.", variant: "destructive" });
+        toast({ title: "Error", variant: "destructive" });
     }
   };
   
-  const bulkUpdateProducts = async (productIds: string[], data: Partial<Omit<Product, 'id'>>) => {
+  const bulkUpdateProducts = async (productIds: string[], data: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>>) => {
     if (productIds.length === 0 || !activeEventId) return;
 
     const batch = writeBatch(db);
@@ -450,79 +440,65 @@ export default function Home() {
 
     try {
         await batch.commit();
-        toast({
-        title: "Products Updated",
-        description: `${productIds.length} products have been updated.`,
-        });
-        setSelectedRows([]); // Clear selection after bulk action
+        toast({ title: "Products Updated" });
+        setSelectedRows([]);
         await clearScanningSession();
     } catch (error) {
         console.error("Error bulk updating products: ", error);
-        toast({ title: "Error", description: "Failed to update selected products.", variant: "destructive" });
+        toast({ title: "Error", variant: "destructive" });
     }
   };
   
-  const handleImportInventory = async (newProducts: Omit<Product, 'id'>[]) => {
+  const handleImportInventory = async (newProducts: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'> & { quantity: number }[]) => {
     if (!activeEventId) return;
-    const existingProductsMap = new Map(products.map(p => [p.barcode, p]));
+    
     const batch = writeBatch(db);
-
-    let updatedCount = 0;
-    let addedCount = 0;
+    let totalAdded = 0;
 
     for (const p of newProducts) {
-      if (existingProductsMap.has(p.barcode)) {
-        const existingProduct = existingProductsMap.get(p.barcode)!;
-        const productRef = doc(db, "events", activeEventId, "products", existingProduct.id);
-        batch.update(productRef, p as any);
-        updatedCount++;
-      } else {
+      const { quantity, ...productData } = p;
+      const uniqueCodePrefix = `${productData.barcode.slice(-4)}-${Date.now().toString().slice(-4)}`;
+      for (let i = 0; i < quantity; i++) {
         const productRef = doc(collection(db, "events", activeEventId, "products"));
-        batch.set(productRef, p);
-        addedCount++;
-        existingProductsMap.set(p.barcode, { ...p, id: productRef.id }); // Add to map to handle duplicates in CSV
+        const newProduct: Omit<Product, 'id'> = {
+            ...productData,
+            uniqueProductCode: `${uniqueCodePrefix}-${i + 1}`,
+            isSold: false
+        };
+        batch.set(productRef, newProduct);
       }
+      totalAdded += quantity;
     }
 
     try {
       await batch.commit();
       toast({
         title: "Inventory Imported",
-        description: `${addedCount} products added and ${updatedCount} products updated.`
+        description: `${totalAdded} total items have been added.`
       });
     } catch (error) {
       console.error("Error importing inventory:", error);
-      toast({
-        title: "Import Failed",
-        description: "An error occurred while importing the inventory.",
-        variant: "destructive"
-      });
+      toast({ title: "Import Failed", variant: "destructive" });
     }
   };
+
 
   const clearAllInvoices = async () => {
     if (!activeEventId) return;
     if (invoices.length === 0) {
-      toast({ title: "No invoices to clear", description: "Your invoice list is already empty." });
       return;
     }
-    try {
-      const invoicesRef = collection(db, "events", activeEventId, "invoices");
-      const querySnapshot = await getDocs(invoicesRef);
-      const batch = writeBatch(db);
-      querySnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-      toast({
-        title: "All Invoices Cleared",
-        description: `${invoices.length} invoices have been permanently removed.`,
-        variant: "destructive"
-      });
-    } catch (error) {
-      console.error("Error clearing invoices: ", error);
-      toast({ title: "Error", description: "Failed to clear invoices.", variant: "destructive" });
-    }
+    const invoicesRef = collection(db, "events", activeEventId, "invoices");
+    const querySnapshot = await getDocs(invoicesRef);
+    const batch = writeBatch(db);
+    querySnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    toast({
+      title: "All Invoices Cleared",
+      variant: "destructive"
+    });
   };
 
   const handleResetInvoiceCounter = async (newStartNumber?: number) => {
@@ -531,35 +507,16 @@ export default function Home() {
     const numberToSet = newStartNumber ?? DEFAULT_START_NUMBER;
 
     if (isNaN(numberToSet) || numberToSet < 1) {
-      toast({
-        title: "Invalid Number",
-        description: "Invoice start number must be a positive number.",
-        variant: "destructive",
-      });
       throw new Error("Invalid invoice start number");
     }
 
     const counterValue = numberToSet - 1;
     const invoiceCounterRef = doc(db, 'events', activeEventId, 'counters', 'invoices');
-
-    try {
-      await setDoc(invoiceCounterRef, { currentNumber: counterValue });
-      toast({
-        title: "Invoice Counter Updated",
-        description: `Next invoice number will be ${numberToSet}.`,
-      });
-    } catch (error) {
-      console.error("Error resetting invoice counter: ", error);
-      toast({
-        title: "Error",
-        description: "Failed to update invoice counter.",
-        variant: "destructive"
-      });
-      throw error;
-    }
+    await setDoc(invoiceCounterRef, { currentNumber: counterValue });
+    toast({ title: "Invoice Counter Updated" });
   };
 
-  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }): Promise<Invoice> => {
+  const handleCreateInvoice = async (invoiceData: { customerName: string; customerPhone: string; items: {id: string, price: number}[]; discountPercentage: number; }): Promise<Invoice> => {
     if (!activeEventId) throw new Error("No active event selected.");
     const eventRef = doc(db, "events", activeEventId);
     const invoiceCounterRef = doc(eventRef, 'counters', 'invoices');
@@ -579,7 +536,6 @@ export default function Home() {
         const product = products.find(p => p.id === item.id);
         return {
             id: item.id,
-            quantity: item.quantity,
             price: item.price,
             name: product?.name || 'Unknown Product',
             cost: product?.cost || 0,
@@ -587,10 +543,11 @@ export default function Home() {
             barcode: product?.barcode || '',
             possibleDiscount: product?.possibleDiscount || 0,
             salePercentage: product?.salePercentage || 0,
+            uniqueProductCode: product?.uniqueProductCode || '',
         };
     });
 
-    const subtotal = itemsWithFullDetails.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const subtotal = itemsWithFullDetails.reduce((acc, item) => acc + item.price, 0);
     const discountAmount = subtotal * (invoiceData.discountPercentage / 100);
     const subtotalAfterDiscount = subtotal - discountAmount;
     const GST_RATE = 0.05;
@@ -619,24 +576,20 @@ export default function Home() {
       batch.set(invoiceRef, newInvoice);
 
       invoiceData.items.forEach(p => {
-        const currentProduct = products.find(prod => prod.id === p.id);
-        if (currentProduct) {
-          const productRef = doc(db, "events", activeEventId, "products", p.id);
-          const newStock = Math.max(0, currentProduct.quantity - p.quantity);
-          batch.update(productRef, { quantity: newStock });
-        }
+        const productRef = doc(db, "events", activeEventId, "products", p.id);
+        batch.update(productRef, { isSold: true });
       });
       
       await batch.commit();
       setSelectedRows([]);
       await clearScanningSession();
-      toast({ title: "Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
+      toast({ title: "Invoice Created" });
       return newInvoice;
 
     } catch (error) {
       console.error("Error creating invoice: ", error);
-      toast({ title: "Error", description: "Failed to create invoice.", variant: "destructive" });
-      throw error; // Re-throw to be caught in the dialog
+      toast({ title: "Error", variant: "destructive" });
+      throw error;
     }
   };
 
@@ -658,7 +611,7 @@ export default function Home() {
 
     const itemsWithIds: CustomLineItem[] = invoiceData.items.map(item => ({
         ...item,
-        id: crypto.randomUUID(), // Assign a random unique ID to each line item
+        id: crypto.randomUUID(),
     }));
 
     const subtotal = itemsWithIds.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -688,12 +641,12 @@ export default function Home() {
 
     try {
       await setDoc(invoiceRef, newInvoice);
-      toast({ title: "Custom Invoice Created", description: `Invoice ${newInvoiceNumber} created successfully.` });
+      toast({ title: "Custom Invoice Created" });
       return newInvoice;
 
     } catch (error) {
       console.error("Error creating custom invoice: ", error);
-      toast({ title: "Error", description: "Failed to create custom invoice.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
       throw error;
     }
   };
@@ -701,7 +654,6 @@ export default function Home() {
 
   const exportInvoicesToXlsx = () => {
     if (invoices.length === 0) {
-        toast({ title: "No invoices to export", variant: "destructive", description: "Create an invoice first." });
         return;
     }
 
@@ -709,15 +661,14 @@ export default function Home() {
         (inv.items as Array<SoldProduct | CustomLineItem>).map((item, index) => {
             const isStandard = 'barcode' in item;
             const row: any = {
+                "Unique Product Code": isStandard ? (item as SoldProduct).uniqueProductCode : 'N/A',
                 "Product Barcode": isStandard ? (item as SoldProduct).barcode : 'N/A',
                 "Product Name": isStandard ? item.name : (item as CustomLineItem).description,
-                "Product Description": isStandard ? item.description : '',
-                "Quantity": item.quantity,
+                "Quantity": isStandard ? 1 : (item as CustomLineItem).quantity,
                 "Price": parseFloat(item.price.toFixed(2)),
                 "Cost": isStandard ? parseFloat(((item as SoldProduct).cost || 0).toFixed(2)) : 'N/A',
             };
 
-            // Add invoice-level details only to the first item row of an invoice
             if (index === 0) {
                 row["Invoice Number"] = inv.invoiceNumber || inv.id;
                 row["Invoice Title"] = inv.title || 'Standard Invoice';
@@ -745,14 +696,12 @@ export default function Home() {
         })
     );
     
-    // Ensure consistent column order
     const orderedHeaders = [
         "Invoice Number", "Invoice Title", "Date", "Customer Name", "Customer Phone",
-        "Product Barcode", "Product Name", "Product Description", "Quantity",
+        "Unique Product Code", "Product Barcode", "Product Name", "Quantity",
         "Price", "Cost", "Subtotal", "Discount %", "Discount Amount", "GST", "Grand Total"
     ];
 
-    // Reorder the data to match the headers
     const orderedDataToExport = dataToExport.map(row => {
         const newRow: any = {};
         for(const header of orderedHeaders) {
@@ -766,9 +715,9 @@ export default function Home() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
 
     worksheet['!cols'] = [
-        { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
-        { wch: 40 }, { wch: 50 }, { wch: 10 }, { wch: 15 }, { wch: 15 },
-        { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+        { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, 
+        { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 10 }, { wch: 15 }, 
+        { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
     ];
 
     XLSX.writeFile(workbook, "invoices.xlsx");
@@ -776,39 +725,32 @@ export default function Home() {
 
   const exportInventoryToXlsx = () => {
     if (products.length === 0) {
-      toast({ title: "No inventory to export", variant: "destructive", description: "Add a product first." });
       return;
     }
 
     const heading = [
-      ["Barcode", "Name", "Description", "Quantity", "Price", "Cost", "Possible Discount", "Sale Percentage"],
+      ["Unique Product Code", "Barcode", "Name", "Description", "Price", "Cost", "Possible Discount", "Sale Percentage", "Is Sold"],
     ];
 
     const dataToExport = products.map(p => [
+      p.uniqueProductCode,
       p.barcode,
       p.name,
       p.description,
-      p.quantity,
       p.price,
       p.cost,
       p.possibleDiscount || 0,
       p.salePercentage || 0,
+      p.isSold ? 'Yes' : 'No',
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([...heading, ...dataToExport]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
     
-    // Set column widths for better readability
     worksheet['!cols'] = [
-        { wch: 20 }, // Barcode
-        { wch: 40 }, // Name
-        { wch: 50 }, // Description
-        { wch: 10 }, // Quantity
-        { wch: 15 }, // Price
-        { wch: 15 }, // Cost
-        { wch: 20 }, // Possible Discount
-        { wch: 20 }, // Sale Percentage
+        { wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 50 }, { wch: 15 },
+        { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
     ];
 
     XLSX.writeFile(workbook, "inventory.xlsx");
@@ -816,105 +758,42 @@ export default function Home() {
 
   const addSavedFile = async (fileData: Omit<SavedFile, 'id'>) => {
     if (!activeEventId) return;
-    try {
-        await addDoc(collection(db, 'events', activeEventId, 'savedFiles'), fileData);
-        toast({
-            title: "Upload Successful",
-            description: `${fileData.name} has been saved.`,
-        });
-    } catch (error) {
-        console.error("Error saving file record to Firestore:", error);
-        toast({
-            title: "Upload Failed",
-            description: "File uploaded, but failed to save record to database.",
-            variant: "destructive",
-        });
-        // Note: The actual file might need manual cleanup in Firebase Storage
-        throw error;
-    }
+    await addDoc(collection(db, 'events', activeEventId, 'savedFiles'), fileData);
+    toast({ title: "Upload Successful" });
   };
 
   const handleDeleteFile = async (fileId: string, fileUrl: string) => {
     if (!activeEventId) return;
-    const toastId = "delete-toast";
-    toast({
-      id: toastId,
-      title: "Deleting File...",
-      description: "Please wait while the file is being removed.",
-    });
-
     try {
-      // First, delete the file from Storage to prevent orphaned files
       const storageRef = ref(storage, fileUrl);
       await deleteObject(storageRef);
-
-      // Then, delete the document from Firestore
       await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
-      
-      toast({
-        id: toastId,
-        title: "Deletion Successful",
-        description: "The file has been removed.",
-        variant: "destructive"
-      });
+      toast({ title: "Deletion Successful", variant: "destructive" });
     } catch (error: any) {
-      console.error("Error deleting file:", error);
-      // If file doesn't exist in storage, we can still remove the DB record.
       if (error.code === 'storage/object-not-found') {
          await deleteDoc(doc(db, "events", activeEventId, "savedFiles", fileId));
-         toast({
-           id: toastId,
-           title: "Deletion Successful",
-           description: "The file record was removed (file not found in storage).",
-           variant: "destructive"
-         });
+         toast({ title: "Deletion Successful", variant: "destructive" });
       } else {
-        toast({
-          id: toastId,
-          title: "Deletion Failed",
-          description: "Could not remove the file. Please check permissions and try again.",
-          variant: "destructive",
-        });
+        toast({ title: "Deletion Failed", variant: "destructive" });
         throw error;
       }
     }
   };
 
   const handleOpenInvoiceDialog = (products: Product[]) => {
-    if (products.length === 0) {
-      toast({
-        title: "No Products Selected",
-        description: "Please select products to create an invoice.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (products.length === 0) return;
     setProductsForDialog(products);
     setIsBulkInvoiceDialogOpen(true);
   };
   
   const handleOpenBulkEditDialog = (products: Product[]) => {
-    if (products.length === 0) {
-      toast({
-        title: "No Products Selected",
-        description: "Please select products to edit.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (products.length === 0) return;
     setProductsForDialog(products);
     setIsBulkEditDialogOpen(true);
   };
 
   const handleGenerateTags = (products: Product[]) => {
-    if (products.length === 0) {
-        toast({
-            title: "No Products Selected",
-            description: "Please select products to generate tags.",
-            variant: "destructive",
-        });
-        return;
-    }
+    if (products.length === 0) return;
     generatePriceTagsPDF(products, toast);
   };
   
@@ -941,7 +820,7 @@ export default function Home() {
 
   const renderContent = () => {
     if (!user) {
-        return null; // Redirect logic is handled in useEffect
+        return null;
     }
 
     if (!activeEventId) {
@@ -1050,5 +929,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

@@ -32,7 +32,7 @@ const PriceTag = ({ product }: { product: Product }) => {
 
       <div style={{ marginTop: '-20' }}>
         <QRCodeCanvas
-          value={product.barcode}
+          value={product.uniqueProductCode} // Use unique code for QR
           size={40}
           bgColor={"#ffffff"}
           fgColor={"#000000"}
@@ -51,7 +51,7 @@ const PriceTag = ({ product }: { product: Product }) => {
           </p>
         )}
         <p style={{ fontSize: '6pt', color: '#333', marginTop: '1px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-          {product.barcode}
+          {product.uniqueProductCode}
         </p>
       </div>
       

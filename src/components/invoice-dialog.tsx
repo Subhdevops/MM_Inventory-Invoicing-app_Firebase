@@ -34,7 +34,7 @@ const SuccessScreen = ({ handleGoToHome }: { handleGoToHome: () => void }) => (
 
 type InvoiceDialogProps = {
   products: Product[];
-  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, quantity: number, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
+  onCreateInvoice: (invoiceData: { customerName: string; customerPhone: string; items: {id: string, price: number}[]; discountPercentage: number; }) => Promise<Invoice>;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -58,7 +58,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     toast({
       id: toastId,
       title: 'Generating PDF...',
-      description: 'Preparing your invoice, please wait.'
     });
 
     const doc = new jsPDF();
@@ -67,7 +66,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const formatCurrency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 
     const addFooter = (docInstance: jsPDF) => {
-        const pageCount = (docInstance.internal as any).pages.length - 1;
         const pageHeight = docInstance.internal.pageSize.height;
         docInstance.setFontSize(8);
         docInstance.setTextColor(100);
@@ -76,7 +74,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.setTextColor(255);
         docInstance.text('Thank you for your business!', 15, pageHeight - 8);
 
-        const pageText = `Page ${docInstance.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`;
+        const pageText = `Page ${docInstance.internal.getCurrentPageInfo().pageNumber} of ${(docInstance.internal as any).pages.length - 1}`;
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
     };
 
@@ -84,18 +82,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       if (isFirstPage) {
           const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
           if (logoElement && logoElement.naturalWidth > 0) {
-              const logoWidth = 30; 
-              const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
-              const logoHeight = 30;
+              const logoWidth = 40; 
+              const logoHeight = 40;
               const yPosition = 15;
               docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
-              
-              docInstance.setFontSize(7);
-              docInstance.setTextColor(100);
-              docInstance.setFont('helvetica', 'italic');
-              const logoCenterX = 15 + logoWidth / 2;
-              docInstance.text('Simple by Nature, Mischief by Choice', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
-              docInstance.setFont('helvetica', 'normal');
           }
           
           const title = invoice.title || "INVOICE";
@@ -112,20 +102,20 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     const tableBody = invoice.items.map((item, index) => {
         let productName = 'barcode' in item ? item.name : item.description;
-        if ('description' in item && item.description && 'barcode' in item) {
-             productName += ` (${item.description})`;
+        let uniqueCode = 'uniqueProductCode' in item ? item.uniqueProductCode : '';
+        if (uniqueCode) {
+            productName += `\n(${uniqueCode})`
         }
-        
+
         return [
             index + 1,
             productName,
-            item.quantity,
+            'quantity' in item ? item.quantity : 1, // Custom items have quantity
             formatCurrency(item.price),
-            formatCurrency(item.price * item.quantity),
+            formatCurrency('quantity' in item ? item.price * item.quantity : item.price),
         ];
     });
     
-    // Address table
     autoTable(doc, {
         startY: 55,
         body: [
@@ -145,9 +135,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 const x = cell.x + cell.width - cell.padding('right');
                 let y = cell.y + cell.padding('top');
 
-                const oldSize = doc.getFontSize();
-                const oldStyle = doc.getFont().fontStyle;
-
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
                 doc.text('Minimal Mischief', x, y, { align: 'right' });
@@ -157,31 +144,16 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 doc.setFont('helvetica', 'normal');
                 const addressLines = ['Barasat', 'House / Building No', 'Kolkata West Bengal - 700XXX', 'Phone: XXXXXXXXXX', 'GSTIN: XXXXXXXXXXXXXXX'];
                 doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
-
-                doc.setFontSize(oldSize);
-                doc.setFont('helvetica', oldStyle);
             }
         }
     });
 
-    // Items table
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 10,
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold',
-        halign: 'center',
-        valign: 'middle',
-      },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
       head: [['#', 'Item/Description', 'Qty', 'Price (pre-GST)', 'Total (pre-GST)']],
       body: tableBody,
-      columnStyles: {
-        0: { halign: 'center' },
-        2: { halign: 'center' },
-        3: { halign: 'right' },
-        4: { halign: 'right' },
-      },
+      columnStyles: { 0: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
       theme: 'striped',
       didDrawPage: (data) => {
         addPageHeader(doc, data.pageNumber === 1);
@@ -191,7 +163,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     const finalY = (doc as any).lastAutoTable.finalY;
 
-    // Totals Section
     const totalsData: any[] = [
         ['Subtotal (pre-GST)', formatCurrency(invoice.subtotal)],
     ];
@@ -214,7 +185,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     const stampWidth = 30;
     const stampHeight = (stampElement && stampElement.naturalWidth > 0) ? stampWidth * (stampElement.naturalHeight / stampElement.naturalWidth) : stampWidth;
     
-    const totalsTableHeight = 25; // Estimated
+    const totalsTableHeight = 25; 
     const requiredHeight = Math.max(stampHeight, totalsTableHeight) + 10;
     
     let startYForTotals = currentY + 10;
@@ -242,25 +213,16 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     
     try {
         doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
-        toast({
-            id: toastId,
-            title: 'Success!',
-            description: 'Your invoice has been downloaded.'
-        });
+        toast({ id: toastId, title: 'Success!' });
     } catch (error) {
         console.error("PDF generation failed:", error);
-        toast({ 
-            id: toastId,
-            title: 'PDF Generation Failed', 
-            description: 'There was an error creating the invoice PDF.',
-            variant: 'destructive'
-        });
+        toast({ id: toastId, title: 'PDF Generation Failed', variant: 'destructive' });
         throw error;
     }
   };
 
   const subtotal = useMemo(() => {
-    return items.reduce((acc, p) => acc + (p.price || 0) * p.quantity, 0);
+    return items.reduce((acc, p) => acc + (p.price || 0), 0);
   }, [items]);
 
   useEffect(() => {
@@ -275,21 +237,13 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
       const GST_INCLUSIVE_MULTIPLIER = 1.05;
 
-      const productCounts = products.reduce((acc, p) => {
-        acc[p.id] = (acc[p.id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const uniqueProducts = [...new Map(products.map(item => [item.id, item])).values()];
-
-      setItems(uniqueProducts.map(p => ({
+      setItems(products.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description || '',
         price: p.price / GST_INCLUSIVE_MULTIPLIER,
         cost: p.cost,
-        stock: p.quantity,
-        quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
+        uniqueProductCode: p.uniqueProductCode,
         possibleDiscount: p.possibleDiscount || 0,
       })));
     }
@@ -308,17 +262,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       setDiscountAmountInput(invoiceDetails.discountAmount > 0 ? invoiceDetails.discountAmount.toFixed(2) : '');
   }, [invoiceDetails.grandTotal, invoiceDetails.discountAmount]);
 
-
-  const handleQuantityChange = (id: string, newQuantity: number) => {
-    setItems(currentItems => currentItems.map(item => {
-      if (item.id === id) {
-        const validatedQuantity = Math.max(0, Math.min(newQuantity || 0, item.stock));
-        return { ...item, quantity: validatedQuantity };
-      }
-      return item;
-    }));
-  };
-  
   const handleDiscountChange = (value: string) => {
     const numValue = parseFloat(value);
     const newDiscount = isNaN(numValue) || numValue < 0 ? 0 : Math.min(numValue, 100);
@@ -328,58 +271,32 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
   const handleGrandTotalChange = (value: string) => {
     setGrandTotalInput(value);
     const customGrandTotal = parseFloat(value);
-    
-    if (isNaN(customGrandTotal) || customGrandTotal < 0 || subtotal === 0) {
-      return;
-    }
-
+    if (isNaN(customGrandTotal) || customGrandTotal < 0 || subtotal === 0) return;
     const newDiscountPercent = (1 - (customGrandTotal / (subtotal * (1 + GST_RATE)))) * 100;
-    
-    const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
-    setDiscountPercentage(clampedDiscount);
+    setDiscountPercentage(Math.max(0, Math.min(newDiscountPercent, 100)));
   };
   
   const handleDiscountAmountChange = (value: string) => {
     setDiscountAmountInput(value);
     const customDiscountAmount = parseFloat(value);
-
-    if (isNaN(customDiscountAmount) || customDiscountAmount < 0 || subtotal === 0) {
-        return;
-    }
-
+    if (isNaN(customDiscountAmount) || customDiscountAmount < 0 || subtotal === 0) return;
     const newDiscountPercent = (customDiscountAmount / subtotal) * 100;
-
-    const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
-    setDiscountPercentage(clampedDiscount);
+    setDiscountPercentage(Math.max(0, Math.min(newDiscountPercent, 100)));
   };
 
-
   const totalPossibleDiscount = useMemo(() => {
-    return items.reduce((acc, item) => acc + (item.possibleDiscount || 0) * item.quantity, 0);
+    return items.reduce((acc, item) => acc + (item.possibleDiscount || 0), 0);
   }, [items]);
-
-  const hasItemsToInvoice = useMemo(() => items.some(item => item.quantity > 0), [items]);
 
   const handleProcessAndDownload = async () => {
     if (!customerName || !customerPhone) {
-        toast({ title: "Missing Information", description: "Please enter customer name and phone number.", variant: "destructive" });
+        toast({ title: "Missing Information", variant: "destructive" });
         return;
     }
     
     if (!/^\d{10}$/.test(customerPhone)) {
-      toast({
-        title: "Invalid Phone Number",
-        description: "Phone number must be exactly 10 digits.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid Phone Number", variant: "destructive" });
       return;
-    }
-    
-    const itemsToInvoice = items.filter(item => item.quantity > 0);
-
-    if (itemsToInvoice.length === 0) {
-        toast({ title: "No Items", description: "Add at least one item with a quantity greater than 0.", variant: "destructive" });
-        return;
     }
 
     setIsProcessing(true);
@@ -389,10 +306,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         customerName,
         customerPhone,
         discountPercentage,
-        items: itemsToInvoice.map(item => ({
+        items: items.map(item => ({
           id: item.id,
-          price: item.price,
-          quantity: item.quantity
+          price: item.price
         })),
       });
 
@@ -401,7 +317,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
 
     } catch (error) {
         console.error("Processing failed:", error);
-        toast({ title: "Processing Failed", description: "Could not create invoice. Please try again.", variant: "destructive" });
     } finally {
         setIsProcessing(false);
     }
@@ -421,7 +336,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             <DialogHeader>
               <DialogTitle>Create Invoice</DialogTitle>
               <DialogDescription>
-                Fill in the customer details and confirm the items to generate an invoice PDF.
+                Fill customer details and confirm items to generate an invoice.
               </DialogDescription>
             </DialogHeader>
             <InvoiceForm
@@ -436,12 +351,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               discountAmountInput={discountAmountInput}
               handleDiscountAmountChange={handleDiscountAmountChange}
               items={items}
-              handleQuantityChange={handleQuantityChange}
               invoiceDetails={invoiceDetails}
               onOpenChange={onOpenChange}
               handleProcessAndDownload={handleProcessAndDownload}
               isProcessing={isProcessing}
-              hasItemsToInvoice={hasItemsToInvoice}
               totalPossibleDiscount={totalPossibleDiscount}
             />
           </>

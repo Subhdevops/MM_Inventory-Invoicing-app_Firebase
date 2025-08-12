@@ -26,8 +26,6 @@ import { Input } from "@/components/ui/input";
 import type { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-// Schema where all fields are optional. Empty strings are transformed to undefined
-// so they are ignored during the update.
 const bulkEditSchema = z.object({
   price: z.string()
     .transform(val => val === '' ? undefined : val)
@@ -35,9 +33,6 @@ const bulkEditSchema = z.object({
   cost: z.string()
     .transform(val => val === '' ? undefined : val)
     .pipe(z.coerce.number({invalid_type_error: "Cost must be a number."}).min(0).optional()),
-  quantity: z.string()
-    .transform(val => val === '' ? undefined : val)
-    .pipe(z.coerce.number({invalid_type_error: "Quantity must be a number."}).int().min(0).optional()),
   possibleDiscount: z.string()
     .transform(val => val === '' ? undefined : val)
     .pipe(z.coerce.number({invalid_type_error: "Discount must be a number."}).min(0).optional()),
@@ -49,7 +44,7 @@ const bulkEditSchema = z.object({
 
 type BulkEditDialogProps = {
   productIds: string[];
-  onBulkUpdate: (productIds: string[], data: Partial<Omit<Product, 'id'>>) => void;
+  onBulkUpdate: (productIds: string[], data: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>>) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -61,35 +56,23 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
     defaultValues: {
       price: '',
       cost: '',
-      quantity: '',
       possibleDiscount: '',
       salePercentage: '',
     },
   });
 
   const onSubmit = (values: z.infer<typeof bulkEditSchema>) => {
-    const updateData: Partial<Omit<Product, 'id'>> = {};
+    const updateData: Partial<Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>> = {};
 
-    if (values.price !== undefined) {
-      updateData.price = values.price;
-    }
-    if (values.cost !== undefined) {
-      updateData.cost = values.cost;
-    }
-    if (values.quantity !== undefined) {
-      updateData.quantity = values.quantity;
-    }
-    if (values.possibleDiscount !== undefined) {
-      updateData.possibleDiscount = values.possibleDiscount;
-    }
-    if (values.salePercentage !== undefined) {
-        updateData.salePercentage = values.salePercentage;
-    }
+    if (values.price !== undefined) updateData.price = values.price;
+    if (values.cost !== undefined) updateData.cost = values.cost;
+    if (values.possibleDiscount !== undefined) updateData.possibleDiscount = values.possibleDiscount;
+    if (values.salePercentage !== undefined) updateData.salePercentage = values.salePercentage;
 
     if (Object.keys(updateData).length === 0) {
       toast({
         title: "No Changes",
-        description: "Please enter a value in at least one field to update.",
+        description: "Please enter a value to update.",
         variant: "destructive",
       });
       return;
@@ -100,7 +83,6 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
     form.reset();
   };
   
-  // Reset form when dialog is opened or closed
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset();
@@ -114,7 +96,7 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
         <DialogHeader>
           <DialogTitle>Bulk Edit Products</DialogTitle>
           <DialogDescription>
-            Edit fields for {productIds.length} selected products. Only filled fields will be updated. Leave fields blank to keep original values.
+            Edit fields for {productIds.length} selected products. Only filled fields will be updated.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -170,19 +152,6 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
                     <FormMessage />
                 </FormItem>
                 )}
-            />
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantity</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g. 15" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
             />
             <DialogFooter>
                <DialogClose asChild>

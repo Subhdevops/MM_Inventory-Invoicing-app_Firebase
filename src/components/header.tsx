@@ -24,8 +24,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { EventSwitcher } from './event-switcher';
 
 type HeaderProps = {
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  onImportInventory: (products: Omit<Product, 'id'>[]) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'>, quantity: number) => Promise<void>;
+  onImportInventory: (products: (Omit<Product, 'id' | 'uniqueProductCode' | 'isSold'> & { quantity: number })[]) => Promise<void>;
   userRole: UserProfile['role'] | null;
   events: Event[];
   activeEvent: Event | undefined;
@@ -42,7 +42,6 @@ export default function Header({ addProduct, onImportInventory, userRole, events
     if (!currentUser) return;
 
     try {
-      // Signal global logout first
       const userRef = doc(db, 'users', currentUser.uid);
       await updateDoc(userRef, {
           lastSignOutTimestamp: new Date().getTime()
@@ -51,12 +50,10 @@ export default function Header({ addProduct, onImportInventory, userRole, events
       await signOut(auth);
       toast({
         title: "Logged Out",
-        description: "You have been successfully logged out.",
       });
     } catch (error) {
       toast({
         title: "Logout Failed",
-        description: "An error occurred while logging out.",
         variant: "destructive",
       });
     }

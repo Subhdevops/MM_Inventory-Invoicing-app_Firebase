@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Percent, IndianRupee } from 'lucide-react';
 import MinimalMischiefLogo from './icons/minimal-mischief-logo';
+import { ScrollArea } from './ui/scroll-area';
 
 const GST_RATE = 0.05; // 5%
 
@@ -25,7 +26,6 @@ interface InvoiceFormProps {
   discountAmountInput: string;
   handleDiscountAmountChange: (value: string) => void;
   items: InvoiceItem[];
-  handleQuantityChange: (id: string, quantity: number) => void;
   invoiceDetails: {
     subtotal: number;
     discountAmount: number;
@@ -35,7 +35,6 @@ interface InvoiceFormProps {
   onOpenChange: (open: boolean) => void;
   handleProcessAndDownload: () => void;
   isProcessing: boolean;
-  hasItemsToInvoice: boolean;
   totalPossibleDiscount: number;
 }
 
@@ -45,12 +44,11 @@ export function InvoiceForm({
   discountPercentage, handleDiscountChange,
   grandTotalInput, handleGrandTotalChange,
   discountAmountInput, handleDiscountAmountChange,
-  items, handleQuantityChange,
+  items,
   invoiceDetails,
   onOpenChange,
   handleProcessAndDownload,
   isProcessing,
-  hasItemsToInvoice,
   totalPossibleDiscount
 }: InvoiceFormProps) {
   return (
@@ -152,52 +150,35 @@ export function InvoiceForm({
               </section>
           </div>
           <div className="border rounded-lg overflow-hidden flex flex-col">
-            <div className="overflow-y-auto flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[50%]">Product</TableHead>
-                      <TableHead className="w-[120px] text-center">Quantity</TableHead>
-                      <TableHead className="w-[120px] text-right">Price (pre-GST)</TableHead>
-                      <TableHead className="w-[120px] text-right">Total (pre-GST)</TableHead>
+                      <TableHead className="w-[60%]">Product</TableHead>
+                      <TableHead className="w-[20%] text-right">Price</TableHead>
+                      <TableHead className="w-[20%] text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item: InvoiceItem) => (
                       <TableRow key={item.id}>
-                        <TableCell className="font-medium w-[50%]">
+                        <TableCell className="font-medium w-[60%]">
                           {item.name}
-                          {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                          <p className="text-xs text-muted-foreground font-mono">{item.uniqueProductCode}</p>
                         </TableCell>
-                        <TableCell className="w-[120px]">
-                            <Input
-                                type="number"
-                                className="w-20 mx-auto text-center h-8"
-                                value={item.quantity}
-                                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
-                                onBlur={(e) => {
-                                  if (!e.target.value) {
-                                    handleQuantityChange(item.id, 0);
-                                  }
-                                }}
-                                min="0"
-                                max={item.stock}
-                                disabled={item.stock === 0}
-                            />
-                        </TableCell>
-                        <TableCell className="w-[120px] text-right">₹{item.price.toFixed(2)}</TableCell>
-                        <TableCell className="w-[120px] text-right font-medium">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
+                        <TableCell className="w-[20%] text-right">₹{item.price.toFixed(2)}</TableCell>
+                        <TableCell className="w-[20%] text-right font-medium">₹{item.price.toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </ScrollArea>
           </div>
       </div>
       
       <DialogFooter className="sm:justify-end pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
-          <Button onClick={handleProcessAndDownload} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || !hasItemsToInvoice || isProcessing}>
+          <Button onClick={handleProcessAndDownload} className="bg-accent hover:bg-accent/90" disabled={!customerName || !customerPhone || items.length === 0 || isProcessing}>
               {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
               {isProcessing ? 'Processing...' : 'Process & Download PDF'}
           </Button>
