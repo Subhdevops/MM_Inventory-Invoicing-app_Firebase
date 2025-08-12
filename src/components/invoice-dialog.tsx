@@ -84,7 +84,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       if (isFirstPage) {
           const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
           if (logoElement && logoElement.naturalWidth > 0) {
-              const logoWidth = 40;
+              const logoWidth = 40; 
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
               const logoHeight = logoWidth * logoAspectRatio;
               const yPosition = 15; // Added vertical space
@@ -161,13 +161,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 // Draw the rest of the address
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'normal');
-                const addressLines = [
-                    'Barasat',
-                    'House / Building No',
-                    'Kolkata West Bengal - 700XXX',
-                    'Phone: XXXXXXXXXX',
-                    'GSTIN: XXXXXXXXXXXXXXX'
-                ];
+                const addressLines = ['Barasat', 'House / Building No', 'Kolkata West Bengal - 700XXX', 'Phone: XXXXXXXXXX', 'GSTIN: XXXXXXXXXXXXXXX'];
                 doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
 
                 // Restore previous style
