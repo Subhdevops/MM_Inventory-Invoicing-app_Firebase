@@ -76,9 +76,9 @@ export function InvoiceForm({
                    <div className="text-right space-y-1">
                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
                        <p className="font-bold text-primary">Minimal Mischief</p>
-                       <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
-                       <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
-                       <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
+                       <p className="text-xs text-muted-foreground">Barasat</p>
+                       <p className="text-xs text-muted-foreground">House / Building No</p>
+                       <p className="text-xs text-muted-foreground">Kolkata West Bengal - 700XXX</p>
                    </div>
               </section>
               

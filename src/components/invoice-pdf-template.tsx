@@ -42,11 +42,11 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                     <div className="text-right leading-normal">
                         <h2 className="font-bold uppercase text-sm text-gray-500 mb-1">From:</h2>
                         <p className="font-bold text-primary">Minimal Mischief</p>
-                        <p>Professor Colony, C/O, Deshbandhu Pal</p>
-                        <p>Holding No :- 195/8, Ward no. 14</p>
-                        <p>Bolpur, Birbhum, West Bengal - 731204</p>
-                        <p>GSTIN: 19AANCR9537M1ZC</p>
-                        <p>Phone: 9476468690</p>
+                        <p>Barasat</p>
+                        <p>House / Building No</p>
+                        <p>Kolkata West Bengal - 700XXX</p>
+                        <p>GSTIN: XXXXXXXXXXXXXXX</p>
+                        <p>Phone: XXXXXXXXXX</p>
                     </div>
                 </section>
 
