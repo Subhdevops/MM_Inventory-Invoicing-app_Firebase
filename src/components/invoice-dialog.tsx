@@ -87,16 +87,15 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               const logoWidth = 40; 
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
               const logoHeight = logoWidth * logoAspectRatio;
-              const yPosition = 15; // Added vertical space
+              const yPosition = 15;
               docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
               
-              // Add tagline, centered
               docInstance.setFontSize(7);
               docInstance.setTextColor(100);
               docInstance.setFont('helvetica', 'italic');
               const logoCenterX = 15 + logoWidth / 2;
               docInstance.text('Simple by Nature, Mischief by Choice', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
-              docInstance.setFont('helvetica', 'normal'); // Reset font style
+              docInstance.setFont('helvetica', 'normal');
           }
           
           const title = invoice.title || "INVOICE";
@@ -128,7 +127,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     
     // Address table
     autoTable(doc, {
-        startY: 55, // Increased startY for more header space
+        startY: 55,
         body: [
              [
               { content: 'Bill To:', styles: { fontStyle: 'bold' } },
@@ -136,35 +135,29 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
             ],
             [
               { content: `${invoice.customerName}\n${invoice.customerPhone}` },
-              // Placeholder to reserve space. Height is determined by newlines.
               { content: `\n\n\n\n\n`, styles: { halign: 'right', fontSize: 8 } }
             ]
         ],
         theme: 'plain',
         didDrawCell: function(data) {
-            // Target the second cell of the second row in the body (the "From" address cell)
             if (data.section === 'body' && data.row.index === 1 && data.column.index === 1) {
                 const cell = data.cell;
                 const x = cell.x + cell.width - cell.padding('right');
                 let y = cell.y + cell.padding('top');
 
-                // Save current style to restore later
                 const oldSize = doc.getFontSize();
                 const oldStyle = doc.getFont().fontStyle;
 
-                // Draw "Minimal Mischief" with custom style
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
                 doc.text('Minimal Mischief', x, y, { align: 'right' });
-                y += doc.getTextDimensions('R', {fontSize: 10}).h + 1; // Move y down for the next line
+                y += doc.getTextDimensions('R', {fontSize: 10}).h + 1;
 
-                // Draw the rest of the address
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'normal');
                 const addressLines = ['Barasat', 'House / Building No', 'Kolkata West Bengal - 700XXX', 'Phone: XXXXXXXXXX', 'GSTIN: XXXXXXXXXXXXXXX'];
                 doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
 
-                // Restore previous style
                 doc.setFontSize(oldSize);
                 doc.setFont('helvetica', oldStyle);
             }
@@ -226,13 +219,11 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     
     let startYForTotals = currentY + 10;
 
-    // Check if there is enough space on the current page
     if (doc.internal.pageSize.height - finalY < requiredHeight) {
         doc.addPage();
-        startYForTotals = 20; // Start near top on new page
+        startYForTotals = 20;
     }
     
-    // Draw stamp on the left side
     if (stampElement && stampElement.naturalWidth > 0) {
         doc.addImage(stampElement, 'PNG', 15, startYForTotals, stampWidth, stampHeight);
     }
@@ -244,10 +235,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         tableWidth: 'wrap',
         styles: { halign: 'right', fontSize: 10 },
         columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
-        margin: { left: pageWidth - 95, right: 15 }, // Shifted to the right
+        margin: { left: pageWidth - 95, right: 15 },
     });
     
-    // Manually draw the footer on the last page because autotable's didDrawPage won't run if no new page is added
     addFooter(doc);
     
     try {
@@ -296,7 +286,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         id: p.id,
         name: p.name,
         description: p.description || '',
-        price: p.price / GST_INCLUSIVE_MULTIPLIER, // Calculate pre-GST base price
+        price: p.price / GST_INCLUSIVE_MULTIPLIER,
         cost: p.cost,
         stock: p.quantity,
         quantity: productCounts[p.id] || (p.quantity > 0 ? 1 : 0),
@@ -313,7 +303,6 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
     return { subtotal, discountAmount, gstAmount, grandTotal };
   }, [subtotal, discountPercentage]);
   
-  // Effect to update grand total and discount amount inputs when other values change
   useEffect(() => {
       setGrandTotalInput(invoiceDetails.grandTotal > 0 ? invoiceDetails.grandTotal.toFixed(2) : '');
       setDiscountAmountInput(invoiceDetails.discountAmount > 0 ? invoiceDetails.discountAmount.toFixed(2) : '');
@@ -344,11 +333,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       return;
     }
 
-    // Recalculate discount from custom grand total
-    // GT = (S - S * D%) * (1 + G) => D% = 1 - (GT / (S * (1+G)))
     const newDiscountPercent = (1 - (customGrandTotal / (subtotal * (1 + GST_RATE)))) * 100;
     
-    // Clamp the discount between 0 and 100
     const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
     setDiscountPercentage(clampedDiscount);
   };
@@ -361,10 +347,8 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         return;
     }
 
-    // Recalculate discount percentage from the amount
     const newDiscountPercent = (customDiscountAmount / subtotal) * 100;
 
-    // Clamp the discount between 0 and 100
     const clampedDiscount = Math.max(0, Math.min(newDiscountPercent, 100));
     setDiscountPercentage(clampedDiscount);
   };

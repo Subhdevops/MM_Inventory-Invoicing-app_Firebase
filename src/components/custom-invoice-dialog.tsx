@@ -77,8 +77,6 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
     }, [isOpen]);
 
     const generatePdf = async (invoice: Invoice) => {
-        // This is the same PDF generation logic from the main InvoiceDialog, adapted for custom items.
-        // It's duplicated here for simplicity, but could be refactored into a shared utility.
         const toastId = 'pdf-gen-toast';
         toast({
             id: toastId,
@@ -166,7 +164,6 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                     const addressLines = ['Barasat', 'House / Building No', 'Kolkata West Bengal - 700XXX', 'Phone: XXXXXXXXXX', 'GSTIN: XXXXXXXXXXXXXXX'];
                     doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
 
-                    // Restore previous style
                     doc.setFontSize(oldSize);
                     doc.setFont('helvetica', oldStyle);
                 }
@@ -291,7 +288,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                 customerName,
                 customerPhone,
                 discountPercentage,
-                items: itemsToInvoice.map(({ id, ...rest }) => rest), // Remove client-side id before sending
+                items: itemsToInvoice.map(({ id, ...rest }) => rest),
             });
             await generatePdf(finalInvoice);
             setShowSuccessScreen(true);
