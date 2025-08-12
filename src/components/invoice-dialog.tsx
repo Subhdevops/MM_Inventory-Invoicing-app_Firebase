@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Product, Invoice, InvoiceItem } from '@/lib/types';
+import type { Product, Invoice, InvoiceItem, SoldProduct } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -83,8 +83,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
           const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
           if (logoElement && logoElement.naturalWidth > 0) {
               const logoWidth = 40; 
-              const logoHeight = 40;
               const yPosition = 15;
+              const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
+              const logoHeight = logoWidth * logoAspectRatio;
               docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
           }
           
@@ -100,19 +101,19 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       }
     };
 
-    const tableBody = invoice.items.map((item, index) => {
-        let productName = 'barcode' in item ? item.name : item.description;
-        let uniqueCode = 'uniqueProductCode' in item ? item.uniqueProductCode : '';
-        if (uniqueCode) {
-            productName += `\n(${uniqueCode})`
+    const tableBody = (invoice.items as SoldProduct[]).map((item, index) => {
+        let productName = item.name;
+        if (item.description) {
+          productName += ` (${item.description})`;
         }
+        productName += `\n(${item.uniqueProductCode})`;
 
         return [
             index + 1,
             productName,
-            'quantity' in item ? item.quantity : 1, // Custom items have quantity
+            1, // Standard invoice items always have quantity of 1
             formatCurrency(item.price),
-            formatCurrency('quantity' in item ? item.price * item.quantity : item.price),
+            formatCurrency(item.price),
         ];
     });
     
