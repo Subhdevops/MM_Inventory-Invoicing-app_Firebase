@@ -74,7 +74,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <MinimalMischiefLogo className="mx-auto mb-6" width={200} height={48}/>
+        <MinimalMischiefLogo className="mx-auto mb-6" width={150} height={36}/>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>

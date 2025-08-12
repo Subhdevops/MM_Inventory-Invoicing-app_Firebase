@@ -38,7 +38,7 @@ export function EventSwitcher({
   return (
     <>
       <div className="flex items-center gap-4">
-        <MinimalMischiefLogo showTagline={false} width={120} height={29} />
+        <MinimalMischiefLogo showTagline={false} width={90} height={22} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
