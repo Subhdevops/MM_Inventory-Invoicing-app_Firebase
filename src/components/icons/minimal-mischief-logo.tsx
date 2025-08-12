@@ -1,18 +1,18 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-type RoopkothaLogoProps = {
+type MinimalMischiefLogoProps = {
   className?: string;
   showTagline?: boolean;
   width?: number;
   height?: number;
 };
 
-const RoopkothaLogo = ({ className, showTagline = true, width = 200, height = 48 }: RoopkothaLogoProps) => (
+const MinimalMischiefLogo = ({ className, showTagline = true, width = 200, height = 48 }: MinimalMischiefLogoProps) => (
   <div className={cn("flex flex-col items-center justify-center", className)}>
     <Image
       src="/logo.png"
-      alt="Roopkotha Logo"
+      alt="Minimal Mischief Logo"
       width={width}
       height={height}
       priority // Eager load the logo as it's likely LCP
@@ -25,4 +25,4 @@ const RoopkothaLogo = ({ className, showTagline = true, width = 200, height = 48
   </div>
 );
 
-export default RoopkothaLogo;
+export default MinimalMischiefLogo;

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { Product } from '@/lib/types';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import MinimalMischiefLogo from './icons/minimal-mischief-logo';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const PriceTag = ({ product }: { product: Product }) => {
@@ -27,7 +27,7 @@ const PriceTag = ({ product }: { product: Product }) => {
       position: 'relative',
     }}>
       <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-        <RoopkothaLogo showTagline={true} width={150} height={36} />
+        <MinimalMischiefLogo showTagline={true} width={150} height={36} />
       </div>
 
       <div style={{ marginTop: '0' }}>

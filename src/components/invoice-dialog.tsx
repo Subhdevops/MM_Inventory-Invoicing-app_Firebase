@@ -152,10 +152,10 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 const oldSize = doc.getFontSize();
                 const oldStyle = doc.getFont().fontStyle;
 
-                // Draw "Roopkotha" with custom style
+                // Draw "Minimal Mischief" with custom style
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Roopkotha', x, y, { align: 'right' });
+                doc.text('Minimal Mischief', x, y, { align: 'right' });
                 y += doc.getTextDimensions('R', {fontSize: 10}).h + 1; // Move y down for the next line
 
                 // Draw the rest of the address

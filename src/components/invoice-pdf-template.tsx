@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { Invoice } from '@/lib/types';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import MinimalMischiefLogo from './icons/minimal-mischief-logo';
 
 // This component is designed to be rendered off-screen for PDF generation.
 // It uses Tailwind classes which will be applied because it's part of the main document tree.
@@ -23,7 +23,7 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                 {/* Header with more bottom padding */}
                 <header className="flex justify-between items-start pb-6 border-b border-gray-200">
                     <div>
-                        <RoopkothaLogo showTagline={true} width={200} height={48} />
+                        <MinimalMischiefLogo showTagline={true} width={200} height={48} />
                     </div>
                     <div className="text-right">
                         <h1 className="text-3xl font-bold text-primary mb-1">INVOICE</h1>
@@ -41,7 +41,7 @@ export const InvoicePDFTemplate = React.forwardRef<HTMLDivElement, { invoice: In
                     </div>
                     <div className="text-right leading-normal">
                         <h2 className="font-bold uppercase text-sm text-gray-500 mb-1">From:</h2>
-                        <p className="font-bold text-primary">Roopkotha</p>
+                        <p className="font-bold text-primary">Minimal Mischief</p>
                         <p>Professor Colony, C/O, Deshbandhu Pal</p>
                         <p>Holding No :- 195/8, Ward no. 14</p>
                         <p>Bolpur, Birbhum, West Bengal - 731204</p>

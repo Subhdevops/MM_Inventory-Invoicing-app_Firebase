@@ -9,7 +9,7 @@ export const checkAndCreateUserProfile = async (user: User): Promise<Pick<UserPr
 
   if (!userSnap.exists()) {
     // New user, determine role based on email address
-    const role = user.email === 'admin@admin.com' ? 'admin' : 'user';
+    const role = user.email === 'admin@minimalmischief.com' ? 'admin' : 'user';
 
     try {
       await setDoc(userRef, {

@@ -950,7 +950,7 @@ export default function Home() {
             <main className="flex-1 flex items-center justify-center p-4">
                 <div className="text-center space-y-4">
                     <Activity className="mx-auto h-12 w-12 text-primary" />
-                    <h2 className="text-2xl font-bold tracking-tight">Welcome to Roopkotha</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">Welcome to Minimal Mischief</h2>
                     <p className="text-muted-foreground">
                         {events.length > 0 
                             ? "Select an event from the menu above to begin." 

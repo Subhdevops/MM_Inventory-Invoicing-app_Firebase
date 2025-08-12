@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import GoogleIcon from '@/components/icons/google-icon';
-import RoopkothaLogo from '@/components/icons/roopkotha-logo';
+import MinimalMischiefLogo from '@/components/icons/minimal-mischief-logo';
 import { checkAndCreateUserProfile } from '@/lib/user';
 
 export default function LoginPage() {
@@ -43,7 +43,7 @@ export default function LoginPage() {
       } else {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await checkAndCreateUserProfile(userCredential.user);
-        toast({ title: 'Signup Successful', description: 'Welcome to ROOPKOTHA!' });
+        toast({ title: 'Signup Successful', description: 'Welcome to Minimal Mischief!' });
       }
       router.push('/');
     } catch (error: any) {
@@ -74,7 +74,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <RoopkothaLogo className="mx-auto mb-6" width={250} height={60}/>
+        <MinimalMischiefLogo className="mx-auto mb-6" width={250} height={60}/>
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>

@@ -21,7 +21,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from './ui/table';
 import { X, Plus, Loader2, FileText, IndianRupee, Percent } from 'lucide-react';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import MinimalMischiefLogo from './icons/minimal-mischief-logo';
 import { ScrollArea } from './ui/scroll-area';
 
 const GST_RATE = 0.05;
@@ -159,7 +159,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                     const oldStyle = doc.getFont().fontStyle;
 
                     doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-                    doc.text('Roopkotha', x, y, { align: 'right' });
+                    doc.text('Minimal Mischief', x, y, { align: 'right' });
                     y += doc.getTextDimensions('R', {fontSize: 10}).h + 1;
 
                     doc.setFontSize(8); doc.setFont('helvetica', 'normal');
@@ -425,4 +425,3 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
         </Dialog>
     );
 }
-

@@ -10,13 +10,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { ChevronsUpDown, Check, PlusCircle } from 'lucide-react';
 import type { Event } from '@/lib/types';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import MinimalMischiefLogo from './icons/minimal-mischief-logo';
 import { CreateEventDialog } from './create-event-dialog';
 
 type EventSwitcherProps = {
@@ -39,7 +38,7 @@ export function EventSwitcher({
   return (
     <>
       <div className="flex items-center gap-4">
-        <RoopkothaLogo showTagline={false} width={150} height={36} />
+        <MinimalMischiefLogo showTagline={false} width={150} height={36} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

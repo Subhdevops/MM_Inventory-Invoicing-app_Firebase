@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Percent, IndianRupee } from 'lucide-react';
-import RoopkothaLogo from './icons/roopkotha-logo';
+import MinimalMischiefLogo from './icons/minimal-mischief-logo';
 
 const GST_RATE = 0.05; // 5%
 
@@ -58,7 +58,7 @@ export function InvoiceForm({
       <div className="grid md:grid-cols-2 gap-8 overflow-y-auto p-2 flex-1 min-h-0">
           <div className="flex flex-col gap-6">
               <header className="flex items-center justify-between pb-6 border-b">
-                <RoopkothaLogo showTagline={false} width={150} height={36} />
+                <MinimalMischiefLogo showTagline={false} width={150} height={36} />
               </header>
               
               <section className="grid grid-cols-2 gap-8">
@@ -75,7 +75,7 @@ export function InvoiceForm({
                    </div>
                    <div className="text-right space-y-1">
                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">From</h2>
-                       <p className="font-bold text-primary">Roopkotha</p>
+                       <p className="font-bold text-primary">Minimal Mischief</p>
                        <p className="text-xs text-muted-foreground">Professor Colony, C/O, Deshbandhu Pal</p>
                        <p className="text-xs text-muted-foreground">Holding No :- 195/8, Ward no. 14</p>
                        <p className="text-xs text-muted-foreground">Bolpur, Birbhum, West Bengal - 731204</p>
