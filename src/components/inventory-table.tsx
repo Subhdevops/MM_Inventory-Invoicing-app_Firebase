@@ -32,12 +32,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
-import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera, ChevronDown, ChevronRight } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShoppingCart, Search, ArrowUpDown, Pencil, FileText, Tags, Camera, ChevronDown, ChevronRight, ArchiveRestore } from 'lucide-react';
 import EditProductDialog from './edit-product-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CameraScannerDialog } from './camera-scanner-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { RestockDialog } from './restock-dialog';
 
 type GroupedProduct = {
   barcode: string;
@@ -63,16 +64,20 @@ type InventoryTableProps = {
   onScan: (barcode: string) => void;
   onOpenBulkEditDialog: (products: Product[]) => void;
   onGenerateTags: (products: Product[]) => void;
+  onRestockProduct: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onDeleteAllSoldOut: () => Promise<void>;
 };
 
 type SortKey = keyof GroupedProduct | 'price' | null;
 type View = 'available' | 'sold-out';
 
-export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole, onScan, onOpenBulkEditDialog, onGenerateTags }: InventoryTableProps) {
+export default function InventoryTable({ products, removeProduct, bulkRemoveProducts, updateProduct, filter, onFilterChange, selectedRows, setSelectedRows, onCreateInvoice, isLoading, userRole, onScan, onOpenBulkEditDialog, onGenerateTags, onRestockProduct, onDeleteAllSoldOut }: InventoryTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [productToRemove, setProductToRemove] = useState<string | null>(null);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [isDeleteAllSoldConfirmOpen, setIsDeleteAllSoldConfirmOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToRestock, setProductToRestock] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [view, setView] = useState<View>('available');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -91,6 +96,11 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     onFilterChange('');
     setIsScannerOpen(false);
   }, [onScan, onFilterChange]);
+
+  const handleRestock = async (newProductData: Omit<Product, 'id' | 'isSold'>) => {
+    await onRestockProduct(newProductData);
+    setProductToRestock(null);
+  };
   
   const toggleRowExpansion = (barcode: string) => {
     setExpandedRows(prev => {
@@ -146,7 +156,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     if (view === 'available') {
         filteredGroups = filteredGroups.filter(g => g.items.some(p => !p.isSold));
     } else {
-        filteredGroups = filteredGroups.filter(g => g.items.every(p => p.isSold));
+        filteredGroups = filteredGroups.filter(g => g.items.some(p => p.isSold));
     }
 
     if (sortConfig.key) {
@@ -259,7 +269,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             </Button>
           </div>
         </div>
-        {isAdmin && selectedRows.length > 0 && (
+        {isAdmin && selectedRows.length > 0 && view === 'available' && (
           <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end shrink-0">
              <Button 
               onClick={() => onGenerateTags(selectedProducts)}
@@ -300,6 +310,14 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
             </DropdownMenu>
           </div>
         )}
+        {isAdmin && view === 'sold-out' && soldOutCount > 0 && (
+            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end shrink-0">
+                <Button variant="destructive" onClick={() => setIsDeleteAllSoldConfirmOpen(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete All Sold Items ({soldOutCount})
+                </Button>
+            </div>
+        )}
       </div>
       <div className="rounded-md border bg-card shadow-sm">
         <div className="relative w-full overflow-auto">
@@ -339,7 +357,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                     displayedProductGroups.map(group => {
                         const isGroupSelected = group.availableCount > 0 && group.items.filter(p => !p.isSold).every(p => selectedRows.includes(p.id));
                         const isGroupIndeterminate = !isGroupSelected && group.items.filter(p => !p.isSold).some(p => selectedRows.includes(p.id));
-
+                        const itemsInView = view === 'available' ? group.items.filter(p => !p.isSold) : group.items.filter(p => p.isSold);
+                        if (itemsInView.length === 0 && filter) return null; // Don't show group if filter hides all items
+                        
                         return(
                         <Fragment key={group.barcode}>
                             <TableRow className="font-bold bg-muted/30">
@@ -348,7 +368,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                                         checked={isGroupSelected}
                                         onCheckedChange={(isChecked) => handleSelectGroup(group, !!isChecked)}
                                         aria-label={`Select all ${group.name}`}
-                                        disabled={!isAdmin || group.availableCount === 0}
+                                        disabled={!isAdmin || group.availableCount === 0 || view === 'sold-out'}
                                         data-state={isGroupIndeterminate ? 'indeterminate' : (isGroupSelected ? 'checked' : 'unchecked')}
                                     />
                                 </TableCell>
@@ -362,7 +382,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                                 <TableCell className="hidden md:table-cell truncate max-w-xs">{group.description}</TableCell>
                                 <TableCell className="text-right">₹{group.price.toFixed(2)}</TableCell>
                                 <TableCell className="hidden font-mono lg:table-cell">{group.barcode}</TableCell>
-                                {isAdmin && (
+                                {isAdmin && view === 'available' && (
                                     <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -383,6 +403,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                                     </DropdownMenu>
                                     </TableCell>
                                 )}
+                                {isAdmin && view === 'sold-out' && (
+                                    <TableCell className="text-right"></TableCell>
+                                )}
                             </TableRow>
                             {expandedRows.has(group.barcode) && (
                                 <TableRow>
@@ -400,7 +423,7 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                            {group.items.map(product => (
+                                            {group.items.filter(p => view === 'available' ? !p.isSold : p.isSold).map(product => (
                                                 <TableRow key={product.id} data-state={selectedRows.includes(product.id) && "selected"} className={cn(product.isSold && "opacity-50", "hover:bg-muted/50")}>
                                                     <TableCell>
                                                         <Checkbox
@@ -441,14 +464,23 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => setProductToEdit(product)} disabled={product.isSold}>
-                                                                <Pencil className="mr-2 h-4 w-4" />
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => onCreateInvoice([product])} disabled={product.isSold}>
-                                                                <ShoppingCart className="mr-2 h-4 w-4" />
-                                                                Sell This Item
-                                                            </DropdownMenuItem>
+                                                            {product.isSold ? (
+                                                                <DropdownMenuItem onClick={() => setProductToRestock(product)}>
+                                                                    <ArchiveRestore className="mr-2 h-4 w-4" />
+                                                                    Restock
+                                                                </DropdownMenuItem>
+                                                            ) : (
+                                                                <>
+                                                                    <DropdownMenuItem onClick={() => setProductToEdit(product)}>
+                                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                                        Edit
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => onCreateInvoice([product])}>
+                                                                        <ShoppingCart className="mr-2 h-4 w-4" />
+                                                                        Sell This Item
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem className="focus:bg-destructive/80 focus:text-destructive-foreground text-destructive" onClick={() => setProductToRemove(product.id)}>
                                                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -506,6 +538,15 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
           updateProduct={updateProduct}
         />
       )}
+      
+      {productToRestock && (
+        <RestockDialog
+            isOpen={!!productToRestock}
+            onOpenChange={(open) => !open && setProductToRestock(null)}
+            product={productToRestock}
+            onRestock={handleRestock}
+        />
+      )}
 
       <AlertDialog open={!!productToRemove} onOpenChange={(open) => !open && setProductToRemove(null)}>
         <AlertDialogContent>
@@ -544,6 +585,29 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
               setIsBulkDeleteConfirmOpen(false);
             }}>
               Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={isDeleteAllSoldConfirmOpen} onOpenChange={setIsDeleteAllSoldConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all {soldOutCount} sold items from your inventory. This does not affect past invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                onDeleteAllSoldOut();
+                setIsDeleteAllSoldConfirmOpen(false);
+              }}
+            >
+              Confirm Deletion
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -909,10 +909,6 @@ export default function Home() {
               onViewFiles={() => setIsViewFilesOpen(true)}
               onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
               onUploadComplete={addSavedFile}
-              soldProducts={products.filter(p => p.isSold)}
-              invoices={invoices}
-              onRestockProduct={restockProduct}
-              onDeleteAllSoldOut={deleteAllSoldOutProducts}
             />
             <ScanningSession
               scannedProducts={scannedProducts}
@@ -937,6 +933,8 @@ export default function Home() {
               onScan={handleBarcodeScan}
               onOpenBulkEditDialog={handleOpenBulkEditDialog}
               onGenerateTags={handleGenerateTags}
+              onRestockProduct={restockProduct}
+              onDeleteAllSoldOut={deleteAllSoldOutProducts}
             />
         </main>
     )

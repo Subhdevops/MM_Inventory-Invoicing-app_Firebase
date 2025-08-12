@@ -32,13 +32,12 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, ArchiveRestore, LineChart as LineChartIcon } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, LineChart as LineChartIcon } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, SavedFile, Product, Invoice } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 import { UploadFileDialog } from "./upload-picture-dialog";
-import ManageSoldOutDialog from "./manage-sold-out-dialog";
 
 type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time';
 
@@ -72,10 +71,6 @@ type DashboardProps = {
   onViewFiles: () => void;
   onOpenCustomInvoice: () => void;
   onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
-  soldProducts: Product[];
-  onRestockProduct: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
-  onDeleteAllSoldOut: () => Promise<void>;
-  invoices: Invoice[];
 };
 
 const chartMeta: Record<ChartView, {
@@ -116,9 +111,8 @@ const chartMeta: Record<ChartView, {
   }
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, onRestockProduct, onDeleteAllSoldOut, invoices }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isManageSoldOutOpen, setIsManageSoldOutOpen] = useState(false);
   
   const handleClearInvoices = async () => {
     await onClearAllInvoices();
@@ -353,13 +347,6 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Button variant="destructive" onClick={() => setIsManageSoldOutOpen(true)} disabled={isLoading || !isAdmin || soldProducts.length === 0}>
-                <ArchiveRestore className="mr-2 h-4 w-4" />
-                Manage Sold Out Items
-              </Button>
-               <p className="text-xs text-muted-foreground mt-2">Restock or permanently delete sold out items from inventory.</p>
-            </div>
-            <div>
               <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Clear All Invoices
@@ -395,13 +382,6 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
         </AlertDialogContent>
       </AlertDialog>
     </section>
-    <ManageSoldOutDialog 
-        isOpen={isManageSoldOutOpen}
-        onOpenChange={setIsManageSoldOutOpen}
-        soldProducts={soldProducts}
-        onRestock={onRestockProduct}
-        onDeleteAllSoldOut={onDeleteAllSoldOut}
-    />
     </>
   );
 }
