@@ -99,7 +99,7 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
               </Table>
             </ScrollArea>
           </div>
-          <DialogFooter className="justify-between">
+          <DialogFooter className="pt-4 border-t justify-between">
             <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)} disabled={soldProducts.length === 0}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete All Sold Items
