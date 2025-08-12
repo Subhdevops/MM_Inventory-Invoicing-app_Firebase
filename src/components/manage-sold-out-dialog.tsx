@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import type { Product, Invoice, SoldProduct } from '@/lib/types';
+import { useState } from 'react';
+import type { Product } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -25,46 +25,33 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Undo, Loader2 } from 'lucide-react';
+import { ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
+import { RestockDialog } from './restock-dialog';
 
 type ManageSoldOutDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   soldProducts: Product[];
-  invoices: Invoice[];
-  onReturnItemToStock: (productId: string) => Promise<void>;
+  onRestock: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onDeleteAllSoldOut: () => Promise<void>;
 };
 
-export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts, invoices, onReturnItemToStock }: ManageSoldOutDialogProps) {
-  const [productToReturn, setProductToReturn] = useState<Product | null>(null);
+export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts, onRestock, onDeleteAllSoldOut }: ManageSoldOutDialogProps) {
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [productToRestock, setProductToRestock] = useState<Product | null>(null);
 
-  const productDetails = useMemo(() => {
-    const invoiceMap = new Map<string, Invoice>();
-    invoices.forEach(inv => {
-        if (inv.type === 'standard') {
-            (inv.items as SoldProduct[]).forEach(item => {
-                invoiceMap.set(item.id, inv);
-            });
-        }
-    });
-
-    return soldProducts.map(p => ({
-      ...p,
-      invoice: invoiceMap.get(p.id),
-    }));
-  }, [soldProducts, invoices]);
-
-  const handleReturnClick = (product: Product) => {
-    setProductToReturn(product);
-  };
-
-  const handleConfirmReturn = async () => {
-    if (!productToReturn) return;
+  const handleDeleteAll = async () => {
     setIsProcessing(true);
-    await onReturnItemToStock(productToReturn.id);
+    await onDeleteAllSoldOut();
     setIsProcessing(false);
-    setProductToReturn(null);
+    setIsDeleteConfirmOpen(false);
+    onOpenChange(false);
+  };
+  
+  const handleRestock = async (newProductData: Omit<Product, 'id' | 'isSold'>) => {
+    await onRestock(newProductData);
+    setProductToRestock(null); // Close the restock dialog
   };
 
   return (
@@ -74,7 +61,7 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
           <DialogHeader>
             <DialogTitle>Manage Sold Out Items</DialogTitle>
             <DialogDescription>
-              Return items to stock if a sale was made by mistake. This will update the original invoice.
+              Restock an item by creating a new inventory entry for it, or delete all sold items. These actions do not affect past invoices.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0">
@@ -84,38 +71,39 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Unique Code</TableHead>
-                    <TableHead>Invoice #</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {productDetails.length > 0 ? productDetails.map(p => (
+                  {soldProducts.length > 0 ? soldProducts.map(p => (
                     <TableRow key={p.id}>
                       <TableCell>{p.name}</TableCell>
                       <TableCell className="font-mono">{p.uniqueProductCode}</TableCell>
-                      <TableCell>{p.invoice?.invoiceNumber || 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleReturnClick(p)}
-                          disabled={!p.invoice}
+                          onClick={() => setProductToRestock(p)}
                         >
-                          <Undo className="mr-2 h-4 w-4" />
-                          Return to Stock
+                          <ArchiveRestore className="mr-2 h-4 w-4" />
+                          Restock
                         </Button>
                       </TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">No sold items to manage.</TableCell>
+                        <TableCell colSpan={3} className="h-24 text-center">No sold items to manage.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
             </ScrollArea>
           </div>
-          <DialogFooter>
+          <DialogFooter className="justify-between">
+            <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)} disabled={soldProducts.length === 0}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete All Sold Items
+            </Button>
             <DialogClose asChild>
                 <Button variant="ghost">Close</Button>
             </DialogClose>
@@ -123,23 +111,32 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
         </DialogContent>
       </Dialog>
       
-      <AlertDialog open={!!productToReturn} onOpenChange={(open) => !open && setProductToReturn(null)}>
+      {productToRestock && (
+        <RestockDialog
+            isOpen={!!productToRestock}
+            onOpenChange={(open) => !open && setProductToRestock(null)}
+            product={productToRestock}
+            onRestock={handleRestock}
+        />
+      )}
+      
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Return Item to Stock?</AlertDialogTitle>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove "{productToReturn?.name}" from invoice #{productToReturn && productDetails.find(p => p.id === productToReturn.id)?.invoice?.invoiceNumber} and mark it as available. The invoice totals will be recalculated. This action cannot be undone.
+              This will permanently delete all {soldProducts.length} sold out items from your inventory. This action cannot be undone and does not affect your sales records.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              onClick={handleConfirmReturn}
+              onClick={handleDeleteAll}
               disabled={isProcessing}
             >
               {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isProcessing ? 'Processing...' : 'Confirm Return'}
+              {isProcessing ? 'Deleting...' : 'Confirm Deletion'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

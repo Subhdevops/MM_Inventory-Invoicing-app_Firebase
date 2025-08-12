@@ -32,7 +32,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, Undo, LineChart as LineChartIcon } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, ArchiveRestore, LineChart as LineChartIcon } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, SavedFile, Product, Invoice } from "@/lib/types";
@@ -73,8 +73,8 @@ type DashboardProps = {
   onOpenCustomInvoice: () => void;
   onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
   soldProducts: Product[];
-  invoices: Invoice[];
-  onReturnItemToStock: (productId: string) => Promise<void>;
+  onRestockProduct: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onDeleteAllSoldOut: () => Promise<void>;
 };
 
 const chartMeta: Record<ChartView, {
@@ -115,7 +115,7 @@ const chartMeta: Record<ChartView, {
   }
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, invoices, onReturnItemToStock }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, onRestockProduct, onDeleteAllSoldOut }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isManageSoldOutOpen, setIsManageSoldOutOpen] = useState(false);
   
@@ -353,10 +353,10 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           <CardContent className="space-y-4">
             <div>
               <Button variant="destructive" onClick={() => setIsManageSoldOutOpen(true)} disabled={isLoading || !isAdmin || soldProducts.length === 0}>
-                <Undo className="mr-2 h-4 w-4" />
+                <ArchiveRestore className="mr-2 h-4 w-4" />
                 Manage Sold Out Items
               </Button>
-               <p className="text-xs text-muted-foreground mt-2">Return a sold item to stock. This will update the original invoice.</p>
+               <p className="text-xs text-muted-foreground mt-2">Restock or permanently delete sold out items from inventory.</p>
             </div>
             <div>
               <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
@@ -398,8 +398,8 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
         isOpen={isManageSoldOutOpen}
         onOpenChange={setIsManageSoldOutOpen}
         soldProducts={soldProducts}
-        invoices={invoices}
-        onReturnItemToStock={onReturnItemToStock}
+        onRestock={onRestockProduct}
+        onDeleteAllSoldOut={onDeleteAllSoldOut}
     />
     </>
   );

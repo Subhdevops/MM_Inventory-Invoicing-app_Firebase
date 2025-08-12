@@ -790,65 +790,41 @@ export default function Home() {
     }
   };
   
-  const handleReturnItemToStock = useCallback(async (productId: string) => {
+  const restockProduct = useCallback(async (productData: Omit<Product, 'id' | 'isSold'>) => {
+    await addProduct(productData);
+    toast({
+        title: "Product Restocked",
+        description: `${productData.name} has been added back to inventory.`,
+    });
+  }, [addProduct, toast]);
+
+  const deleteAllSoldOutProducts = useCallback(async () => {
     if (!activeEventId) return;
     
-    const invoiceToUpdate = invoices.find(inv =>
-        inv.type === 'standard' && (inv.items as SoldProduct[]).some(item => item.id === productId)
-    );
-
-    if (!invoiceToUpdate) {
-        toast({
-            title: "Invoice Not Found",
-            description: "Could not find the original invoice for this item.",
-            variant: "destructive",
-        });
+    const soldProductsToDelete = products.filter(p => p.isSold);
+    if (soldProductsToDelete.length === 0) {
+        toast({ title: "No sold out products to delete." });
         return;
     }
 
     try {
-        const batch = writeBatch(db);
-
-        // 1. Update the Product
-        const productRef = doc(db, "events", activeEventId, "products", productId);
-        batch.update(productRef, { isSold: false });
-
-        // 2. Update the Invoice
-        const invoiceRef = doc(db, "events", activeEventId, "invoices", invoiceToUpdate.id);
-        const updatedItems = (invoiceToUpdate.items as SoldProduct[]).filter(item => item.id !== productId);
-        
-        if (updatedItems.length === 0) {
-            // If the invoice is now empty, delete it
-            batch.delete(invoiceRef);
-        } else {
-            // Otherwise, recalculate totals and update it
-            const newSubtotal = updatedItems.reduce((acc, item) => acc + item.price, 0);
-            const newDiscountAmount = newSubtotal * (invoiceToUpdate.discountPercentage / 100);
-            const newSubtotalAfterDiscount = newSubtotal - newDiscountAmount;
-            const GST_RATE = 0.05;
-            const newGstAmount = newSubtotalAfterDiscount * GST_RATE;
-            const newGrandTotal = newSubtotalAfterDiscount + newGstAmount;
-            
-            batch.update(invoiceRef, {
-                items: updatedItems,
-                subtotal: newSubtotal,
-                discountAmount: newDiscountAmount,
-                gstAmount: newGstAmount,
-                grandTotal: newGrandTotal,
-            });
-        }
-        
-        await batch.commit();
-
-        toast({
-            title: "Item Returned",
-            description: "The item has been returned to stock and the invoice has been updated.",
-        });
+      const batch = writeBatch(db);
+      soldProductsToDelete.forEach(product => {
+        const docRef = doc(db, "events", activeEventId, "products", product.id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+      
+      toast({
+        title: "Sold Out Products Deleted",
+        description: `${soldProductsToDelete.length} items have been removed.`,
+        variant: "destructive",
+      });
     } catch (error) {
-        console.error("Error returning item to stock:", error);
-        toast({ title: "Error", description: "Failed to return item to stock.", variant: "destructive" });
+      console.error("Error deleting sold out products: ", error);
+      toast({ title: "Error", description: "Failed to delete sold out products.", variant: "destructive" });
     }
-  }, [activeEventId, invoices, toast]);
+  }, [activeEventId, products, toast]);
 
   const handleOpenInvoiceDialog = (products: Product[]) => {
     if (products.length === 0) return;
@@ -935,7 +911,8 @@ export default function Home() {
               onUploadComplete={addSavedFile}
               soldProducts={products.filter(p => p.isSold)}
               invoices={invoices}
-              onReturnItemToStock={handleReturnItemToStock}
+              onRestockProduct={restockProduct}
+              onDeleteAllSoldOut={deleteAllSoldOutProducts}
             />
             <ScanningSession
               scannedProducts={scannedProducts}
