@@ -31,7 +31,7 @@ const PriceTag = ({ product }: { product: Product }) => {
         <MinimalMischiefLogo showTagline={true} width={100} height={100} />
       </div>
 
-      <div style={{ marginTop: '-15px' }}>
+      <div style={{ marginTop: '-10px' }}>
         <QRCodeCanvas
           value={product.uniqueProductCode} // Use unique code for QR
           size={40}
