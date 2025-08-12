@@ -75,6 +75,7 @@ type DashboardProps = {
   soldProducts: Product[];
   onRestockProduct: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
   onDeleteAllSoldOut: () => Promise<void>;
+  invoices: Invoice[];
 };
 
 const chartMeta: Record<ChartView, {
@@ -115,7 +116,7 @@ const chartMeta: Record<ChartView, {
   }
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, onRestockProduct, onDeleteAllSoldOut }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, onRestockProduct, onDeleteAllSoldOut, invoices }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isManageSoldOutOpen, setIsManageSoldOutOpen] = useState(false);
   
