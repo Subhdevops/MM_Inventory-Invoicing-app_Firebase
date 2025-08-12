@@ -86,9 +86,9 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
           if (logoElement && logoElement.naturalWidth > 0) {
               const logoWidth = 40; 
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
-              const logoHeight = logoWidth * logoAspectRatio;
-              const yPosition = 15;
-              docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
+              const logoHeight = 40;
+              const yPosition = 10;
+              docInstance.addImage(logoElement, 'PNG', 10, yPosition, logoWidth, logoHeight);
               
               docInstance.setFontSize(7);
               docInstance.setTextColor(100);
