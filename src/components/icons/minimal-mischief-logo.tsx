@@ -12,7 +12,7 @@ type MinimalMischiefLogoProps = {
 const MinimalMischiefLogo = ({ className, showTagline = true, width = 200, height = 48 }: MinimalMischiefLogoProps) => (
   <div className={cn("flex flex-col items-center justify-center", className)}>
     <Image
-      src="/logo.png"
+      src="/logo.png?v=2"
       alt="Minimal Mischief Logo"
       width={width}
       height={height}
