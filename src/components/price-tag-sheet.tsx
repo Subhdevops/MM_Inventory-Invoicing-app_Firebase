@@ -27,7 +27,7 @@ const PriceTag = ({ product }: { product: Product }) => {
       position: 'relative',
     }}>
       <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-        <MinimalMischiefLogo showTagline={true} width={60} height={60} />
+        <MinimalMischiefLogo showTagline={true} width={100} height={100} />
       </div>
 
       <div style={{ marginTop: '0' }}>
@@ -55,7 +55,7 @@ const PriceTag = ({ product }: { product: Product }) => {
         </p>
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '6px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 'auto', paddingTop: '0', marginBottom: '10px' }}>
         <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0 }}>
           ₹{product.price.toFixed(2)}
         </p>
