@@ -9,7 +9,7 @@ import { auth, db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { useToast } from './use-toast';
 
-const SESSION_SIGN_IN_TIME_KEY = 'roopkotha_session_signin_time';
+const SESSION_SIGN_IN_TIME_KEY = 'minimal_mischief_session_signin_time';
 
 export const useMultiDeviceLogoutListener = (user: User | null | undefined) => {
     const { toast } = useToast();
@@ -64,5 +64,3 @@ export const useMultiDeviceLogoutListener = (user: User | null | undefined) => {
         };
     }, [user, toast]);
 };
-
-    

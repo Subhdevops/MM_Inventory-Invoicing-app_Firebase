@@ -74,7 +74,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
         docInstance.setFillColor(41, 128, 185);
         docInstance.rect(0, pageHeight - 15, docInstance.internal.pageSize.width, 15, 'F');
         docInstance.setTextColor(255);
-        docInstance.text('Thank you for shopping with us!', 15, pageHeight - 8);
+        docInstance.text('Thank you for your business!', 15, pageHeight - 8);
 
         const pageText = `Page ${docInstance.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`;
         docInstance.text(pageText, docInstance.internal.pageSize.width - 15, pageHeight - 8, { align: 'right' });
@@ -95,7 +95,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               docInstance.setTextColor(100);
               docInstance.setFont('helvetica', 'italic');
               const logoCenterX = 15 + logoWidth / 2;
-              docInstance.text('Simple by Nature, Mischief by Choice', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
+              docInstance.text('Where fashion meets fairytale', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
               docInstance.setFont('helvetica', 'normal'); // Reset font style
           }
           
@@ -162,11 +162,11 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'normal');
                 const addressLines = [
-                    'Barasat',
-                    'House No / Street No',
-                    'Kolkata West Bengal - 7000XXX',
-                    'Phone: XXXXXXXXXX',
-                    'GSTIN: XXXXXXXXXXXXXX'
+                    'Professor Colony, C/O, Deshbandhu Pal',
+                    'Holding No :- 195/8, Ward no. 14',
+                    'Bolpur, Birbhum, West Bengal - 731204',
+                    'Phone: 9476468690',
+                    'GSTIN: 19AANCR9537M1ZC'
                 ];
                 doc.text(addressLines.join('\n'), x, y, { align: 'right', lineHeightFactor: 1.15 });
 
