@@ -71,63 +71,6 @@ body {
   }
 }
 
-@keyframes fly-across {
-  0% {
-    transform: translateX(-10vw) translateY(20vh) rotate(0deg);
-  }
-  25% {
-    transform: translateX(25vw) translateY(10vh) rotate(-10deg);
-  }
-  50% {
-    transform: translateX(50vw) translateY(30vh) rotate(10deg);
-  }
-  75% {
-    transform: translateX(75vw) translateY(15vh) rotate(-5deg);
-  }
-  100% {
-    transform: translateX(110vw) translateY(25vh) rotate(5deg);
-  }
-}
-
-@keyframes flap-wings-left {
-  0%,
-  100% {
-    transform: rotateY(0deg);
-  }
-  50% {
-    transform: rotateY(120deg);
-  }
-}
-
-@keyframes flap-wings-right {
-  0%,
-  100% {
-    transform: rotateY(0deg);
-  }
-  50% {
-    transform: rotateY(-120deg);
-  }
-}
-
-.hummingbird {
-  position: absolute;
-  top: 0;
-  left: 0;
-  animation: fly-across 15s linear forwards;
-}
-
-.hummingbird .wing {
-  transform-origin: 50px 50px; /* Center of the SVG viewbox */
-}
-
-.hummingbird .left-wing {
-  animation: flap-wings-left 0.15s infinite;
-}
-
-.hummingbird .right-wing {
-  animation: flap-wings-right 0.15s infinite;
-}
-
 @keyframes pulse-red {
   50% {
     opacity: .7;

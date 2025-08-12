@@ -19,7 +19,6 @@ import { Activity, Loader2 } from 'lucide-react';
 import { checkAndCreateUserProfile } from '@/lib/user';
 import { ViewFilesDialog } from '@/components/view-pictures-dialog';
 import { useIdleTimeout } from '@/hooks/use-idle-timeout';
-import HummingbirdAnimation from '@/components/hummingbird-animation';
 import { useMultiDeviceLogoutListener } from '@/hooks/use-multi-device-logout-listener';
 import { ScanningSession } from '@/components/scanning-session';
 import InvoiceDialog from '@/components/invoice-dialog';
@@ -1015,7 +1014,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <HummingbirdAnimation />
       <Header 
         addProduct={addProduct}
         onImportInventory={handleImportInventory}
