@@ -67,7 +67,7 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
           <div className="flex-1 min-h-0">
             <ScrollArea className="h-full">
               <Table>
-                <TableHeader className="sticky top-0 bg-background">
+                <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Unique Code</TableHead>
@@ -99,7 +99,7 @@ export default function ManageSoldOutDialog({ isOpen, onOpenChange, soldProducts
               </Table>
             </ScrollArea>
           </div>
-          <DialogFooter className="pt-4 border-t justify-between">
+          <DialogFooter className="pt-4 border-t justify-between shrink-0">
             <Button variant="destructive" onClick={() => setIsDeleteConfirmOpen(true)} disabled={soldProducts.length === 0}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete All Sold Items
