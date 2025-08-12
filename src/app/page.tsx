@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event, CustomLineItem } from '@/lib/types';
 import Header from '@/components/header';
@@ -42,7 +42,7 @@ export default function Home() {
   const [userRole, setUserRole] = useState<UserProfile['role'] | null>(null);
   const [isRoleLoading, setIsRoleLoading] = useState(true);
   const { toast } = useToast();
-  const [chartView, setChartView] = useState<'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable'>('top-stocked');
+  const [chartView, setChartView] = useState< 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time'>('top-stocked');
   const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
   const [scannedProducts, setScannedProducts] = useState<Product[]>([]);
   const [productsForDialog, setProductsForDialog] = useState<Product[]>([]);
@@ -194,6 +194,18 @@ export default function Home() {
         .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
         .map(([name, value]) => ({ name, value: Math.round(value) }));
+  }, [invoices]);
+  
+  const salesOverTimeData = useMemo(() => {
+      const salesByDate: Record<string, number> = {};
+      invoices.forEach(invoice => {
+          const date = new Date(invoice.date).toISOString().split('T')[0]; // Get YYYY-MM-DD
+          salesByDate[date] = (salesByDate[date] || 0) + 1;
+      });
+
+      return Object.entries(salesByDate)
+          .map(([date, sales]) => ({ date, sales }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [invoices]);
   
   const activeEvent = useMemo(() => events.find(e => e.id === activeEventId), [events, activeEventId]);
@@ -777,6 +789,66 @@ export default function Home() {
       }
     }
   };
+  
+  const handleReturnItemToStock = useCallback(async (productId: string) => {
+    if (!activeEventId) return;
+    
+    const invoiceToUpdate = invoices.find(inv =>
+        inv.type === 'standard' && (inv.items as SoldProduct[]).some(item => item.id === productId)
+    );
+
+    if (!invoiceToUpdate) {
+        toast({
+            title: "Invoice Not Found",
+            description: "Could not find the original invoice for this item.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Update the Product
+        const productRef = doc(db, "events", activeEventId, "products", productId);
+        batch.update(productRef, { isSold: false });
+
+        // 2. Update the Invoice
+        const invoiceRef = doc(db, "events", activeEventId, "invoices", invoiceToUpdate.id);
+        const updatedItems = (invoiceToUpdate.items as SoldProduct[]).filter(item => item.id !== productId);
+        
+        if (updatedItems.length === 0) {
+            // If the invoice is now empty, delete it
+            batch.delete(invoiceRef);
+        } else {
+            // Otherwise, recalculate totals and update it
+            const newSubtotal = updatedItems.reduce((acc, item) => acc + item.price, 0);
+            const newDiscountAmount = newSubtotal * (invoiceToUpdate.discountPercentage / 100);
+            const newSubtotalAfterDiscount = newSubtotal - newDiscountAmount;
+            const GST_RATE = 0.05;
+            const newGstAmount = newSubtotalAfterDiscount * GST_RATE;
+            const newGrandTotal = newSubtotalAfterDiscount + newGstAmount;
+            
+            batch.update(invoiceRef, {
+                items: updatedItems,
+                subtotal: newSubtotal,
+                discountAmount: newDiscountAmount,
+                gstAmount: newGstAmount,
+                grandTotal: newGrandTotal,
+            });
+        }
+        
+        await batch.commit();
+
+        toast({
+            title: "Item Returned",
+            description: "The item has been returned to stock and the invoice has been updated.",
+        });
+    } catch (error) {
+        console.error("Error returning item to stock:", error);
+        toast({ title: "Error", description: "Failed to return item to stock.", variant: "destructive" });
+    }
+  }, [activeEventId, invoices, toast]);
 
   const handleOpenInvoiceDialog = (products: Product[]) => {
     if (products.length === 0) return;
@@ -804,6 +876,7 @@ export default function Home() {
     'lowest-stocked': lowestStockData,
     'best-sellers': bestSellersData,
     'most-profitable': mostProfitableData,
+    'sales-over-time': salesOverTimeData,
   };
   
   const isLoading = authLoading || isRoleLoading;
@@ -860,6 +933,9 @@ export default function Home() {
               onViewFiles={() => setIsViewFilesOpen(true)}
               onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
               onUploadComplete={addSavedFile}
+              soldProducts={products.filter(p => p.isSold)}
+              invoices={invoices}
+              onReturnItemToStock={handleReturnItemToStock}
             />
             <ScanningSession
               scannedProducts={scannedProducts}

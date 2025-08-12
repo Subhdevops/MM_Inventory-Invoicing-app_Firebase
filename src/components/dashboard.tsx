@@ -22,20 +22,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Line,
+  LineChart,
   Bar,
   BarChart,
   Tooltip,
   XAxis,
   YAxis,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
-import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature } from 'lucide-react';
+import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, Undo, LineChart as LineChartIcon } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
-import type { UserProfile, SavedFile } from "@/lib/types";
+import type { UserProfile, SavedFile, Product, Invoice } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 import { UploadFileDialog } from "./upload-picture-dialog";
+import ManageSoldOutDialog from "./manage-sold-out-dialog";
 
-type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable';
+type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time';
 
 type DashboardProps = {
   stats: {
@@ -48,6 +53,7 @@ type DashboardProps = {
     'lowest-stocked': { name: string; value: number }[];
     'best-sellers': { name: string; value: number }[];
     'most-profitable': { name: string; value: number }[];
+    'sales-over-time': { date: string; sales: number }[];
   };
   chartView: ChartView;
   onChartViewChange: (view: ChartView) => void;
@@ -66,6 +72,9 @@ type DashboardProps = {
   onViewFiles: () => void;
   onOpenCustomInvoice: () => void;
   onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
+  soldProducts: Product[];
+  invoices: Invoice[];
+  onReturnItemToStock: (productId: string) => Promise<void>;
 };
 
 const chartMeta: Record<ChartView, {
@@ -98,10 +107,17 @@ const chartMeta: Record<ChartView, {
     label: 'Profit',
     icon: IndianRupee,
   },
+  'sales-over-time': {
+      title: 'Sales Over Time',
+      config: { sales: { label: 'Sales', color: 'hsl(var(--chart-3))' } },
+      label: 'Sales',
+      icon: LineChartIcon,
+  }
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, soldProducts, invoices, onReturnItemToStock }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isManageSoldOutOpen, setIsManageSoldOutOpen] = useState(false);
   
   const handleClearInvoices = async () => {
     await onClearAllInvoices();
@@ -113,7 +129,83 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
   const currentChartData = chartData[chartView];
   const currentChartMeta = chartMeta[chartView];
 
+  const renderChart = () => {
+    if (isLoading) {
+      return <Skeleton className="min-h-[300px] w-full" />;
+    }
+
+    if (currentChartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center min-h-[300px] text-muted-foreground">
+          <p>No data to display for this view.</p>
+        </div>
+      );
+    }
+    
+    if (chartView === 'sales-over-time') {
+      return (
+        <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
+            <LineChart
+                accessibilityLayer
+                data={chartData['sales-over-time']}
+                margin={{
+                    left: 12,
+                    right: 12,
+                }}
+            >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                />
+                <Tooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="line" />}
+                />
+                <Line
+                    dataKey="sales"
+                    type="natural"
+                    stroke="var(--color-sales)"
+                    strokeWidth={2}
+                    dot={false}
+                />
+            </LineChart>
+        </ChartContainer>
+      );
+    }
+
+    return (
+        <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
+            <BarChart accessibilityLayer data={currentChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                    tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '…' : '')}
+                />
+                <YAxis tickLine={false} axisLine={false} />
+                <Tooltip
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="dot" />}
+                    formatter={(value) => {
+                        if (chartView === 'most-profitable') {
+                            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value as number);
+                        }
+                        return value.toLocaleString();
+                    }}
+                />
+                <Bar dataKey="value" fill="var(--color-value)" radius={4} />
+            </BarChart>
+        </ChartContainer>
+    );
+};
+
   return (
+    <>
     <section className="space-y-6">
        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -250,37 +342,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
             </Select>
           </CardHeader>
           <CardContent className="pl-2">
-            {isLoading ? (
-              <Skeleton className="min-h-[300px] w-full" />
-            ) : currentChartData.length > 0 ? (
-              <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
-                <BarChart accessibilityLayer data={currentChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '…' : '')}
-                  />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <Tooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                    formatter={(value) => {
-                      if (chartView === 'most-profitable') {
-                        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value as number);
-                      }
-                      return value.toLocaleString();
-                    }}
-                  />
-                  <Bar dataKey="value" fill="var(--color-value)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            ) : (
-               <div className="flex items-center justify-center min-h-[300px] text-muted-foreground">
-                  <p>No data to display for this view.</p>
-                </div>
-            )}
+            {renderChart()}
           </CardContent>
         </Card>
         <Card className="border-destructive/50">
@@ -289,6 +351,13 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
             <CardDescription>These actions are permanent and cannot be undone.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Button variant="destructive" onClick={() => setIsManageSoldOutOpen(true)} disabled={isLoading || !isAdmin || soldProducts.length === 0}>
+                <Undo className="mr-2 h-4 w-4" />
+                Manage Sold Out Items
+              </Button>
+               <p className="text-xs text-muted-foreground mt-2">Return a sold item to stock. This will update the original invoice.</p>
+            </div>
             <div>
               <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -325,5 +394,13 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
         </AlertDialogContent>
       </AlertDialog>
     </section>
+    <ManageSoldOutDialog 
+        isOpen={isManageSoldOutOpen}
+        onOpenChange={setIsManageSoldOutOpen}
+        soldProducts={soldProducts}
+        invoices={invoices}
+        onReturnItemToStock={onReturnItemToStock}
+    />
+    </>
   );
 }
