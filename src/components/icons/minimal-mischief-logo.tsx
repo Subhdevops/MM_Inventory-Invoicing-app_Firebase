@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +20,7 @@ const MinimalMischiefLogo = ({ className, showTagline = true, width = 200, heigh
     />
     {showTagline && (
       <p className="text-xs italic text-muted-foreground mt-1">
-        Where fashion meets fairytale
+        Simple by Nature, Mischief by Choice
       </p>
     )}
   </div>
