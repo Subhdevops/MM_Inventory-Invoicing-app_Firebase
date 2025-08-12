@@ -109,7 +109,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
             if (isFirstPage) {
                 const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
                 if (logoElement && logoElement.naturalWidth > 0) {
-                    const logoWidth = 50;
+                    const logoWidth = 40;
                     const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
                     const logoHeight = logoWidth * logoAspectRatio;
                     const yPosition = 15;
@@ -380,16 +380,16 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                              <div className="p-2 space-y-2">
                                 {items.map((item, index) => (
                                     <div key={item.id} className="p-3 rounded-md border bg-muted/50 space-y-2 relative">
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                            <div className="col-span-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                                            <div className="col-span-full">
                                                 <Label htmlFor={`desc-${index}`}>Description</Label>
                                                 <Input id={`desc-${index}`} value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} placeholder="e.g., Advance for Lehenga" className="h-9" />
                                             </div>
-                                            <div>
+                                            <div className="col-span-1">
                                                 <Label htmlFor={`qty-${index}`}>Quantity</Label>
                                                 <Input id={`qty-${index}`} type="number" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="h-9 w-full" min="1" />
                                             </div>
-                                            <div>
+                                            <div className="col-span-1">
                                                 <Label htmlFor={`price-${index}`}>Price (₹)</Label>
                                                 <Input id={`price-${index}`} type="number" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', e.target.value)} className="h-9 w-full" placeholder="0.00" />
                                             </div>

@@ -84,7 +84,7 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
       if (isFirstPage) {
           const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
           if (logoElement && logoElement.naturalWidth > 0) {
-              const logoWidth = 50;
+              const logoWidth = 40;
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
               const logoHeight = logoWidth * logoAspectRatio;
               const yPosition = 15; // Added vertical space

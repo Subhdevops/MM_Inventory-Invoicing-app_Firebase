@@ -58,7 +58,7 @@ export function InvoiceForm({
       <div className="grid md:grid-cols-2 gap-8 overflow-y-auto p-2 flex-1 min-h-0">
           <div className="flex flex-col gap-6">
               <header className="flex items-center justify-between pb-6 border-b">
-                <MinimalMischiefLogo showTagline={false} width={150} height={36} />
+                <MinimalMischiefLogo showTagline={false} width={120} height={29} />
               </header>
               
               <section className="grid grid-cols-2 gap-8">

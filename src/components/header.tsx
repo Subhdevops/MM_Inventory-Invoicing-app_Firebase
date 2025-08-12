@@ -140,5 +140,3 @@ export default function Header({ addProduct, onImportInventory, userRole, events
     </header>
   );
 }
-
-    
