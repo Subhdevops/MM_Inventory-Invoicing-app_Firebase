@@ -26,11 +26,11 @@ const PriceTag = ({ product }: { product: Product }) => {
       lineHeight: '1.2',
       position: 'relative',
     }}>
-      <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '0' }}>
-        <MinimalMischiefLogo showTagline={true} width={100} height={100} />
+      <div style={{ transform: 'scale(1)', transformOrigin: 'top center', marginBottom: '0' }}>
+        <MinimalMischiefLogo showTagline={true} width={50} height={50} />
       </div>
 
-      <div style={{ marginTop: '0' }}>
+      <div style={{ marginTop: '-20' }}>
         <QRCodeCanvas
           value={product.barcode}
           size={40}
