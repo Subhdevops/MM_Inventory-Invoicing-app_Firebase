@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from "date-fns";
+import { format, isBefore, isToday, addDays } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +44,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MoreVertical, PlusCircle, User, Trash2, Pencil, Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { MoreVertical, PlusCircle, User, Trash2, Pencil, Loader2, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import type { Vendor, UserProfile } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -54,6 +54,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn } from '@/lib/utils';
 import { Switch } from './ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 const vendorSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters."),
@@ -251,6 +252,15 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
             setIsDeleting(false);
         }
     };
+    
+    const checkReminder = (vendor: Vendor) => {
+        if (!vendor.reminder || !vendor.followUpDate) return false;
+        const today = new Date();
+        const followUpDate = new Date(vendor.followUpDate);
+        const sevenDaysFromNow = addDays(today, 7);
+        // Reminder if date is today, in the past, or within the next 7 days
+        return isToday(followUpDate) || (isBefore(followUpDate, sevenDaysFromNow) && isBefore(today, addDays(followUpDate, 1)));
+    };
 
     const isAdmin = userRole === 'admin';
 
@@ -278,7 +288,21 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                             <User className="h-4 w-4 text-muted-foreground" />
                                         </div>
                                         <div>
-                                            <p className="font-semibold">{vendor.name}</p>
+                                            <p className="font-semibold flex items-center gap-2">
+                                                {vendor.name}
+                                                {checkReminder(vendor) && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Bell className="h-4 w-4 text-destructive animate-pulse-red" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Follow-up on: {format(new Date(vendor.followUpDate!), 'PPP')}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                            </p>
                                             <p className="text-xs text-muted-foreground">{vendor.sourcingDetails}</p>
                                         </div>
                                     </div>
