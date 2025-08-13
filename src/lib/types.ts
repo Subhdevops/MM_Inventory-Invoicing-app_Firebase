@@ -90,4 +90,7 @@ export type Vendor = {
     stitchingCost: number;
     notes?: string;
     createdAt: string;
+    visitDate?: string;
+    followUpDate?: string;
+    reminder?: boolean;
 };

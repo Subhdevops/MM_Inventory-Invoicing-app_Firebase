@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +34,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
     DropdownMenu,
@@ -44,12 +44,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MoreVertical, PlusCircle, User, Trash2, Pencil, Loader2 } from 'lucide-react';
+import { MoreVertical, PlusCircle, User, Trash2, Pencil, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import type { Vendor, UserProfile } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
+import { cn } from '@/lib/utils';
+import { Switch } from './ui/switch';
 
 const vendorSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters."),
@@ -58,6 +62,9 @@ const vendorSchema = z.object({
     fabricCost: z.coerce.number().min(0, "Fabric cost must be a positive number."),
     stitchingCost: z.coerce.number().min(0, "Stitching cost must be a positive number."),
     notes: z.string().optional(),
+    visitDate: z.date().optional(),
+    followUpDate: z.date().optional(),
+    reminder: z.boolean().default(false),
 });
 
 type VendorDialogProps = {
@@ -79,21 +86,30 @@ function VendorDialog({ vendor, activeEventId, isOpen, onOpenChange }: VendorDia
             fabricCost: vendor?.fabricCost || 0,
             stitchingCost: vendor?.stitchingCost || 0,
             notes: vendor?.notes || '',
+            visitDate: vendor?.visitDate ? new Date(vendor.visitDate) : undefined,
+            followUpDate: vendor?.followUpDate ? new Date(vendor.followUpDate) : undefined,
+            reminder: vendor?.reminder || false,
         }
     });
 
     const onSubmit = async (values: z.infer<typeof vendorSchema>) => {
         setIsProcessing(true);
         try {
+            const dataToSave = {
+                ...values,
+                visitDate: values.visitDate?.toISOString(),
+                followUpDate: values.followUpDate?.toISOString(),
+            };
+
             if (vendor) {
                 // Update existing vendor
                 const vendorRef = doc(db, 'events', activeEventId, 'vendors', vendor.id);
-                await updateDoc(vendorRef, values);
+                await updateDoc(vendorRef, dataToSave);
                 toast({ title: "Vendor Updated" });
             } else {
                 // Create new vendor
                 const newVendor = {
-                    ...values,
+                    ...dataToSave,
                     createdAt: new Date().toISOString(),
                 };
                 await addDoc(collection(db, 'events', activeEventId, 'vendors'), newVendor);
@@ -111,15 +127,17 @@ function VendorDialog({ vendor, activeEventId, isOpen, onOpenChange }: VendorDia
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{vendor ? 'Edit Vendor' : 'Add New Vendor'}</DialogTitle>
                     <DialogDescription>
                         {vendor ? 'Update the details for this vendor.' : 'Enter the details for a new vendor.'}
                     </DialogDescription>
                 </DialogHeader>
+                <ScrollArea className="max-h-[70vh]">
+                 <div className="p-4">
                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem><FormLabel>Vendor Name</FormLabel><FormControl><Input placeholder="e.g. Fabric Creations Inc." {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
@@ -137,10 +155,43 @@ function VendorDialog({ vendor, activeEventId, isOpen, onOpenChange }: VendorDia
                                 <FormItem><FormLabel>Stitching Cost (per piece)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="visitDate" render={({ field }) => (
+                                <FormItem className="flex flex-col"><FormLabel>Visiting Date</FormLabel>
+                                <Popover><PopoverTrigger asChild>
+                                <FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button></FormControl>
+                                </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                                </PopoverContent></Popover><FormMessage />
+                                </FormItem>
+                            )} />
+                             <FormField control={form.control} name="followUpDate" render={({ field }) => (
+                                <FormItem className="flex flex-col"><FormLabel>Follow-up/Pickup Date</FormLabel>
+                                <Popover><PopoverTrigger asChild>
+                                <FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button></FormControl>
+                                </PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                                </PopoverContent></Popover><FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
                         <FormField control={form.control} name="notes" render={({ field }) => (
                             <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="Any additional information..." {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
-                        <DialogFooter>
+                        <FormField control={form.control} name="reminder" render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5"><FormLabel>Set Reminder</FormLabel>
+                                <DialogDescription>Enable notifications for this vendor's follow-up date.</DialogDescription></div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )} />
+                        <DialogFooter className="sticky bottom-0 bg-background/95 pt-4">
                             <DialogClose asChild><Button type="button" variant="outline" disabled={isProcessing}>Cancel</Button></DialogClose>
                             <Button type="submit" disabled={isProcessing}>
                                 {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -149,6 +200,8 @@ function VendorDialog({ vendor, activeEventId, isOpen, onOpenChange }: VendorDia
                         </DialogFooter>
                     </form>
                 </Form>
+                 </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
     );
@@ -266,10 +319,10 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                 </CardFooter>
             </Card>
 
-            {isEditDialogOpen && (
+            {isEditDialogOpen && activeEventId && (
                 <VendorDialog 
                     vendor={selectedVendor} 
-                    activeEventId={activeEventId!} 
+                    activeEventId={activeEventId} 
                     isOpen={isEditDialogOpen} 
                     onOpenChange={(open) => {
                         setIsEditDialogOpen(open);
