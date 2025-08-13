@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
   DialogDescription,
@@ -34,7 +33,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -156,29 +162,35 @@ type VendorManagementProps = {
 };
 
 export default function VendorManagement({ vendors, activeEventId, userRole, isLoading }: VendorManagementProps) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-    const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast } = useToast();
 
     const handleEdit = (vendor: Vendor) => {
         setSelectedVendor(vendor);
-        setIsDialogOpen(true);
+        setIsEditDialogOpen(true);
     };
 
     const handleAddNew = () => {
         setSelectedVendor(null);
-        setIsDialogOpen(true);
+        setIsEditDialogOpen(true);
     };
 
-    const handleDelete = async () => {
-        if (!vendorToDelete || !activeEventId) return;
+    const handleDeleteTrigger = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!selectedVendor || !activeEventId) return;
         setIsDeleting(true);
         try {
-            await deleteDoc(doc(db, 'events', activeEventId, 'vendors', vendorToDelete.id));
+            await deleteDoc(doc(db, 'events', activeEventId, 'vendors', selectedVendor.id));
             toast({ title: 'Vendor Deleted', variant: 'destructive' });
-            setVendorToDelete(null);
+            setIsDeleteDialogOpen(false);
+            setSelectedVendor(null);
         } catch (error) {
             console.error("Failed to delete vendor: ", error);
             toast({ title: "Deletion Failed", variant: "destructive" });
@@ -218,36 +230,23 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                         </div>
                                     </div>
                                     {isAdmin && (
-                                    <Dialog>
-                                        <AlertDialog>
-                                            <DialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="w-auto max-w-[200px] p-0">
-                                                <div className="p-1">
-                                                     <Button variant="ghost" className="w-full justify-start" onClick={() => handleEdit(vendor)}><Pencil className="mr-2"/>Edit</Button>
-                                                      <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive" onClick={() => setVendorToDelete(vendor)}><Trash2 className="mr-2"/>Delete</Button>
-                                                      </AlertDialogTrigger>
-                                                </div>
-                                            </DialogContent>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This will permanently delete the vendor {vendorToDelete?.name}.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                        Delete
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </Dialog>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onSelect={() => handleEdit(vendor)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                <span>Edit</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleDeleteTrigger(vendor)} className="text-destructive focus:text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Delete</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                     )}
                                 </div>
                             ))}
@@ -267,14 +266,33 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                 </CardFooter>
             </Card>
 
-            {isDialogOpen && (
+            {isEditDialogOpen && (
                 <VendorDialog 
                     vendor={selectedVendor} 
                     activeEventId={activeEventId!} 
-                    isOpen={isDialogOpen} 
-                    onOpenChange={setIsDialogOpen}
+                    isOpen={isEditDialogOpen} 
+                    onOpenChange={(open) => {
+                        setIsEditDialogOpen(open);
+                        if (!open) setSelectedVendor(null);
+                    }}
                 />
             )}
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete the vendor {selectedVendor?.name}.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting} onClick={() => setSelectedVendor(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
