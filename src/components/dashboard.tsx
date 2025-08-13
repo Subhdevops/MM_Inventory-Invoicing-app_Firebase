@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Line,
   LineChart,
   Bar,
   BarChart,
@@ -35,10 +34,11 @@ import {
 import { Package, Boxes, AlertTriangle, FileText, Download, PackageSearch, IndianRupee, Trash2, TrendingUp, TrendingDown, Receipt, FolderOpen, Eye, FileSignature, LineChart as LineChartIcon } from 'lucide-react';
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton";
-import type { UserProfile, SavedFile, Product, Invoice } from "@/lib/types";
+import type { UserProfile, SavedFile, Vendor } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 import { UploadFileDialog } from "./upload-picture-dialog";
 import OwlIcon from "./icons/owl-icon";
+import VendorManagement from "./vendor-management";
 
 type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time';
 
@@ -72,6 +72,7 @@ type DashboardProps = {
   onViewFiles: () => void;
   onOpenCustomInvoice: () => void;
   onUploadComplete: (fileData: Omit<SavedFile, 'id'>) => Promise<void>;
+  vendors: Vendor[];
 };
 
 const chartMeta: Record<ChartView, {
@@ -112,7 +113,7 @@ const chartMeta: Record<ChartView, {
   }
 };
 
-export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete }: DashboardProps) {
+export default function Dashboard({ stats, chartData, chartView, onChartViewChange, onExportInvoices, onExportInventory, totalInvoices, totalRevenue, totalProfit, totalGst, isLoading, onClearAllInvoices, onResetInvoiceCounter, userRole, savedFilesCount, activeEventId, onViewFiles, onOpenCustomInvoice, onUploadComplete, vendors }: DashboardProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   const handleClearInvoices = async () => {
@@ -127,12 +128,12 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
 
   const renderChart = () => {
     if (isLoading) {
-      return <Skeleton className="min-h-[300px] w-full" />;
+      return <Skeleton className="h-full w-full min-h-[300px]" />;
     }
 
     if (currentChartData.length === 0) {
       return (
-        <div className="flex items-center justify-center min-h-[300px] text-muted-foreground">
+        <div className="flex items-center justify-center h-full min-h-[300px] text-muted-foreground">
           <p>No data to display for this view.</p>
         </div>
       );
@@ -140,7 +141,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
     
     if (chartView === 'sales-over-time') {
       return (
-        <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
+        <ChartContainer config={currentChartMeta.config} className="h-full w-full">
             <LineChart
                 accessibilityLayer
                 data={chartData['sales-over-time']}
@@ -174,7 +175,7 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
     }
 
     return (
-        <ChartContainer config={currentChartMeta.config} className="min-h-[300px] w-full">
+        <ChartContainer config={currentChartMeta.config} className="h-full w-full">
             <BarChart accessibilityLayer data={currentChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                 <XAxis
                     dataKey="name"
@@ -331,8 +332,8 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
           </>
         )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="md:col-span-1">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="lg:col-span-1 h-[400px] flex flex-col">
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between pb-2 gap-2">
             <CardTitle>{currentChartMeta.title}</CardTitle>
             <Select value={chartView} onValueChange={(value) => onChartViewChange(value as ChartView)}>
@@ -351,28 +352,31 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
               </SelectContent>
             </Select>
           </CardHeader>
-          <CardContent className="pl-2">
+          <CardContent className="pl-2 flex-1">
             {renderChart()}
           </CardContent>
         </Card>
-        <Card className="border-destructive/50">
+
+        <VendorManagement vendors={vendors} activeEventId={activeEventId} userRole={userRole} isLoading={isLoading} />
+        
+        <Card className="border-destructive/50 h-[400px] flex flex-col">
           <CardHeader>
             <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>These actions are permanent and cannot be undone.</CardDescription>
+            <CardDescription>Permanent one-way actions.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Button variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear All Invoices
-              </Button>
-               <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records from the database.</p>
-            </div>
-            <div>
-              <ResetInvoiceNumberDialog onReset={onResetInvoiceCounter} disabled={isLoading || !isAdmin} />
-              <p className="text-xs text-muted-foreground mt-2">Reset the starting number for future invoices. Use with caution.</p>
-            </div>
-             {!isAdmin && <p className="text-xs text-destructive mt-2">Admin access required for these actions.</p>}
+          <CardContent className="flex flex-col justify-between flex-1">
+              <div>
+                <Button size="sm" variant="destructive" onClick={() => setIsConfirmOpen(true)} disabled={isLoading || !isAdmin}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All Invoices
+                </Button>
+                 <p className="text-xs text-muted-foreground mt-2">Permanently delete all invoice records.</p>
+              </div>
+              <div>
+                <ResetInvoiceNumberDialog onReset={onResetInvoiceCounter} disabled={isLoading || !isAdmin} />
+                <p className="text-xs text-muted-foreground mt-2">Reset the starting number for future invoices.</p>
+              </div>
+               {!isAdmin && <p className="text-xs text-destructive mt-2">Admin access required for these actions.</p>}
           </CardContent>
         </Card>
       </div>

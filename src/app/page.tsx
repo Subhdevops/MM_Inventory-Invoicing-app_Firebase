@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event, CustomLineItem } from '@/lib/types';
+import type { Product, Invoice, SoldProduct, UserProfile, SavedFile, Event, CustomLineItem, Vendor } from '@/lib/types';
 import Header from '@/components/header';
 import Dashboard from '@/components/dashboard';
 import InventoryTable from '@/components/inventory-table';
@@ -35,6 +35,7 @@ export default function Home() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [savedFiles, setSavedFiles] = useState<SavedFile[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -280,6 +281,7 @@ export default function Home() {
       setProducts([]);
       setInvoices([]);
       setSavedFiles([]);
+      setVendors([]);
       setIsDataLoading(false);
       return;
     }
@@ -320,10 +322,20 @@ export default function Home() {
         setSavedFiles(filesData);
     });
 
+    const vendorsQuery = query(collection(eventRef, "vendors"), orderBy("name"));
+    const unsubscribeVendors = onSnapshot(vendorsQuery, (querySnapshot) => {
+        const vendorsData: Vendor[] = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Vendor));
+        setVendors(vendorsData);
+    });
+
     return () => {
       unsubscribeProducts();
       unsubscribeInvoices();
       unsubscribeSavedFiles();
+      unsubscribeVendors();
     };
   }, [user, activeEventId]);
 
@@ -925,6 +937,7 @@ export default function Home() {
               onViewFiles={() => setIsViewFilesOpen(true)}
               onOpenCustomInvoice={() => setIsCustomInvoiceDialogOpen(true)}
               onUploadComplete={addSavedFile}
+              vendors={vendors}
             />
             <ScanningSession
               scannedProducts={scannedProducts}

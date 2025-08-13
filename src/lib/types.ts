@@ -80,3 +80,14 @@ export type SavedFile = {
   createdAt: string;
   fileType: string;
 };
+
+export type Vendor = {
+    id: string;
+    name: string;
+    contact: string;
+    sourcingDetails: string;
+    fabricCost: number;
+    stitchingCost: number;
+    notes?: string;
+    createdAt: string;
+};
