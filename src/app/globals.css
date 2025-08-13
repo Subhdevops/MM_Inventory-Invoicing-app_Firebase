@@ -116,10 +116,25 @@ body {
 }
 
 .owl-blink {
-  animation: owl-blink 4s infinite;
+  animation: owl-blink 6s infinite;
   transform-origin: center;
 }
 
 .owl-head-turn {
-  animation: owl-head-turn 5s infinite ease-in-out;
+  animation: owl-head-turn 8s infinite ease-in-out;
+}
+
+@keyframes fly-across {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(calc(100vw + 100%));
+  }
+}
+
+.animate-fly-across {
+  animation-name: fly-across;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
 }
