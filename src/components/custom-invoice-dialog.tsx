@@ -321,7 +321,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="customerName">Customer Name</Label>
-                                <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                                <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Name Title" />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="customerPhone">Customer Phone</Label>
@@ -380,7 +380,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                                             <div className="col-span-full">
                                                 <Label htmlFor={`desc-${index}`}>Description</Label>
-                                                <Input id={`desc-${index}`} value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} placeholder="e.g., Advance for Lehenga" className="h-9" />
+                                                <Input id={`desc-${index}`} value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} placeholder="e.g., Advance for Dress" className="h-9" />
                                             </div>
                                             <div className="col-span-1">
                                                 <Label htmlFor={`qty-${index}`}>Quantity</Label>

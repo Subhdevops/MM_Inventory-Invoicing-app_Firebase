@@ -64,7 +64,7 @@ export function InvoiceForm({
                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bill To</h2>
                        <div className="space-y-1">
                            <Label htmlFor="customerName" className="text-xs">Customer Name</Label>
-                           <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="John Doe" />
+                           <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Name Title" />
                        </div>
                        <div className="space-y-1">
                            <Label htmlFor="customerPhone" className="text-xs">Customer Phone</Label>
