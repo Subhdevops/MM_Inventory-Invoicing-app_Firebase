@@ -253,13 +253,32 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
         }
     };
     
-    const checkReminder = (vendor: Vendor) => {
-        if (!vendor.reminder || !vendor.followUpDate) return false;
+    const getReminderDetails = (vendor: Vendor): { show: boolean; message: string } => {
+        if (!vendor.reminder) return { show: false, message: '' };
+
         const today = new Date();
-        const followUpDate = new Date(vendor.followUpDate);
         const sevenDaysFromNow = addDays(today, 7);
-        // Reminder if date is today, in the past, or within the next 7 days
-        return isToday(followUpDate) || (isBefore(followUpDate, sevenDaysFromNow) && isBefore(today, addDays(followUpDate, 1)));
+
+        const isDateUpcoming = (dateString: string | undefined | null) => {
+            if (!dateString) return false;
+            const date = new Date(dateString);
+            return isToday(date) || (isBefore(date, sevenDaysFromNow) && isBefore(today, addDays(date, 1)));
+        };
+
+        const visitUpcoming = isDateUpcoming(vendor.visitDate);
+        const followupUpcoming = isDateUpcoming(vendor.followUpDate);
+
+        if (visitUpcoming && followupUpcoming) {
+            return { show: true, message: `Visit on ${format(new Date(vendor.visitDate!), 'PPP')} and follow-up on ${format(new Date(vendor.followUpDate!), 'PPP')}` };
+        }
+        if (visitUpcoming) {
+            return { show: true, message: `Visit planned for: ${format(new Date(vendor.visitDate!), 'PPP')}` };
+        }
+        if (followupUpcoming) {
+            return { show: true, message: `Follow-up/Pickup on: ${format(new Date(vendor.followUpDate!), 'PPP')}` };
+        }
+
+        return { show: false, message: '' };
     };
 
     const isAdmin = userRole === 'admin';
@@ -281,7 +300,9 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                     ) : vendors.length > 0 ? (
                         <ScrollArea className="h-full">
                           <div className="space-y-2 p-6 pt-0">
-                            {vendors.map(vendor => (
+                            {vendors.map(vendor => {
+                                const reminder = getReminderDetails(vendor);
+                                return (
                                 <div key={vendor.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-muted rounded-full">
@@ -290,14 +311,14 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                         <div>
                                             <div className="font-semibold flex items-center gap-2">
                                                 {vendor.name}
-                                                {checkReminder(vendor) && (
+                                                {reminder.show && (
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger>
                                                                 <Bell className="h-4 w-4 text-destructive animate-pulse-red" />
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                <p>Follow-up on: {format(new Date(vendor.followUpDate!), 'PPP')}</p>
+                                                                <p>{reminder.message}</p>
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
@@ -326,7 +347,8 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                     </DropdownMenu>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                           </div>
                         </ScrollArea>
                     ) : (

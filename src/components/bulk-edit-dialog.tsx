@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from "./ui/scroll-area";
 
 const bulkEditSchema = z.object({
   price: z.string()
@@ -99,68 +100,72 @@ export default function BulkEditDialog({ productIds, onBulkUpdate, isOpen, onOpe
             Edit fields for {productIds.length} selected products. Only filled fields will be updated.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Selling Price (₹)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="cost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cost Price (₹)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="possibleDiscount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Possible Discount (₹)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g. 500.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-                control={form.control}
-                name="salePercentage"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Sale Discount (%)</FormLabel>
-                    <FormControl>
-                    <Input type="number" step="1" placeholder="e.g. 25" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            <DialogFooter>
-               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Update Products</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <ScrollArea className="max-h-[70vh] p-1">
+          <div className="p-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Selling Price (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="e.g. 4999.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost Price (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="e.g. 2500.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="possibleDiscount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Possible Discount (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="e.g. 500.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                    control={form.control}
+                    name="salePercentage"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Sale Discount (%)</FormLabel>
+                        <FormControl>
+                        <Input type="number" step="1" placeholder="e.g. 25" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <DialogFooter className="sticky bottom-0 bg-background/95 pt-4">
+                   <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit">Update Products</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
