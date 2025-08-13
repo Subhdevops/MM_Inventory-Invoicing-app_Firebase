@@ -468,29 +468,45 @@ export default function Home() {
   
   const handleImportInventory = async (newProducts: Omit<Product, 'id' | 'isSold'>[]) => {
     if (!activeEventId) return;
-    
-    const batch = writeBatch(db);
-    
-    for (const p of newProducts) {
-      const productRef = doc(collection(db, "events", activeEventId, "products"));
-      const newProduct: Omit<Product, 'id'> = {
-          ...p,
-          isSold: false
-      };
-      batch.set(productRef, newProduct);
+
+    const existingCodes = new Set(products.map(p => p.uniqueProductCode));
+    const productsToImport = newProducts.filter(p => !existingCodes.has(p.uniqueProductCode));
+    const skippedCount = newProducts.length - productsToImport.length;
+
+    if (productsToImport.length === 0) {
+        toast({
+            title: "No New Products Imported",
+            description: `All ${skippedCount} items in the file already exist in the inventory.`,
+            variant: "destructive"
+        });
+        return;
     }
 
+    const batch = writeBatch(db);
+    productsToImport.forEach(p => {
+        const productRef = doc(collection(db, "events", activeEventId, "products"));
+        const newProduct: Omit<Product, 'id'> = {
+            ...p,
+            isSold: false
+        };
+        batch.set(productRef, newProduct);
+    });
+
     try {
-      await batch.commit();
-      toast({
-        title: "Inventory Imported",
-        description: `${newProducts.length} total items have been added.`
-      });
+        await batch.commit();
+        let description = `${productsToImport.length} new items have been added.`;
+        if (skippedCount > 0) {
+            description += ` ${skippedCount} items were skipped as they already exist.`;
+        }
+        toast({
+            title: "Inventory Imported",
+            description,
+        });
     } catch (error) {
-      console.error("Error importing inventory:", error);
-      toast({ title: "Import Failed", variant: "destructive" });
+        console.error("Error importing inventory:", error);
+        toast({ title: "Import Failed", variant: "destructive" });
     }
-  };
+};
 
 
   const clearAllInvoices = async () => {

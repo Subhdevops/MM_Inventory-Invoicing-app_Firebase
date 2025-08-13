@@ -419,7 +419,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
             )}
             </DialogContent>
             {/* These hidden images are required for jsPDF to be able to render them */}
-            <img id="invoice-logo-for-pdf" src="/logo.png?v=2" style={{ display: 'none' }} alt="logo" />
+            <img id="invoice-logo-for-pdf" src="/logo.png?v=3" style={{ display: 'none' }} alt="logo" />
             <img id="invoice-stamp-for-pdf" src="/stamp.png" style={{ display: 'none' }} alt="Stamp" />
         </Dialog>
     );

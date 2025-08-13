@@ -56,7 +56,7 @@ export function InvoiceForm({
       <div className="grid md:grid-cols-2 gap-8 overflow-y-auto p-2 flex-1 min-h-0">
           <div className="flex flex-col gap-6">
               <header className="flex items-center justify-between pb-6 border-b">
-                <MinimalMischiefLogo showTagline={false} width={90} height={22} />
+                <MinimalMischiefLogo showTagline={true} width={90} height={22} />
               </header>
               
               <section className="grid grid-cols-2 gap-8">
@@ -183,7 +183,7 @@ export function InvoiceForm({
               {isProcessing ? 'Processing...' : 'Process & Download PDF'}
           </Button>
       </DialogFooter>
-      <img id="invoice-logo-for-pdf" src="/logo.png?v=2" style={{ display: 'none' }} alt="logo" />
+      <img id="invoice-logo-for-pdf" src="/logo.png?v=3" style={{ display: 'none' }} alt="logo" />
       <img id="invoice-stamp-for-pdf" src="/stamp.png" style={{ display: 'none' }} alt="Stamp" />
     </>
   );

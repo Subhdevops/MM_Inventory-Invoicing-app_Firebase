@@ -87,6 +87,13 @@ export default function InvoiceDialog({ products, onCreateInvoice, isOpen, onOpe
               const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
               const logoHeight = logoWidth * logoAspectRatio;
               docInstance.addImage(logoElement, 'PNG', 15, yPosition, logoWidth, logoHeight);
+
+              docInstance.setFontSize(7);
+              docInstance.setTextColor(100);
+              docInstance.setFont('helvetica', 'italic');
+              const logoCenterX = 15 + logoWidth / 2;
+              docInstance.text('Simple by Nature, Mischief by Choice', logoCenterX, yPosition + logoHeight + 4, { align: 'center' });
+              docInstance.setFont('helvetica', 'normal');
           }
           
           const title = invoice.title || "INVOICE";
