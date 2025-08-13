@@ -288,7 +288,7 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                             <User className="h-4 w-4 text-muted-foreground" />
                                         </div>
                                         <div>
-                                            <p className="font-semibold flex items-center gap-2">
+                                            <div className="font-semibold flex items-center gap-2">
                                                 {vendor.name}
                                                 {checkReminder(vendor) && (
                                                     <TooltipProvider>
@@ -302,7 +302,7 @@ export default function VendorManagement({ vendors, activeEventId, userRole, isL
                                                         </Tooltip>
                                                     </TooltipProvider>
                                                 )}
-                                            </p>
+                                            </div>
                                             <p className="text-xs text-muted-foreground">{vendor.sourcingDetails}</p>
                                         </div>
                                     </div>
