@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, SavedFile, Product, Invoice } from "@/lib/types";
 import ResetInvoiceNumberDialog from "./reset-invoice-number-dialog";
 import { UploadFileDialog } from "./upload-picture-dialog";
+import OwlIcon from "./icons/owl-icon";
 
 type ChartView = 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time';
 
@@ -224,97 +225,111 @@ export default function Dashboard({ stats, chartData, chartView, onChartViewChan
          </div>
        </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{
-              new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalRevenue)
-            }</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total sales from all invoices</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{
-              new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)
-            }</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total profit after costs</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total GST Collected</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{
-              new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalGst)
-            }</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total GST from all sales</p>}
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saved Files</CardTitle>
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" onClick={onViewFiles} disabled={isLoading || savedFilesCount === 0}>
-                <Eye className="h-4 w-4" />
-              </Button>
-              <UploadFileDialog activeEventId={activeEventId} disabled={isLoading || !isAdmin} onUploadComplete={onUploadComplete} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{savedFilesCount}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Designs, documents, and references.</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Designs</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.totalProducts}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Unique product designs in inventory</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Stock</CardTitle>
-            <Boxes className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.totalItems.toLocaleString()}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total quantity of all items</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{stats.productsOutOfStock}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Items that need restocking</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{totalInvoices}</div>}
-            {isLoading ? <Skeleton className="h-4 w-full mt-2" /> : <p className="text-xs text-muted-foreground">Total sales generated</p>}
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <Card className="lg:col-span-4">
+            <CardHeader className="flex flex-row items-center justify-center text-center space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Loading Dashboard...</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-6 pt-2">
+              <OwlIcon className="w-24 h-24 text-primary" />
+              <p className="text-sm text-muted-foreground mt-2">Waking up the mischief...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <IndianRupee className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{
+                  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalRevenue)
+                }</div>
+                <p className="text-xs text-muted-foreground">Total sales from all invoices</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{
+                  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)
+                }</div>
+                <p className="text-xs text-muted-foreground">Total profit after costs</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total GST Collected</CardTitle>
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{
+                  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalGst)
+                }</div>
+                <p className="text-xs text-muted-foreground">Total GST from all sales</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Saved Files</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={onViewFiles} disabled={isLoading || savedFilesCount === 0}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <UploadFileDialog activeEventId={activeEventId} disabled={isLoading || !isAdmin} onUploadComplete={onUploadComplete} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{savedFilesCount}</div>
+                <p className="text-xs text-muted-foreground">Designs, documents, and references.</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Designs</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalProducts}</div>
+                <p className="text-xs text-muted-foreground">Unique product designs in inventory</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Stock</CardTitle>
+                <Boxes className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalItems.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Total quantity of all items</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.productsOutOfStock}</div>
+                <p className="text-xs text-muted-foreground">Items that need restocking</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalInvoices}</div>
+                <p className="text-xs text-muted-foreground">Total sales generated</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="md:col-span-1">

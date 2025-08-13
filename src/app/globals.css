@@ -93,3 +93,33 @@ body {
 .animate-pulse-primary {
   animation: pulse-primary 2s infinite;
 }
+
+@keyframes owl-blink {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  5%, 95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes owl-head-turn {
+  0%, 100% {
+    transform: translateX(0) rotate(0);
+  }
+  25% {
+    transform: translateX(-5px) rotate(-5deg);
+  }
+  75% {
+    transform: translateX(5px) rotate(5deg);
+  }
+}
+
+.owl-blink {
+  animation: owl-blink 4s infinite;
+  transform-origin: center;
+}
+
+.owl-head-turn {
+  animation: owl-head-turn 5s infinite ease-in-out;
+}
