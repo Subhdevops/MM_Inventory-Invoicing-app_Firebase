@@ -97,8 +97,8 @@ function VendorDialog({ vendor, activeEventId, isOpen, onOpenChange }: VendorDia
         try {
             const dataToSave = {
                 ...values,
-                visitDate: values.visitDate?.toISOString(),
-                followUpDate: values.followUpDate?.toISOString(),
+                visitDate: values.visitDate ? values.visitDate.toISOString() : null,
+                followUpDate: values.followUpDate ? values.followUpDate.toISOString() : null,
             };
 
             if (vendor) {
