@@ -107,7 +107,7 @@ export function CustomInvoiceDialog({ onCreateInvoice, isOpen, onOpenChange }: C
             if (isFirstPage) {
                 const logoElement = document.getElementById('invoice-logo-for-pdf') as HTMLImageElement;
                 if (logoElement && logoElement.naturalWidth > 0) {
-                    const logoWidth = 40;
+                    const logoWidth = 32;
                     const logoAspectRatio = logoElement.naturalHeight / logoElement.naturalWidth;
                     const logoHeight = logoWidth * logoAspectRatio;
                     const yPosition = 15;
