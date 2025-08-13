@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: 'Minimal Mischief',
   description: 'Simple by Nature, Mischief by Choice',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: '/logo.png?v=3',
+    apple: '/logo.png?v=3',
   }
 };
 
