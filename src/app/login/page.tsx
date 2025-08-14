@@ -7,8 +7,6 @@ import { auth } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
 } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import GoogleIcon from '@/components/icons/google-icon';
 import MinimalMischiefLogo from '@/components/icons/minimal-mischief-logo';
 import { checkAndCreateUserProfile } from '@/lib/user';
 
@@ -49,22 +46,6 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         title: 'Authentication Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-  
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await checkAndCreateUserProfile(result.user);
-      toast({ title: 'Login Successful', description: 'Welcome!' });
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        title: 'Google Sign-In Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -98,10 +79,6 @@ export default function LoginPage() {
               </CardContent>
               <CardFooter className="flex-col items-stretch gap-4">
                 <Button className="w-full" onClick={() => handleAuthAction('login')}>Login</Button>
-                 <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-                   <GoogleIcon className="mr-2 h-5 w-5" />
-                   Sign in with Google
-                 </Button>
               </CardFooter>
             </Card>
           </TabsContent>
