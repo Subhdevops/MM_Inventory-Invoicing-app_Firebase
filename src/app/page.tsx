@@ -301,13 +301,13 @@ export default function Home() {
   const addProduct = async (productData: Omit<Product, 'id' | 'isSold'>) => {
     if (!activeEventId) return;
 
-    // Check if barcode already exists
+    // Check if barcode already exists with a *different* product name.
     const qBarcode = query(collection(db, "events", activeEventId, "products"), where("barcode", "==", productData.barcode));
     const barcodeSnapshot = await getDocs(qBarcode);
-    if (!barcodeSnapshot.empty && barcodeSnapshot.docs.some(doc => doc.data().name !== productData.name)) {
+    if (!barcodeSnapshot.empty && barcodeSnapshot.docs[0].data().name !== productData.name) {
         toast({
             title: "Barcode Conflict",
-            description: `Barcode "${productData.barcode}" is already used for a different product name.`,
+            description: `Barcode "${productData.barcode}" is already used for product "${barcodeSnapshot.docs[0].data().name}".`,
             variant: "destructive",
         });
         return;
@@ -963,3 +963,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
