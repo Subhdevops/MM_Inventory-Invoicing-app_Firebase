@@ -64,7 +64,7 @@ type InventoryTableProps = {
   onScan: (barcode: string) => void;
   onOpenBulkEditDialog: (products: Product[]) => void;
   onGenerateTags: (products: Product[]) => void;
-  onRestockProduct: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onRestockProduct: (originalProduct: Product, newUniqueProductCode: string) => Promise<void>;
   onDeleteAllSoldOut: () => Promise<void>;
 };
 
@@ -97,8 +97,9 @@ export default function InventoryTable({ products, removeProduct, bulkRemoveProd
     setIsScannerOpen(false);
   }, [onScan, onFilterChange]);
 
-  const handleRestock = async (newProductData: Omit<Product, 'id' | 'isSold'>) => {
-    await onRestockProduct(newProductData);
+  const handleRestock = async (newUniqueProductCode: string) => {
+    if (!productToRestock) return;
+    await onRestockProduct(productToRestock, newUniqueProductCode);
     setProductToRestock(null);
   };
   

@@ -26,22 +26,22 @@ import BulkEditDialog from '@/components/bulk-edit-dialog';
 import { generatePriceTagsPDF } from '@/lib/generate-price-tags';
 import { playBeep, playErrorBeep } from '@/lib/audio';
 import { CustomInvoiceDialog } from '@/components/custom-invoice-dialog';
+import { useEventData } from '@/hooks/use-event-data';
 
 
 export default function Home() {
   const [user, authLoading] = useAuthState(auth);
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [savedFiles, setSavedFiles] = useState<SavedFile[]>([]);
+  
   const [events, setEvents] = useState<Event[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [activeEventId, setActiveEventId] = useState<string | null>(null);
-  const [filter, setFilter] = useState('');
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserProfile['role'] | null>(null);
   const [isRoleLoading, setIsRoleLoading] = useState(true);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  
+  const { products, invoices, savedFiles, vendors, isDataLoading } = useEventData(activeEventId, userRole);
+
+  const [filter, setFilter] = useState('');
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const { toast } = useToast();
   const [chartView, setChartView] = useState< 'top-stocked' | 'lowest-stocked' | 'best-sellers' | 'most-profitable' | 'sales-over-time'>('top-stocked');
   const [isViewFilesOpen, setIsViewFilesOpen] = useState(false);
@@ -275,69 +275,6 @@ export default function Home() {
 
     return () => unsubscribe();
   }, [activeEventId, products]);
-
-  useEffect(() => {
-    if (!user || !activeEventId) {
-      setProducts([]);
-      setInvoices([]);
-      setSavedFiles([]);
-      setVendors([]);
-      setIsDataLoading(false);
-      return;
-    }
-
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-      setIsDataLoading(false);
-      return;
-    }
-
-    setIsDataLoading(true);
-    const eventRef = doc(db, "events", activeEventId);
-
-    const productsQuery = query(collection(eventRef, "products"), orderBy("name"));
-    const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
-      const productsData: Product[] = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Product));
-      setProducts(productsData);
-      setIsDataLoading(false);
-    });
-
-    const invoicesQuery = query(collection(eventRef, "invoices"), orderBy("date", "desc"));
-    const unsubscribeInvoices = onSnapshot(invoicesQuery, (querySnapshot) => {
-      const invoicesData: Invoice[] = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Invoice));
-      setInvoices(invoicesData);
-    });
-
-    const savedFilesQuery = query(collection(eventRef, "savedFiles"), orderBy("createdAt", "desc"));
-    const unsubscribeSavedFiles = onSnapshot(savedFilesQuery, (querySnapshot) => {
-        const filesData: SavedFile[] = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SavedFile));
-        setSavedFiles(filesData);
-    });
-
-    const vendorsQuery = query(collection(eventRef, "vendors"), orderBy("name"));
-    const unsubscribeVendors = onSnapshot(vendorsQuery, (querySnapshot) => {
-        const vendorsData: Vendor[] = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Vendor));
-        setVendors(vendorsData);
-    });
-
-    return () => {
-      unsubscribeProducts();
-      unsubscribeInvoices();
-      unsubscribeSavedFiles();
-      unsubscribeVendors();
-    };
-  }, [user, activeEventId]);
 
   const handleSwitchEvent = async (eventId: string) => {
     if (!user) return;
@@ -818,13 +755,32 @@ export default function Home() {
     }
   };
   
-  const restockProduct = useCallback(async (productData: Omit<Product, 'id' | 'isSold'>) => {
-    await addProduct(productData);
-    toast({
+  const restockProduct = useCallback(async (originalProduct: Product, newUniqueProductCode: string) => {
+    if (!activeEventId) return;
+
+    if (originalProduct.uniqueProductCode === newUniqueProductCode) {
+      // Case 1: Same unique code, just mark as not sold.
+      const productRef = doc(db, "events", activeEventId, "products", originalProduct.id);
+      await updateDoc(productRef, { isSold: false });
+      toast({
         title: "Product Restocked",
-        description: `${productData.name} has been added back to inventory.`,
-    });
-  }, [addProduct, toast]);
+        description: `${originalProduct.name} is now available in inventory.`,
+      });
+    } else {
+      // Case 2: New unique code, create a new product entry.
+      const newProductData: Omit<Product, 'id' | 'isSold'> = {
+        name: originalProduct.name,
+        description: originalProduct.description,
+        barcode: originalProduct.barcode,
+        price: originalProduct.price,
+        cost: originalProduct.cost,
+        possibleDiscount: originalProduct.possibleDiscount,
+        salePercentage: originalProduct.salePercentage,
+        uniqueProductCode: newUniqueProductCode,
+      };
+      await addProduct(newProductData); // This will show its own toast
+    }
+  }, [activeEventId, toast, addProduct]);
 
   const deleteAllSoldOutProducts = useCallback(async () => {
     if (!activeEventId) return;
@@ -883,9 +839,9 @@ export default function Home() {
     'sales-over-time': salesOverTimeData,
   };
   
-  const isLoading = authLoading || isRoleLoading;
+  const isLoading = authLoading || isRoleLoading || isDataLoading;
 
-  if (isLoading) {
+  if (authLoading || isRoleLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -928,7 +884,7 @@ export default function Home() {
               totalRevenue={totalRevenue}
               totalProfit={totalProfit}
               totalGst={totalGst}
-              isLoading={isDataLoading}
+              isLoading={isLoading}
               onClearAllInvoices={clearAllInvoices}
               onResetInvoiceCounter={handleResetInvoiceCounter}
               userRole={userRole}
@@ -957,7 +913,7 @@ export default function Home() {
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
               onCreateInvoice={handleOpenInvoiceDialog}
-              isLoading={isDataLoading}
+              isLoading={isLoading}
               userRole={userRole}
               onScan={handleBarcodeScan}
               onOpenBulkEditDialog={handleOpenBulkEditDialog}

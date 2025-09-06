@@ -36,7 +36,7 @@ type RestockDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   product: Product;
-  onRestock: (productData: Omit<Product, 'id' | 'isSold'>) => Promise<void>;
+  onRestock: (newUniqueProductCode: string) => Promise<void>;
 };
 
 export function RestockDialog({ isOpen, onOpenChange, product, onRestock }: RestockDialogProps) {
@@ -54,25 +54,18 @@ export function RestockDialog({ isOpen, onOpenChange, product, onRestock }: Rest
   );
   
   useEffect(() => {
-    if(!isOpen) {
-        form.reset();
+    if(isOpen) {
+        // Pre-fill the form with the original code
+        form.reset({ uniqueProductCode: product.uniqueProductCode });
+    } else {
+        form.reset({ uniqueProductCode: '' });
     }
-  }, [isOpen, form]);
+  }, [isOpen, product, form]);
 
   const onSubmit = async (values: z.infer<typeof restockSchema>) => {
     setIsProcessing(true);
-    const newProductData: Omit<Product, 'id' | 'isSold'> = {
-      name: product.name,
-      description: product.description,
-      barcode: product.barcode,
-      price: product.price,
-      cost: product.cost,
-      possibleDiscount: product.possibleDiscount,
-      salePercentage: product.salePercentage,
-      uniqueProductCode: values.uniqueProductCode,
-    };
     try {
-      await onRestock(newProductData);
+      await onRestock(values.uniqueProductCode);
       onOpenChange(false);
     } catch (error) {
       // Toast is handled by the parent component
@@ -87,7 +80,7 @@ export function RestockDialog({ isOpen, onOpenChange, product, onRestock }: Rest
         <DialogHeader>
           <DialogTitle>Restock Product</DialogTitle>
           <DialogDescription>
-            Enter a new unique product code to add this item back into inventory.
+            To restock this item, re-enter its original code. To create a new item with the same details, enter a new unique code.
           </DialogDescription>
         </DialogHeader>
         <div className="text-sm space-y-2 py-4">
@@ -101,10 +94,10 @@ export function RestockDialog({ isOpen, onOpenChange, product, onRestock }: Rest
               name="uniqueProductCode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Unique Product Code</FormLabel>
+                  <FormLabel>Unique Product Code</FormLabel>
                   <FormControl>
                     <div className="relative">
-                        <Input placeholder="Scan or enter new unique code" {...field} />
+                        <Input placeholder="Scan or enter unique code" {...field} />
                         <QrCode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </FormControl>
